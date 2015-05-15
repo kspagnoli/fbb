@@ -23,7 +23,6 @@
 #include <vector>
 #include <unordered_map>
 #include <numeric>
-#include <tuple>
 #include <bitset>
 
 #include <boost/tokenizer.hpp>
@@ -80,7 +79,7 @@ namespace PitchingPositions
     };
 }
 
-struct Group
+struct TeamGroup
 {
     Leauge::Enum Leauge;
     Division::Enum Division;
@@ -114,29 +113,29 @@ float score(float sample, float avg,float stdev)
     return (sample - avg) / stdev;
 };
 
-struct Hitter
+struct DraftablePlayer
 {
-   
+    // flags
+    static const int32_t Undrafted = -1;
+
+    // 
+    enum class PlayerStatus 
+    {
+        Active, 
+        Injured, 
+        Minors ,
+    };
+
+    // player data
     std::string name;
     std::string team;
 
-    std::bitset<HittingPositions::Count> positions;
-
-    uint32_t plateApperances = 0;
-    uint32_t atBats = 0;
-    uint32_t hits = 0;
-    uint32_t homeRuns = 0;
-    uint32_t runs = 0;
-    uint32_t rBIs = 0;
-    uint32_t stolenBases = 0;
-
-    float average = 0;
-
-    float zAverage = 0;
-    float zHomeRuns = 0;
-    float zRuns = 0;
-    float zRBIs = 0;
-    float zStolenBases = 0;
+    // 
+    PlayerStatus status = PlayerStatus::Active;
+    
+    // fantasy
+    int32_t ownerId = Undrafted;
+    float paid = 0;
 
     // estimate
     float zScore = 0;
@@ -146,13 +145,37 @@ struct Hitter
     std::string comment;
 };
 
-struct Pitcher
+struct Hitter : public DraftablePlayer
 {
-    std::string name;
-    std::string team;
+    // positions
+    std::bitset<HittingPositions::Count> positions;
 
+    // sub-stat
+    uint32_t PA = 0;
+    uint32_t AB = 0;
+    uint32_t H = 0;
+
+    // core stats
+    float AVG = 0;
+    uint32_t R = 0;
+    uint32_t RBI = 0;
+    uint32_t HR = 0;
+    uint32_t SB = 0;
+
+    // zScores
+    float zAVG = 0;
+    float zR = 0;
+    float zHR = 0;
+    float zRBI = 0;
+    float zSB = 0;
+};
+
+struct Pitcher : public DraftablePlayer
+{
+    // positions
     std::bitset<PitchingPositions::Count> positions;
 
+    // sub-stats
     float IP = 0;
     uint32_t SO = 0;
     uint32_t W = 0;
@@ -160,20 +183,13 @@ struct Pitcher
     float ERA = 0;
     float WHIP = 0;
 
+    // zScores
     float zSO = 0;
     float zW = 0;
     float zSV = 0;
     float zERA = 0;
     float zWHIP = 0;
-
-    // estimate
-    float zScore = 0;
-    float cost = 0;
-
-    // comment
-    std::string comment;
 };
-
 
 struct Settings 
 {
@@ -193,10 +209,9 @@ struct Settings
     static float PitcherMoney() { return RosterMoney * (1.f - HitterPitcherSplit()); }
 };
 
-static Group LookupTeamGroup(const std::string& teamName)
+static TeamGroup LookupTeamGroup(const std::string& teamName)
 {
-
-    static std::unordered_map<std::string, Group> s_LUT = {
+    static std::unordered_map<std::string, TeamGroup> s_LUT = {
 
         {"Orioles",{Leauge::AL,Division::ALEast}},
         {"Red Sox",{Leauge::AL,Division::ALEast}},
@@ -234,96 +249,267 @@ static Group LookupTeamGroup(const std::string& teamName)
     return s_LUT[teamName];
 }
 
-//
-class HitterData 
+// HitterDataModel
+class HitterDataModel : public QWidget
 {
 
 public:
 
-    HitterData() = default;
+    // HitterData
+    HitterDataModel(const std::string csvFile, QWidget* parent)
+        : QWidget(parent)
+    {
+        // open file
+        std::fstream batters(csvFile);
+        std::string row;
 
-    void UpdateZScores()
+        using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
+
+        // tokenize header data
+        std::getline(batters,row);
+        Tokenizer tokenizer(row);
+
+        // stats to find
+        std::unordered_map<std::string,uint32_t> stat_lut =
+        {
+            {"Name",0},
+            {"Team",0},
+            {"PA",0},
+            {"AB",0},
+            {"H",0},
+            {"HR",0},
+            {"R",0},
+            {"RBI",0},
+            {"SB",0},
+        };
+
+        // Parse header
+        for (auto& lut : stat_lut) {
+
+            // find entry key
+            auto itr = std::find(tokenizer.begin(),tokenizer.end(),lut.first);
+            if(itr != tokenizer.end()) {
+
+                // set value
+                lut.second = std::distance(tokenizer.begin(),itr);
+            }
+        }
+
+        while (std::getline(batters,row)) {
+
+            Tokenizer tokenizer(row);
+            std::vector<std::string> parsed(tokenizer.begin(),tokenizer.end());
+
+            Hitter hitter;
+            hitter.name = parsed[stat_lut["Name"]];
+            hitter.team = parsed[stat_lut["Team"]];
+            hitter.PA = boost::lexical_cast<uint32_t>(parsed[stat_lut["PA"]]);
+            hitter.AB = boost::lexical_cast<uint32_t>(parsed[stat_lut["AB"]]);
+            hitter.H = boost::lexical_cast<uint32_t>(parsed[stat_lut["H"]]);
+            hitter.HR = boost::lexical_cast<uint32_t>(parsed[stat_lut["HR"]]);
+            hitter.R = boost::lexical_cast<uint32_t>(parsed[stat_lut["R"]]);
+            hitter.RBI = boost::lexical_cast<uint32_t>(parsed[stat_lut["RBI"]]);
+            hitter.SB = boost::lexical_cast<uint32_t>(parsed[stat_lut["SB"]]);
+            hitter.AVG = float(hitter.H) / float(hitter.AB);
+
+            auto TeamGroup = LookupTeamGroup(hitter.team);
+
+            // LEAUGE FILTER
+            if (TeamGroup.Leauge != Leauge::NL) {
+                continue;
+            }
+
+            // [XXX] HAX
+            if (hitter.AB < 20) {
+                continue;
+            }
+
+            // [XXX] HAX
+            if (hitter.AB < 100) {
+                hitter.status = DraftablePlayer::PlayerStatus::Minors;
+            }
+
+            m_vecHitters.emplace_back(hitter);
+        }
+
+        InializeZScores();
+    }
+
+    // GetHitter
+    const Hitter& GetHitter(size_t i) const
+    {
+        return m_vecHitters[i];
+    }
+
+    // Count
+    size_t Count() const 
+    {
+        return m_vecHitters.size();
+    }
+
+    
+
+private:
+
+    // UpdateZScores
+    void InializeZScores()
     {
         // Helpers
-        const auto fnGetAtBats = [](const Hitter& hitter) { return hitter.atBats; };
-        const auto fnGetAverage = [](const Hitter& hitter) { return hitter.average; };
-        const auto fnGetHomeRuns = [](const Hitter& hitter) { return hitter.homeRuns; };
-        const auto fnGetRuns = [](const Hitter& hitter) { return hitter.runs; };
-        const auto fnGetRBIs = [](const Hitter& hitter) { return hitter.rBIs; };
-        const auto fnGetStolenBases = [](const Hitter& hitter) { return hitter.stolenBases; };
+        const auto fnGetAB  = [](const Hitter& hitter) { return hitter.AB; };
+        const auto fnGetAVG = [](const Hitter& hitter) { return hitter.AVG; };
+        const auto fnGetHR  = [](const Hitter& hitter) { return hitter.HR; };
+        const auto fnGetR   = [](const Hitter& hitter) { return hitter.R; };
+        const auto fnGetRBI = [](const Hitter& hitter) { return hitter.RBI; };
+        const auto fnGetSB  = [](const Hitter& hitter) { return hitter.SB; };
 
         // Averages
-        const float avgAtBats = average(fnGetAtBats, vecHitters);
-        const float avgAverage = average(fnGetAverage, vecHitters);
-        const float avgHomeRuns = average(fnGetHomeRuns, vecHitters);
-        const float avgRuns = average(fnGetRuns, vecHitters);
-        const float avgRBIs = average(fnGetRBIs, vecHitters);
-        const float avgStolenBases = average(fnGetStolenBases, vecHitters);
+        const float avgAB  = average(fnGetAB,m_vecHitters);
+        const float avgAVG = average(fnGetAVG,m_vecHitters);
+        const float avgHR  = average(fnGetHR,m_vecHitters);
+        const float avgR   = average(fnGetR,m_vecHitters);
+        const float avgRBI = average(fnGetRBI,m_vecHitters);
+        const float avgSB  = average(fnGetSB,m_vecHitters);
 
         // Standard devs
-        const float stdevAtBats = stdev(fnGetAtBats, avgAtBats, vecHitters);
-        const float stdevAverage = stdev(fnGetAverage, avgAverage, vecHitters);
-        const float stdevHomeRuns = stdev(fnGetHomeRuns, avgHomeRuns, vecHitters);
-        const float stdevRuns = stdev(fnGetRuns, avgRuns, vecHitters);
-        const float stdevRBIs = stdev(fnGetRBIs, avgRBIs, vecHitters);
-        const float stdevStolenBases = stdev(fnGetStolenBases, avgStolenBases, vecHitters);
+        const float stdevAB  = stdev(fnGetAB,avgAB,m_vecHitters);
+        const float stdevAVG = stdev(fnGetAVG,avgAVG,m_vecHitters);
+        const float stdevHR  = stdev(fnGetHR,avgHR,m_vecHitters);
+        const float stdevR   = stdev(fnGetR,avgR,m_vecHitters);
+        const float stdevRBI = stdev(fnGetRBI,avgRBI,m_vecHitters);
+        const float stdevSB  = stdev(fnGetSB,avgSB,m_vecHitters);
 
         // zscore
-        std::for_each(std::begin(vecHitters),std::end(vecHitters),[&](Hitter& hitter) {
+        std::for_each(std::begin(m_vecHitters),std::end(m_vecHitters),[&](Hitter& hitter) {
 
             // per-state zscores
-            hitter.zAverage = (hitter.atBats * score(hitter.average, avgAverage, stdevAverage) - stdevAtBats) / avgAtBats;
-            hitter.zHomeRuns = score(hitter.homeRuns, avgHomeRuns, stdevHomeRuns);
-            hitter.zRuns = score(hitter.runs, avgRuns, stdevRuns);
-            hitter.zRBIs = score(hitter.rBIs, avgRBIs, stdevRBIs);
-            hitter.zStolenBases = score(hitter.stolenBases, avgStolenBases, stdevStolenBases);
+            hitter.zAVG = (hitter.AB * score(hitter.AVG,avgAVG,stdevAVG) - stdevAB) / avgAB;
+            hitter.zHR = score(hitter.HR,avgHR,stdevHR);
+            hitter.zR = score(hitter.R,avgR,stdevR);
+            hitter.zRBI = score(hitter.RBI,avgRBI,stdevRBI);
+            hitter.zSB = score(hitter.SB,avgSB,stdevSB);
 
             // zscore summation
-            hitter.zScore = hitter.zAverage + hitter.zHomeRuns + hitter.zRuns + hitter.zRBIs + hitter.zStolenBases;
+            hitter.zScore = hitter.zAVG + hitter.zHR + hitter.zR + hitter.zRBI + hitter.zSB;
         });
 
         // Sort by zScore
-        std::sort(vecHitters.begin(), vecHitters.end(), [](const Hitter& lhs, const Hitter& rhs) {
+        std::sort(m_vecHitters.begin(),m_vecHitters.end(),[](const Hitter& lhs,const Hitter& rhs) {
             return lhs.zScore > rhs.zScore;
         });
 
         // Get the "replacement player"
-        float zRplacement = vecHitters[Settings::TotalHittersRostered].zScore;
+        float zRplacement = m_vecHitters[Settings::TotalHittersRostered].zScore;
 
         // Scale all players based off the replacement player
-        std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Hitter& hitter) {
+        std::for_each(std::begin(m_vecHitters),std::end(m_vecHitters),[&](Hitter& hitter) {
             hitter.zScore -= zRplacement;
         });
 
         // Sum all positive zScores
         float sumPositiveZScores = 0;
-        std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Hitter& hitter) {
-            if (hitter.zScore > 0) {
+        std::for_each(std::begin(m_vecHitters),std::end(m_vecHitters),[&](Hitter& hitter) {
+            if(hitter.zScore > 0) {
                 sumPositiveZScores += hitter.zScore;
             }
         });
 
         // Apply cost ratio
         static const float costRatio = (Settings::HitterMoney() / 14.f) * (Settings::TotalHittersRostered / sumPositiveZScores);
-        std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Hitter& hitter) {
+        std::for_each(std::begin(m_vecHitters),std::end(m_vecHitters),[&](Hitter& hitter) {
             hitter.cost = hitter.zScore * costRatio;
         });
     }
 
-    // xxx
-    std::vector<Hitter> vecHitters;
-
-private:
+    std::vector<Hitter> m_vecHitters;
 
 };
 
-class PitcherData
+// PitcherDataModel
+class PitcherDataModel : QWidget
 {
 
 public:
 
-    PitcherData() = default;
+    PitcherDataModel(const std::string& csvFile, QWidget* parent)
+        : QWidget(parent)
+    {
+        std::fstream pitchers(csvFile);
+        std::string row;
 
+        using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
+
+        // Tokenize header data
+        std::getline(pitchers,row);
+        Tokenizer tokenizer(row);
+
+        std::unordered_map<std::string,uint32_t> stat_lut =
+        {
+            {"Name",0},
+            {"Team",0},
+            {"IP",0},
+            {"SO",0},
+            {"ERA",0},
+            {"WHIP",0},
+            {"W",0},
+            {"SV",0},
+        };
+
+        // Parse header
+        for (auto& lut : stat_lut) {
+
+            // find entry key
+            auto itr = std::find(tokenizer.begin(),tokenizer.end(),lut.first);
+            if (itr != tokenizer.end()) {
+
+                // set value
+                lut.second = std::distance(tokenizer.begin(),itr);
+            }
+        }
+
+        while (std::getline(pitchers,row)) {
+
+            Tokenizer tokenizer(row);
+            std::vector<std::string> parsed(tokenizer.begin(),tokenizer.end());
+
+            Pitcher pitcher;
+            pitcher.name = parsed[stat_lut["Name"]];
+            pitcher.team = parsed[stat_lut["Team"]];
+            pitcher.IP = boost::lexical_cast<decltype(pitcher.IP)>(parsed[stat_lut["IP"]]);
+            pitcher.ERA = boost::lexical_cast<decltype(pitcher.ERA)>(parsed[stat_lut["ERA"]]);
+            pitcher.WHIP = boost::lexical_cast<decltype(pitcher.WHIP)>(parsed[stat_lut["WHIP"]]);
+            pitcher.W = boost::lexical_cast<decltype(pitcher.W)>(parsed[stat_lut["W"]]);
+            pitcher.SO = boost::lexical_cast<decltype(pitcher.SO)>(parsed[stat_lut["SO"]]);
+            pitcher.SV = boost::lexical_cast<decltype(pitcher.SV)>(parsed[stat_lut["SV"]]);
+
+            auto TeamGroup = LookupTeamGroup(pitcher.team);
+
+            if(TeamGroup.Leauge != Leauge::NL) {
+                continue;
+            }
+
+            if(pitcher.IP < 5) {
+                continue;
+            }
+
+            m_vecPitchers.emplace_back(pitcher);
+        }
+
+        UpdateZScores();
+    }
+
+    // GetHitter
+    const Pitcher& GetPitcher(size_t i) const
+    {
+        return m_vecPitchers[i];
+    }
+
+    // Count
+    size_t Count() const
+    {
+        return m_vecPitchers.size();
+    }
+
+    // UpdateZScores
     void UpdateZScores()
     {      
         // Helpers
@@ -335,23 +521,23 @@ public:
         const auto fnGetWHIP = [](const Pitcher& pitcher) { return pitcher.WHIP; };
 
         // Averages
-        const float avgIP   = average(fnGetIP,   vecPitchers);
-        const float avgSO   = average(fnGetSO,   vecPitchers);
-        const float avgW    = average(fnGetW,    vecPitchers);
-        const float avgSV   = average(fnGetSV,   vecPitchers);
-        const float avgERA  = average(fnGetERA,  vecPitchers);
-        const float avgWHIP = average(fnGetWHIP, vecPitchers);
+        const float avgIP   = average(fnGetIP,   m_vecPitchers);
+        const float avgSO   = average(fnGetSO,   m_vecPitchers);
+        const float avgW    = average(fnGetW,    m_vecPitchers);
+        const float avgSV   = average(fnGetSV,   m_vecPitchers);
+        const float avgERA  = average(fnGetERA,  m_vecPitchers);
+        const float avgWHIP = average(fnGetWHIP, m_vecPitchers);
 
         // Standard devs
-        const float stdevIP   = stdev(fnGetIP,   avgIP,   vecPitchers);
-        const float stdevSO   = stdev(fnGetSO,   avgSO,   vecPitchers);
-        const float stdevW    = stdev(fnGetW,    avgW,    vecPitchers);
-        const float stdevSV   = stdev(fnGetSV,   avgSV,   vecPitchers);
-        const float stdevERA  = stdev(fnGetERA,  avgERA,  vecPitchers);
-        const float stdevWHIP = stdev(fnGetWHIP, avgWHIP, vecPitchers);
+        const float stdevIP   = stdev(fnGetIP,   avgIP,   m_vecPitchers);
+        const float stdevSO   = stdev(fnGetSO,   avgSO,   m_vecPitchers);
+        const float stdevW    = stdev(fnGetW,    avgW,    m_vecPitchers);
+        const float stdevSV   = stdev(fnGetSV,   avgSV,   m_vecPitchers);
+        const float stdevERA  = stdev(fnGetERA,  avgERA,  m_vecPitchers);
+        const float stdevWHIP = stdev(fnGetWHIP, avgWHIP, m_vecPitchers);
         
         // zscore
-        std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Pitcher& pitcher) {
+        std::for_each(std::begin(m_vecPitchers), std::end(m_vecPitchers), [&](Pitcher& pitcher) {
 
             // per-state zscores
             pitcher.zSO = score(pitcher.SO, avgSO, stdevSO);
@@ -365,21 +551,21 @@ public:
         });
 
         // Sort by zScore
-        std::sort(vecPitchers.begin(), vecPitchers.end(), [](const Pitcher& lhs,const Pitcher& rhs) {
+        std::sort(m_vecPitchers.begin(), m_vecPitchers.end(), [](const Pitcher& lhs,const Pitcher& rhs) {
             return lhs.zScore > rhs.zScore;
         });
 
         // Get the "replacement player"
-        float zRplacement = vecPitchers[Settings::TotalPitchersRostered].zScore;
+        float zRplacement = m_vecPitchers[Settings::TotalPitchersRostered].zScore;
 
         // Scale all players based off the replacement player
-        std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Pitcher& pitcher) {
+        std::for_each(std::begin(m_vecPitchers), std::end(m_vecPitchers), [&](Pitcher& pitcher) {
             pitcher.zScore -= zRplacement;
         });
 
         // Sum all positive zScores
         float sumPositiveZScores = 0;
-        std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Pitcher& pitcher) {
+        std::for_each(std::begin(m_vecPitchers), std::end(m_vecPitchers), [&](Pitcher& pitcher) {
             if (pitcher.zScore > 0) {
                 sumPositiveZScores += pitcher.zScore;
             }
@@ -387,42 +573,17 @@ public:
 
         // Apply cost ratio
         static const float costRatio = (Settings::PitcherMoney() / 10.f) * (Settings::TotalPitchersRostered / sumPositiveZScores);
-        std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Pitcher& pitcher) {
+        std::for_each(std::begin(m_vecPitchers), std::end(m_vecPitchers), [&](Pitcher& pitcher) {
             pitcher.cost = pitcher.zScore * costRatio;
         });
     }
 
-    // xxx
-    std::vector<Pitcher> vecPitchers;
 
 private:
 
-};
+    // xxx
+    std::vector<Pitcher> m_vecPitchers;
 
-//
-std::unordered_map<std::string, uint32_t> streamer_hitters = 
-{
-    {"Name",0},
-    {"Team",0},
-    {"PA",0},
-    {"AB",0},
-    {"H",0},
-    {"HR",0},
-    {"R",0},
-    {"RBI",0},
-    {"SB",0},
-};
-
-std::unordered_map<std::string,uint32_t> streamer_pitchers =
-{
-    {"Name",0},
-    {"Team",0},
-    {"IP",0},
-    {"SO",0},
-    {"ERA",0},
-    {"WHIP",0},
-    {"W",0},
-    {"SV",0},
 };
 
 class HitterTableModel : public QAbstractTableModel
@@ -451,15 +612,15 @@ public:
     };
 
     //
-    HitterTableModel(const std::shared_ptr<HitterData>& spHitterData)
-        : m_spHitterData(spHitterData)
+    HitterTableModel(const HitterDataModel* hitterDataModel)
+        : m_pHitterDataModel(hitterDataModel)
     {
     }
 
     //
     int rowCount(const QModelIndex &) const override
     {
-        return m_spHitterData->vecHitters.size();
+        return m_pHitterDataModel->Count();
     }
 
     //
@@ -476,7 +637,7 @@ public:
         }
 
         const size_t i = index.row();
-        const Hitter& hitter = m_spHitterData->vecHitters.at(index.row());
+        const Hitter& hitter = m_pHitterDataModel->GetHitter(index.row());
 
         if (role == Qt::DisplayRole) {
 
@@ -489,17 +650,17 @@ public:
             case COLUMN_TEAM:
                 return QString::fromStdString(hitter.team);
             case COLUMN_AB:
-                return hitter.atBats;
+                return hitter.AB;
             case COLUMN_AVG:
-                return QString::number(hitter.average, 'f', 3);
+                return QString::number(hitter.AVG, 'f', 3);
             case COLUMN_HR:
-                return hitter.homeRuns;
+                return hitter.HR;
             case COLUMN_R:
-                return hitter.runs;
+                return hitter.R;
             case COLUMN_RBI:
-                return hitter.rBIs;
+                return hitter.RBI;
             case COLUMN_SB:
-                return hitter.stolenBases;
+                return hitter.SB;
             case COLUMN_Z:
                 return QString::number(hitter.zScore,'f',3);
             case COLUMN_ESTIMATE:
@@ -528,11 +689,11 @@ public:
             {
             case COLUMN_Z:
                 return QString("zAVG: %1\nzR:   %2\nzRBI: %3\nzHR:  %4\nzSB:  %5")
-                    .arg(hitter.zAverage)
-                    .arg(hitter.zRuns)
-                    .arg(hitter.zRBIs)
-                    .arg(hitter.zHomeRuns)
-                    .arg(hitter.zStolenBases);
+                    .arg(hitter.zAVG)
+                    .arg(hitter.zR)
+                    .arg(hitter.zRBI)
+                    .arg(hitter.zHR)
+                    .arg(hitter.zSB);
             }
         }
 
@@ -579,19 +740,19 @@ public:
         return QVariant();
     }
 
-    // 
-    const std::shared_ptr<HitterData> getHitterData() const
+    // Hitter data access
+    const HitterDataModel* GetHitterData() const
     {
-        return m_spHitterData;
+        return m_pHitterDataModel;
     }
 
 private:
 
-    std::shared_ptr<HitterData> m_spHitterData;
+    // Hitter data model
+    const HitterDataModel* m_pHitterDataModel;
 };
 
-
-class PitcherTableModel: public QAbstractTableModel
+class PitcherTableModel : public QAbstractTableModel
 {
 
 public:
@@ -616,15 +777,15 @@ public:
     };
 
     //
-    PitcherTableModel(const std::shared_ptr<PitcherData>& spPitcherData)
-        : m_spPitcherData(spPitcherData)
+    PitcherTableModel(const PitcherDataModel* pPitcherData)
+        : m_pPitcherDataModel(pPitcherData)
     {
     }
 
     //
     int rowCount(const QModelIndex &) const override
     {
-        return m_spPitcherData->vecPitchers.size();
+        return m_pPitcherDataModel->Count();
     }
 
     //
@@ -641,7 +802,7 @@ public:
         }
 
         const size_t i = index.row();
-        const Pitcher& pitcher = m_spPitcherData->vecPitchers.at(index.row());
+        const Pitcher& pitcher = m_pPitcherDataModel->GetPitcher(index.row());
 
         if(role == Qt::DisplayRole) {
 
@@ -745,16 +906,15 @@ public:
     }
 
     // 
-    const std::shared_ptr<PitcherData> getPitcherData() const
+    const PitcherDataModel* GetPitcherData() const
     {
-        return m_spPitcherData;
+        return m_pPitcherDataModel;
     }
 
 private:
 
-    std::shared_ptr<PitcherData> m_spPitcherData;
+    const PitcherDataModel* m_pPitcherDataModel;
 };
-
 
 // 
 class HitterSortFilterProxyModel: public QSortFilterProxyModel
@@ -775,8 +935,8 @@ public:
         }
 
         // lookup hitters
-        const Hitter& leftHitter  = m_hittleTableModel->getHitterData()->vecHitters.at(left.row());
-        const Hitter& rightHitter = m_hittleTableModel->getHitterData()->vecHitters.at(right.row());
+        const Hitter& leftHitter  = m_hittleTableModel->GetHitterData()->GetHitter(left.row());
+        const Hitter& rightHitter = m_hittleTableModel->GetHitterData()->GetHitter(right.row());
 
         QVariant leftData = sourceModel()->data(left);
         QVariant rightData = sourceModel()->data(right);
@@ -784,7 +944,7 @@ public:
         switch (column)
         {
         case HitterTableModel::COLUMN_AVG:
-            return leftHitter.average < rightHitter.average;
+            return leftHitter.AVG < rightHitter.AVG;
         case HitterTableModel::COLUMN_Z:
             return leftHitter.zScore < rightHitter.zScore;
         case HitterTableModel::COLUMN_ESTIMATE:
@@ -796,23 +956,23 @@ public:
 
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override
     {
-        const Hitter& hitter = m_hittleTableModel->getHitterData()->vecHitters.at(sourceRow);
+        const Hitter& hitter = m_hittleTableModel->GetHitterData()->GetHitter(sourceRow);
 
-        // Hax
-        // if (m_onlyShowAvailablePlayers && hitter.Get<Hitter> == false) {
-        //     return false;
-        // }
+        // filter out inactive players
+        if (m_filterActive && hitter.status != DraftablePlayer::PlayerStatus::Active) {
+            return false;
+        }
 
         return true;
     }
 
+
 public slots:
 
-    void OnlyShowAvailablePlayers(bool checked)
+    void OnFilterAvailable(bool checked)
     {
-        m_onlyShowAvailablePlayers = checked;
-
-        filterChanged();
+        m_filterActive = checked;
+        QSortFilterProxyModel::filterChanged();
     }
 
 private:
@@ -820,13 +980,14 @@ private:
     HitterTableModel* m_hittleTableModel;
 
     // filters
-    bool m_onlyShowAvailablePlayers;
+    bool m_filterActive = false;
 };
 
 
 // 
-class PitcherSortFilterProxyModel: public QSortFilterProxyModel
+class PitcherSortFilterProxyModel : public QSortFilterProxyModel
 {
+
 public:
 
     PitcherSortFilterProxyModel(PitcherTableModel* pitcherTableModel)
@@ -838,12 +999,12 @@ public:
     bool lessThan(const QModelIndex& left, const QModelIndex& right) const override
     {
         auto column = left.column();
-        if(column != right.column()) {
+        if (column != right.column()) {
             return false;
         }
 
-        const Pitcher& leftPitcher  = m_pitcherTableModel->getPitcherData()->vecPitchers.at(left.row());
-        const Pitcher& rightPitcher = m_pitcherTableModel->getPitcherData()->vecPitchers.at(right.row());
+        const Pitcher& leftPitcher  = m_pitcherTableModel->GetPitcherData()->GetPitcher(left.row());
+        const Pitcher& rightPitcher = m_pitcherTableModel->GetPitcherData()->GetPitcher(right.row());
 
         QVariant leftData = sourceModel()->data(left);
         QVariant rightData = sourceModel()->data(right);
@@ -863,26 +1024,30 @@ public:
         return leftData < rightData;
     }
 
-    bool filterAcceptsRow(int sourceRow,const QModelIndex& sourceParent) const override
+    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override
     {
+        const Pitcher& pitcher = m_pitcherTableModel->GetPitcherData()->GetPitcher(sourceRow);
+
+        // filter out inactive players
+        if(m_filterActive && pitcher.status != DraftablePlayer::PlayerStatus::Active) {
+            return false;
+        }
+
         return true;
     }
 
 public slots:
 
-    void OnlyShowAvailablePlayers(bool checked)
+    void OnFilterAvailable(bool checked)
     {
-        m_onlyShowAvailablePlayers = checked;
-
-        filterChanged();
+        m_filterActive = checked;
+        QSortFilterProxyModel::filterChanged();
     }
 
 private:
 
+    bool m_filterActive = false;
     PitcherTableModel* m_pitcherTableModel;
-
-    // filters
-    bool m_onlyShowAvailablePlayers;
 };
 
 
@@ -892,102 +1057,76 @@ class MainWindow : public QMainWindow
 
 public:
 
-    MainWindow(const std::shared_ptr<HitterData>& hitterData, const std::shared_ptr<PitcherData>& pitcherData)
-        : m_hitterData(hitterData)
-        , m_pitcherData(pitcherData)
+    MainWindow()
     {
         QWidget* central = new QWidget();
 
-        // Hitter/Pitcher Layout
+        // pitcher table model
+        HitterDataModel* hitterDataModel = new HitterDataModel("batters.csv", this);
+        HitterTableModel* hittleTableModel = new HitterTableModel(hitterDataModel);
+        HitterSortFilterProxyModel* hitterSortFilterProxyModel = new HitterSortFilterProxyModel(hittleTableModel);
+        QTableView* hitterTableView = MakeTableView(hitterSortFilterProxyModel, HitterTableModel::COLUMN_RANK);
+
+        // pitcher table
+        PitcherDataModel* pitcherDataModel = new PitcherDataModel("pitchers.csv", this);
+        PitcherTableModel* pitcherTableModel = new PitcherTableModel(pitcherDataModel);
+        PitcherSortFilterProxyModel* pitcherSortFilterProxyModel = new PitcherSortFilterProxyModel(pitcherTableModel);
+        QTableView* pitcherTableView = MakeTableView(pitcherSortFilterProxyModel, PitcherTableModel::COLUMN_RANK);
+       
+        // layout
         QVBoxLayout* vBoxLayout = new QVBoxLayout();
-
-
-        // Hitter/Pitcher Tab View
+        
+        // hitter/pitcher tab View
         QTabWidget* tabs = new QTabWidget(this);
-        tabs->addTab(GetHitterTableView(), "Hitters");
-        tabs->addTab(GetPitcherTableView(), "Pitchers");
+        tabs->addTab(hitterTableView, "Hitters");
+        tabs->addTab(pitcherTableView, "Pitchers");
         vBoxLayout->addWidget(tabs);
 
-        // Hitter/Pitcher toolbar
+        // filter action
+        QAction* filterAvailableAction = new QAction(this);
+        filterAvailableAction->setText(tr("Filter Available"));
+        filterAvailableAction->setCheckable(true);
+        connect(filterAvailableAction, &QAction::triggered, hitterSortFilterProxyModel, &HitterSortFilterProxyModel::OnFilterAvailable);
+        connect(filterAvailableAction, &QAction::triggered, pitcherSortFilterProxyModel, &PitcherSortFilterProxyModel::OnFilterAvailable);
+
+        // main toolbar
         QToolBar* toolbar = new QToolBar("Toolbar");
-        QAction* action = new QAction(this);
-        action->setText(tr("Filter Available"));
-        action->setCheckable(true);
-        toolbar->addAction(action);
+        toolbar->addAction(filterAvailableAction);
         toolbar->setFloatable(false);
         toolbar->setMovable(false);
         QMainWindow::addToolBar(toolbar);
 
-        // Set as main window
+        // set as main window
         QMainWindow::setCentralWidget(central);
         central->setLayout(vBoxLayout);
 
-        // Create menu bar
+        // create menu bar
         QMenuBar* menuBar = new QMenuBar();
         menuBar->addAction("MENU BAR");
         QMainWindow::setMenuBar(menuBar);
 
-        // Show me
+        // show me
         QMainWindow::show();
     }
 
-    QTableView* GetHitterTableView()
-    {
-        // table model
-        HitterTableModel* hittleTableModel = new HitterTableModel(m_hitterData);
-
-        // sort/filter proxy model
-        HitterSortFilterProxyModel* hitterSortFilterProxyModel = new HitterSortFilterProxyModel(hittleTableModel);
-
-        // table view
-        QTableView* tableView = new QTableView();
-        tableView->setModel(hitterSortFilterProxyModel);
-        tableView->setSortingEnabled(true);
-        hitterSortFilterProxyModel->sort(HitterTableModel::COLUMN_RANK, Qt::AscendingOrder);
-        
-        return FormatTable(tableView);
-    }
-
-    // 
-    QTableView* GetPitcherTableView()
-    {
-        // table model
-        PitcherTableModel* pitcherTableModel = new PitcherTableModel(m_pitcherData);
-
-        // sort/filter proxy model
-        PitcherSortFilterProxyModel* pitcherSortFilterProxyModel = new PitcherSortFilterProxyModel(pitcherTableModel);
-
-        // table view
-        QTableView* tableView = new QTableView();
-        tableView->setModel(pitcherSortFilterProxyModel);
-        tableView->setSortingEnabled(true);
-        pitcherSortFilterProxyModel->sort(PitcherTableModel::COLUMN_RANK, Qt::AscendingOrder);
-
-        return FormatTable(tableView);
-    }
-
-signals:
-
-    void OnlyShowAvailablePlayers();
-
 private:
 
-    QTableView* FormatTable(QTableView* tableView)
+    //
+    QTableView* MakeTableView(QSortFilterProxyModel* sortFilterProxyModel, int sortColumn)
     {
-        // table view
+        QTableView* tableView = new QTableView();
+        tableView->setModel(sortFilterProxyModel);
+        tableView->setSortingEnabled(true);
         tableView->verticalHeader()->hide();
         tableView->setStyleSheet(m_style);
         tableView->resizeColumnsToContents();
-        tableView->resizeRowsToContents();
+        tableView->setAlternatingRowColors(true);
+        tableView->verticalHeader()->setDefaultSectionSize(15);
         tableView->horizontalHeader()->setStretchLastSection(true);
-
         tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-
+        sortFilterProxyModel->sort(sortColumn);
         return tableView;
     }
-
-    const std::shared_ptr<HitterData>& m_hitterData;
-    const std::shared_ptr<PitcherData>& m_pitcherData;
 
     const QString m_style = 
         R"""(
@@ -996,133 +1135,6 @@ private:
             font-size: 11px;
         })""";
 };
-
-std::shared_ptr<HitterData> ParseHitters()
-{
-    //
-    // Hitter data
-    //
-
-    std::fstream batters("batters.csv");
-    std::string row;
-
-    using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
-
-    // Tokenize header data
-    std::getline(batters,row);
-    Tokenizer tokenizer(row);
-
-    // Parse header
-    for(auto& lut : streamer_hitters) {
-
-        // find entry key
-        auto itr = std::find(tokenizer.begin(),tokenizer.end(),lut.first);
-        if(itr != tokenizer.end()) {
-
-            // set value
-            lut.second = std::distance(tokenizer.begin(),itr);
-        }
-    }
-
-    auto spHitterData = std::make_shared<HitterData>();
-
-    while(std::getline(batters,row)) {
-
-        Tokenizer tokenizer(row);
-        std::vector<std::string> parsed(tokenizer.begin(),tokenizer.end());
-
-        Hitter be;
-        be.name = parsed[streamer_hitters["Name"]];
-        be.team = parsed[streamer_hitters["Team"]];
-        be.plateApperances = boost::lexical_cast<uint32_t>(parsed[streamer_hitters["PA"]]);
-        be.atBats = boost::lexical_cast<uint32_t>(parsed[streamer_hitters["AB"]]);
-        be.hits = boost::lexical_cast<uint32_t>(parsed[streamer_hitters["H"]]);
-        be.homeRuns = boost::lexical_cast<uint32_t>(parsed[streamer_hitters["HR"]]);
-        be.runs = boost::lexical_cast<uint32_t>(parsed[streamer_hitters["R"]]);
-        be.rBIs = boost::lexical_cast<uint32_t>(parsed[streamer_hitters["RBI"]]);
-        be.stolenBases = boost::lexical_cast<uint32_t>(parsed[streamer_hitters["SB"]]);
-        be.average = float(be.hits) / float(be.atBats);
-
-        auto TeamGroup = LookupTeamGroup(be.team);
-
-        if(TeamGroup.Leauge != Leauge::NL) {
-            continue;
-        }
-
-        if(be.plateApperances < 20) {
-            continue;
-        }
-
-        spHitterData->vecHitters.emplace_back(be);
-    }
-
-    spHitterData->UpdateZScores();
-
-    return spHitterData;
-}
-
-
-std::shared_ptr<PitcherData> ParsePitchers()
-{
-    //
-    // Parse data
-    //
-
-    std::fstream pitchers("pitchers.csv");
-    std::string row;
-
-    using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
-
-    // Tokenize header data
-    std::getline(pitchers, row);
-    Tokenizer tokenizer(row);
-
-    // Parse header
-    for(auto& lut : streamer_pitchers) {
-
-        // find entry key
-        auto itr = std::find(tokenizer.begin(),tokenizer.end(),lut.first);
-        if(itr != tokenizer.end()) {
-
-            // set value
-            lut.second = std::distance(tokenizer.begin(),itr);
-        }
-    }
-
-    auto spPitcherData = std::make_shared<PitcherData>();
-
-    while(std::getline(pitchers,row)) {
-
-        Tokenizer tokenizer(row);
-        std::vector<std::string> parsed(tokenizer.begin(),tokenizer.end());
-
-        Pitcher pe;
-        pe.name = parsed[streamer_pitchers["Name"]];
-        pe.team = parsed[streamer_pitchers["Team"]];
-        pe.IP = boost::lexical_cast<decltype(pe.IP)>(parsed[streamer_pitchers["IP"]]);
-        pe.ERA = boost::lexical_cast<decltype(pe.ERA)>(parsed[streamer_pitchers["ERA"]]);
-        pe.WHIP = boost::lexical_cast<decltype(pe.WHIP)>(parsed[streamer_pitchers["WHIP"]]);
-        pe.W = boost::lexical_cast<decltype(pe.W)>(parsed[streamer_pitchers["W"]]);
-        pe.SO = boost::lexical_cast<decltype(pe.SO)>(parsed[streamer_pitchers["SO"]]);
-        pe.SV = boost::lexical_cast<decltype(pe.SV)>(parsed[streamer_pitchers["SV"]]);
-
-        auto TeamGroup = LookupTeamGroup(pe.team);
-
-        if(TeamGroup.Leauge != Leauge::NL) {
-            continue;
-        }
-
-        if (pe.IP < 5) {
-            continue;
-        }
-
-        spPitcherData->vecPitchers.emplace_back(pe);
-    }
-
-    spPitcherData->UpdateZScores();
-
-    return spPitcherData;
-}
 
 int main(int argc,char *argv[])
 {
@@ -1148,10 +1160,7 @@ int main(int argc,char *argv[])
     // app.setPalette(darkPalette);
     // app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }");
 
-    auto spHitterData = ParseHitters();
-    auto spPitcherData = ParsePitchers();
-
-    MainWindow mainWin(spHitterData, spPitcherData);
+    MainWindow mainWin;
     mainWin.resize(1000, 800);
     mainWin.show();
 
