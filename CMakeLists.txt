@@ -14,8 +14,16 @@ include_directories($ENV{BOOST_ROOT})
 # Find the QtWidgets library
 find_package(Qt5Widgets REQUIRED)
 
+# Source files
+set(SOURCE
+    main.cpp
+    HitterSortFilterProxyModel.cpp
+    HitterTableModel.cpp
+    PitcherSortFilterProxyModel.cpp
+    PitcherTableModel.cpp)
+
 # Tell CMake to create the helloworld executable
-add_executable(helloworld WIN32 main.cpp)
+add_executable(helloworld WIN32 ${SOURCE})
 
 foreach(plugin ${Qt5GUI_PLUGINS})
   get_target_property(_loc ${plugin} LOCATION)
