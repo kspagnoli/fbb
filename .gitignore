@@ -1,2 +1,4 @@
 *.tlog
-BUILD/
+BUILD_*/
+*_automoc.cpp
+*.exe
