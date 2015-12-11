@@ -3,6 +3,8 @@
 #include "Pitcher.h"
 #include <QAbstractTableModel>
 
+class PlayerApperances;
+
 class PitcherTableModel : public QAbstractTableModel
 {
 
@@ -29,7 +31,7 @@ public:
     };
 
     // Constructor
-    PitcherTableModel(const std::string& filename, QObject* parent);
+    PitcherTableModel(const std::string& filename, const PlayerApperances& appearances, QObject* parent);
 
     // QAbstractTableModel interfaces
     int rowCount(const QModelIndex &) const override;

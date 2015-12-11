@@ -1,17 +1,30 @@
 #include "PitcherTableModel.h"
 #include "Pitcher.h"
+#include "PlayerAppearances.h"
 
 #include <vector>
 #include <fstream>
 #include <bitset>
+#include <iostream>
 #include <unordered_map>
 #include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
 
 //------------------------------------------------------------------------------
+// PositionToString (static helper)
+//------------------------------------------------------------------------------
+static QString PositionToString(const Pitcher::PositionMask& positions)
+{
+    QStringList vecPos;
+    if (positions & uint32_t(Pitcher::Position::Starter)) { vecPos.push_back("SP"); }
+    if (positions & uint32_t(Pitcher::Position::Relief)) { vecPos.push_back("RP"); }
+    return vecPos.join(", ");
+}
+
+//------------------------------------------------------------------------------
 // PitcherTableModel
 //------------------------------------------------------------------------------
-PitcherTableModel::PitcherTableModel(const std::string& filename, QObject* parent)
+PitcherTableModel::PitcherTableModel(const std::string& filename, const PlayerApperances& playerApperances, QObject* parent)
     : QAbstractTableModel(parent)
 {
     std::fstream pitchers(filename);
@@ -70,7 +83,19 @@ PitcherTableModel::PitcherTableModel(const std::string& filename, QObject* paren
                 continue;
             }
 
+            // Lookup appearances 
+            const auto& appearances = playerApperances.Lookup(pitcher.name);
+            if (float(appearances.G) * 0.9f < float(appearances.GS)) { 
+                pitcher.positions |= int32_t(Pitcher::Position::Starter); 
+            } else {
+                pitcher.positions |= int32_t(Pitcher::Position::Relief);
+            }
+
             m_vecPitchers.emplace_back(pitcher);
+
+        } catch (std::runtime_error& e) {
+
+            std::cerr << "[Pitcher] " << e.what() << std::endl;
 
         } catch (...) {
 
@@ -114,7 +139,11 @@ QVariant PitcherTableModel::data(const QModelIndex& index, int role) const
         case COLUMN_TEAM:
             return QString::fromStdString(pitcher.team);
         case COLUMN_POSITION:
-            return pitcher.positions;
+            if (role == RawDataRole) {
+                return pitcher.positions;
+            } else {
+                return PositionToString(pitcher.positions);
+            }
         case COLUMN_IP:
             if (role == RawDataRole) {
                 return pitcher.IP;
@@ -203,6 +232,8 @@ QVariant PitcherTableModel::headerData(int section, Qt::Orientation orientation,
                 return "Name";
             case COLUMN_TEAM:
                 return "Team";
+            case COLUMN_POSITION:
+                return "Position";
             case COLUMN_IP:
                 return "IP";
             case COLUMN_SO:

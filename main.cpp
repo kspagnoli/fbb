@@ -176,7 +176,7 @@ public:
         PlayerApperances appearances("2015_appearances.csv");
 
         // hitter table
-        HitterTableModel* hitterTableModel = new HitterTableModel("batters.csv", appearances, this);
+        HitterTableModel* hitterTableModel = new HitterTableModel("2015_hitters.csv", appearances, this);
         HitterSortFilterProxyModel* hitterSortFilterProxyModel = new HitterSortFilterProxyModel();
         hitterSortFilterProxyModel->setSourceModel(hitterTableModel);
         hitterSortFilterProxyModel->setSortRole(HitterTableModel::RawDataRole);
@@ -184,7 +184,7 @@ public:
         QTableView* hitterTableView = MakeTableView(hitterSortFilterProxyModel, 0);
 
         // pitcher table
-        PitcherTableModel* pitcherTableModel = new PitcherTableModel("pitchers.csv", this);
+        PitcherTableModel* pitcherTableModel = new PitcherTableModel("2015_pitchers.csv", appearances, this);
         PitcherSortFilterProxyModel* pitcherSortFilterProxyModel = new PitcherSortFilterProxyModel();
         pitcherSortFilterProxyModel->setSourceModel(pitcherTableModel);
         pitcherSortFilterProxyModel->setSortRole(PitcherTableModel::RawDataRole);

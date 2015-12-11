@@ -29,29 +29,39 @@ bool PitcherSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIn
     const QString& team = sourceModel()->data(teamIndex).toString();
 
     const QModelIndex& posIndex = sourceModel()->index(sourceRow, PitcherTableModel::COLUMN_POSITION, sourceParent);
-    const QString& pos = sourceModel()->data(posIndex).toString();
+    const uint32_t& pos = sourceModel()->data(posIndex, PitcherTableModel::RawDataRole).toInt();
     
-    if (!m_acceptNL && LookupTeamGroup(team.toStdString()).leauge == Leauge::NL) {
-        return false;
-    }
+    auto AcceptTeam = [&]() -> bool
+    {
+        if (m_acceptNL && LookupTeamGroup(team.toStdString()).leauge == Leauge::NL) {
+            return true;
+        }
 
-    if (!m_acceptAL && LookupTeamGroup(team.toStdString()).leauge == Leauge::AL) {
-        return false;
-    }
+        if (m_acceptAL && LookupTeamGroup(team.toStdString()).leauge == Leauge::AL) {
+            return true;
+        }
 
-    if (!m_acceptFA && LookupTeamGroup(team.toStdString()).leauge == Leauge::Unknown) {
-        return false;
-    }
+        if (m_acceptFA && LookupTeamGroup(team.toStdString()).leauge == Leauge::Unknown) {
+            return true;
+        }
 
-    if (!m_acceptSP && pos.contains("SP")) {
-        return false;
-    }
+        return true;
+    };
 
-    if (!m_acceptRP && pos.contains("RP")) {
-        return false;
-    }
+    auto AccpetPosition = [&]() -> bool
+    {
+        if (m_acceptRP && (pos & uint32_t(Pitcher::Position::Relief))) {
+            return true;
+        }
 
-    return true;
+        if (m_acceptSP && (pos & uint32_t(Pitcher::Position::Starter))) {
+            return true;
+        }
+
+        return false;
+    };
+
+    return AcceptTeam() && AccpetPosition();
 }
 
 //------------------------------------------------------------------------------

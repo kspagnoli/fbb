@@ -32,24 +32,24 @@ bool HitterSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
     const QModelIndex& posIndex = sourceModel()->index(sourceRow, HitterTableModel::COLUMN_POSITION, sourceParent);
     const uint32_t& pos = sourceModel()->data(posIndex, HitterTableModel::RawDataRole).toInt();
 
-    const bool acceptTeam = [&] 
+    auto AcceptTeam = [&]() -> bool
     {
-        if (!m_acceptNL && LookupTeamGroup(team.toStdString()).leauge == Leauge::NL) {
-            return false;
+        if (m_acceptNL && LookupTeamGroup(team.toStdString()).leauge == Leauge::NL) {
+            return true;
         }
 
-        if (!m_acceptAL && LookupTeamGroup(team.toStdString()).leauge == Leauge::AL) {
-            return false;
+        if (m_acceptAL && LookupTeamGroup(team.toStdString()).leauge == Leauge::AL) {
+            return true;
         }
 
-        if (!m_acceptFA && LookupTeamGroup(team.toStdString()).leauge == Leauge::Unknown) {
-            return false;
+        if (m_acceptFA && LookupTeamGroup(team.toStdString()).leauge == Leauge::Unknown) {
+            return true;
         }
 
-        return true;
-    }();
+        return false;
+    };
 
-    const bool acceptPosition = [&] 
+    auto AcceptPosition = [&]() -> bool
     {
         if (m_acceptC && (pos & uint32_t(Hitter::Position::Catcher))) {
             return true;
@@ -80,9 +80,9 @@ bool HitterSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
         }
 
         return false;
-    }();
+    };
 
-    return acceptTeam && acceptPosition;
+    return AcceptTeam() && AcceptPosition();
 }
 
 //------------------------------------------------------------------------------

@@ -95,8 +95,6 @@ HitterTableModel::HitterTableModel(const std::string& filename, const PlayerAppe
 
             // Lookup appearances 
             const auto& appearances = playerApperances.Lookup(hitter.name);
-
-            // Parse positions
             if (appearances.atC  >= 20) { hitter.positions |= int32_t(Hitter::Position::Catcher); }
             if (appearances.at1B >= 20) { hitter.positions |= int32_t(Hitter::Position::First); }
             if (appearances.at2B >= 20) { hitter.positions |= int32_t(Hitter::Position::Second); }
@@ -110,7 +108,7 @@ HitterTableModel::HitterTableModel(const std::string& filename, const PlayerAppe
 
         } catch (std::runtime_error& e) {
 
-            std::cout << e.what() << std::endl;
+            std::cerr << "[Hitter] " << e.what() << std::endl;
 
         } catch (...) {
 
