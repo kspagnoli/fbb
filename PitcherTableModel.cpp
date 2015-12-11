@@ -23,7 +23,7 @@ PitcherTableModel::PitcherTableModel(const std::string& filename, QObject* paren
     std::getline(pitchers, row);
     Tokenizer tokenizer(row);
 
-    std::unordered_map<std::string, uint32_t> stat_lut =
+    std::unordered_map<std::string, uint32_t> LUT =
     {
         { "Name",0 },
         { "Team",0 },
@@ -36,14 +36,14 @@ PitcherTableModel::PitcherTableModel(const std::string& filename, QObject* paren
     };
 
     // Parse header
-    for (auto& lut : stat_lut) {
+    for (auto& entry : LUT) {
 
         // find entry key
-        auto itr = std::find(tokenizer.begin(), tokenizer.end(), lut.first);
+        auto itr = std::find(tokenizer.begin(), tokenizer.end(), entry.first);
         if (itr != tokenizer.end()) {
 
             // set value
-            lut.second = std::distance(tokenizer.begin(), itr);
+            entry.second = std::distance(tokenizer.begin(), itr);
         }
     }
 
@@ -57,14 +57,18 @@ PitcherTableModel::PitcherTableModel(const std::string& filename, QObject* paren
             std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
 
             Pitcher pitcher;
-            pitcher.name = parsed[stat_lut["Name"]];
-            pitcher.team = parsed[stat_lut["Team"]];
-            pitcher.IP = boost::lexical_cast<decltype(pitcher.IP)>(parsed[stat_lut["IP"]]);
-            pitcher.ERA = boost::lexical_cast<decltype(pitcher.ERA)>(parsed[stat_lut["ERA"]]);
-            pitcher.WHIP = boost::lexical_cast<decltype(pitcher.WHIP)>(parsed[stat_lut["WHIP"]]);
-            pitcher.W = boost::lexical_cast<decltype(pitcher.W)>(parsed[stat_lut["W"]]);
-            pitcher.SO = boost::lexical_cast<decltype(pitcher.SO)>(parsed[stat_lut["SO"]]);
-            pitcher.SV = boost::lexical_cast<decltype(pitcher.SV)>(parsed[stat_lut["SV"]]);
+            pitcher.name = parsed[LUT["Name"]];
+            pitcher.team = parsed[LUT["Team"]];
+            pitcher.IP = boost::lexical_cast<decltype(pitcher.IP)>(parsed[LUT["IP"]]);
+            pitcher.ERA = boost::lexical_cast<decltype(pitcher.ERA)>(parsed[LUT["ERA"]]);
+            pitcher.WHIP = boost::lexical_cast<decltype(pitcher.WHIP)>(parsed[LUT["WHIP"]]);
+            pitcher.W = boost::lexical_cast<decltype(pitcher.W)>(parsed[LUT["W"]]);
+            pitcher.SO = boost::lexical_cast<decltype(pitcher.SO)>(parsed[LUT["SO"]]);
+            pitcher.SV = boost::lexical_cast<decltype(pitcher.SV)>(parsed[LUT["SV"]]);
+
+            if (pitcher.IP < 5) {
+                continue;
+            }
 
             m_vecPitchers.emplace_back(pitcher);
 

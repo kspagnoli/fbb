@@ -1,5 +1,7 @@
 #include "HitterSortFilterProxyModel.h"
 #include "HitterTableModel.h"
+#include "Teams.h"
+#include "Hitter.h"
 
 //------------------------------------------------------------------------------
 // HitterSortFilterProxyModel
@@ -24,17 +26,152 @@ bool HitterSortFilterProxyModel::lessThan(const QModelIndex& left, const QModelI
 //------------------------------------------------------------------------------
 bool HitterSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
 {
-    const QModelIndex& abIndex = sourceModel()->index(sourceRow, HitterTableModel::COLUMN_AB, sourceParent);
-    float ab = sourceModel()->data(abIndex).toFloat();
-    return m_filterActive ? ab > 200 : ab > 10;
+    const QModelIndex& teamIndex = sourceModel()->index(sourceRow, HitterTableModel::COLUMN_TEAM, sourceParent);
+    const QString& team = sourceModel()->data(teamIndex).toString();
+
+    const QModelIndex& posIndex = sourceModel()->index(sourceRow, HitterTableModel::COLUMN_POSITION, sourceParent);
+    const uint32_t& pos = sourceModel()->data(posIndex, HitterTableModel::RawDataRole).toInt();
+
+    const bool acceptTeam = [&] 
+    {
+        if (!m_acceptNL && LookupTeamGroup(team.toStdString()).leauge == Leauge::NL) {
+            return false;
+        }
+
+        if (!m_acceptAL && LookupTeamGroup(team.toStdString()).leauge == Leauge::AL) {
+            return false;
+        }
+
+        if (!m_acceptFA && LookupTeamGroup(team.toStdString()).leauge == Leauge::Unknown) {
+            return false;
+        }
+
+        return true;
+    }();
+
+    const bool acceptPosition = [&] 
+    {
+        if (m_acceptC && (pos & uint32_t(Hitter::Position::Catcher))) {
+            return true;
+        }
+
+        if (m_accept1B && (pos & uint32_t(Hitter::Position::First))) {
+            return true;
+        }
+
+        if (m_accept2B && (pos & uint32_t(Hitter::Position::Second))) {
+            return true;
+        }
+
+        if (m_acceptSS && (pos & uint32_t(Hitter::Position::SS))) {
+            return true;
+        }
+
+        if (m_accept3B && (pos & uint32_t(Hitter::Position::Third))) {
+            return true;
+        }
+
+        if (m_acceptOF && (pos & uint32_t(Hitter::Position::Outfield))) {
+            return true;
+        }
+
+        if (m_acceptDH && (pos & uint32_t(Hitter::Position::DH))) {
+            return true;
+        }
+
+        return false;
+    }();
+
+    return acceptTeam && acceptPosition;
 }
 
 //------------------------------------------------------------------------------
-// OnFilterAvailable
+// OnFilterNL
 //------------------------------------------------------------------------------
-void HitterSortFilterProxyModel::OnFilterAvailable(bool checked)
+void HitterSortFilterProxyModel::OnFilterNL(bool checked)
 {
-    m_filterActive = checked;
+    m_acceptNL = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterAL
+//------------------------------------------------------------------------------
+void HitterSortFilterProxyModel::OnFilterAL(bool checked)
+{
+    m_acceptAL = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterFA
+//------------------------------------------------------------------------------
+void HitterSortFilterProxyModel::OnFilterFA(bool checked)
+{
+    m_acceptFA = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterC
+//------------------------------------------------------------------------------
+void HitterSortFilterProxyModel::OnFilterC(bool checked)
+{
+    m_acceptC = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilter1B
+//------------------------------------------------------------------------------
+void HitterSortFilterProxyModel::OnFilter1B(bool checked)
+{
+    m_accept1B = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilter2B
+//------------------------------------------------------------------------------
+void HitterSortFilterProxyModel::OnFilter2B(bool checked)
+{
+    m_accept2B = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterSS
+//------------------------------------------------------------------------------
+void HitterSortFilterProxyModel::OnFilterSS(bool checked)
+{
+    m_acceptSS = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilter3B
+//------------------------------------------------------------------------------
+void HitterSortFilterProxyModel::OnFilter3B(bool checked)
+{
+    m_accept3B = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterOF
+//------------------------------------------------------------------------------
+void HitterSortFilterProxyModel::OnFilterOF(bool checked)
+{
+    m_acceptOF = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterDH
+//------------------------------------------------------------------------------
+void HitterSortFilterProxyModel::OnFilterDH(bool checked)
+{
+    m_acceptDH = checked;
     QSortFilterProxyModel::filterChanged();
 }
 

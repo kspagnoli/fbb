@@ -8,10 +8,28 @@
 #include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <iostream>
+
+//------------------------------------------------------------------------------
+// PositionToString (static helper)
+//------------------------------------------------------------------------------
+static QString PositionToString(const Hitter::PositionMask& positions)
+{
+    QStringList vecPos;
+    if (positions & uint32_t(Hitter::Position::Catcher)) { vecPos.push_back("C"); }
+    if (positions & uint32_t(Hitter::Position::First)) { vecPos.push_back("1B"); }
+    if (positions & uint32_t(Hitter::Position::Second)) { vecPos.push_back("2B"); }
+    if (positions & uint32_t(Hitter::Position::SS)) { vecPos.push_back("SS"); }
+    if (positions & uint32_t(Hitter::Position::Third)) { vecPos.push_back("3B"); }
+    if (positions & uint32_t(Hitter::Position::Outfield)) { vecPos.push_back("OF"); }
+    if (positions & uint32_t(Hitter::Position::DH)) { vecPos.push_back("DH"); }
+    return vecPos.join(", ");
+}
+
 //------------------------------------------------------------------------------
 // HitterTableModel
 //------------------------------------------------------------------------------
-HitterTableModel::HitterTableModel(const std::string& filename, QObject* parent)
+HitterTableModel::HitterTableModel(const std::string& filename, const PlayerApperances& playerApperances, QObject* parent)
     : QAbstractTableModel(parent)
 {
     // Open file
@@ -24,7 +42,7 @@ HitterTableModel::HitterTableModel(const std::string& filename, QObject* parent)
     Tokenizer tokenizer(row);
 
     // Stats to find
-    std::unordered_map<std::string, uint32_t> statColumnLUT =
+    std::unordered_map<std::string, uint32_t> LUT =
     {
         { "Name",0 },
         { "Team",0 },
@@ -38,12 +56,12 @@ HitterTableModel::HitterTableModel(const std::string& filename, QObject* parent)
     };
 
     // Parse the header data (first row)
-    for (auto& lut : statColumnLUT) {
+    for (auto& entry : LUT) {
 
         // Populate LUT to figure out stat-to-column association
-        auto itr = std::find(tokenizer.begin(), tokenizer.end(), lut.first);
+        auto itr = std::find(tokenizer.begin(), tokenizer.end(), entry.first);
         if (itr != tokenizer.end()) {
-            lut.second = std::distance(tokenizer.begin(), itr);
+            entry.second = std::distance(tokenizer.begin(), itr);
         }
     }
 
@@ -59,19 +77,40 @@ HitterTableModel::HitterTableModel(const std::string& filename, QObject* parent)
 
             // Parse into hitter data
             Hitter hitter;
-            hitter.name = parsed[statColumnLUT["Name"]];
-            hitter.team = parsed[statColumnLUT["Team"]];
-            hitter.PA = boost::lexical_cast<uint32_t>(parsed[statColumnLUT["PA"]]);
-            hitter.AB = boost::lexical_cast<uint32_t>(parsed[statColumnLUT["AB"]]);
-            hitter.H = boost::lexical_cast<uint32_t>(parsed[statColumnLUT["H"]]);
-            hitter.HR = boost::lexical_cast<uint32_t>(parsed[statColumnLUT["HR"]]);
-            hitter.R = boost::lexical_cast<uint32_t>(parsed[statColumnLUT["R"]]);
-            hitter.RBI = boost::lexical_cast<uint32_t>(parsed[statColumnLUT["RBI"]]);
-            hitter.SB = boost::lexical_cast<uint32_t>(parsed[statColumnLUT["SB"]]);
+            hitter.name = parsed[LUT["Name"]];
+            hitter.team = parsed[LUT["Team"]];
+            hitter.PA = boost::lexical_cast<uint32_t>(parsed[LUT["PA"]]);
+            hitter.AB = boost::lexical_cast<uint32_t>(parsed[LUT["AB"]]);
+            hitter.H = boost::lexical_cast<uint32_t>(parsed[LUT["H"]]);
+            hitter.HR = boost::lexical_cast<uint32_t>(parsed[LUT["HR"]]);
+            hitter.R = boost::lexical_cast<uint32_t>(parsed[LUT["R"]]);
+            hitter.RBI = boost::lexical_cast<uint32_t>(parsed[LUT["RBI"]]);
+            hitter.SB = boost::lexical_cast<uint32_t>(parsed[LUT["SB"]]);
             hitter.AVG = float(hitter.H) / float(hitter.AB);
+
+            // Skip players with little-to-no AB
+            if (hitter.AB < 10) {
+                continue;
+            }
+
+            // Lookup appearances 
+            const auto& appearances = playerApperances.Lookup(hitter.name);
+
+            // Parse positions
+            if (appearances.atC  >= 20) { hitter.positions |= int32_t(Hitter::Position::Catcher); }
+            if (appearances.at1B >= 20) { hitter.positions |= int32_t(Hitter::Position::First); }
+            if (appearances.at2B >= 20) { hitter.positions |= int32_t(Hitter::Position::Second); }
+            if (appearances.atSS >= 20) { hitter.positions |= int32_t(Hitter::Position::SS); }
+            if (appearances.at3B >= 20) { hitter.positions |= int32_t(Hitter::Position::Third); }
+            if (appearances.atOF >= 20) { hitter.positions |= int32_t(Hitter::Position::Outfield); }
+            if (appearances.atDH >= 20) { hitter.positions |= int32_t(Hitter::Position::DH); }
 
             // Store in vector
             m_vecHitters.emplace_back(hitter);
+
+        } catch (std::runtime_error& e) {
+
+            std::cout << e.what() << std::endl;
 
         } catch (...) {
 
@@ -104,7 +143,7 @@ QVariant HitterTableModel::data(const QModelIndex& index, int role) const
 {
     const Hitter& hitter = m_vecHitters.at(index.row());
 
-    if (role == Qt::DisplayRole) {
+    if (role == Qt::DisplayRole || role == RawDataRole) {
 
         switch (index.column())
         {
@@ -115,11 +154,19 @@ QVariant HitterTableModel::data(const QModelIndex& index, int role) const
         case COLUMN_TEAM:
             return QString::fromStdString(hitter.team);
         case COLUMN_POSITION:
-            return "POS";
+            if (role == RawDataRole) {
+                return hitter.positions;
+            } else {
+                return PositionToString(hitter.positions);
+            }
         case COLUMN_AB:
             return hitter.AB;
         case COLUMN_AVG:
-            return QString::number(hitter.AVG, 'f', 3);
+            if (role == RawDataRole) {
+                return hitter.AVG;
+            } else {
+                return QString::number(hitter.AVG, 'f', 3);
+            }
         case COLUMN_HR:
             return hitter.HR;
         case COLUMN_R:

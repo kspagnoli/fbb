@@ -20,7 +20,9 @@ set(SOURCE
     HitterSortFilterProxyModel.cpp
     HitterTableModel.cpp
     PitcherSortFilterProxyModel.cpp
-    PitcherTableModel.cpp)
+    PitcherTableModel.cpp
+    PlayerAppearances.cpp
+    SelectedPlayer.cpp)
 
 # Tell CMake to create the helloworld executable
 add_executable(helloworld WIN32 ${SOURCE})
