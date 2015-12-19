@@ -24,9 +24,23 @@ enum
     ItemColumn,
 };
 
-
 DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
 {
+    // Cancel button
+    QPushButton* cancelButton = new QPushButton("Cancel");
+    connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
+
+    // Draft button
+    QPushButton* draftButton = new QPushButton("Draft");
+    draftButton->setDefault(true);
+    draftButton->setDisabled(true);
+    connect(draftButton, &QPushButton::clicked, this, &QDialog::accept);
+
+    // Button layout
+    QHBoxLayout* buttonsLayout = new QHBoxLayout;
+    buttonsLayout->addWidget(cancelButton);
+    buttonsLayout->addWidget(draftButton);
+
     // Info grid to hold top data
     QGridLayout* infoGridLayout = new QGridLayout;
 
@@ -38,10 +52,14 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
 
     // Owner combo box
     QComboBox* ownerComboBox = new QComboBox;
-    QStringList list ={ "Team A", "Team B" };
+    QStringList list ={ "Select...", "Team A", "Team B" };
     ownerComboBox->addItems(list);
     infoGridLayout->addWidget(new QLabel("Owner:"), OwnerComboBoxRow, LabelColumn);
     infoGridLayout->addWidget(ownerComboBox, OwnerComboBoxRow, ItemColumn);
+    connect(ownerComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, [=](int index) {
+        m_draftResults.ownerId = index;
+        draftButton->setDisabled(!m_draftResults.cost || !m_draftResults.ownerId);
+    });
 
     // Cost line edit
     const uint32_t MAX_BID = 250;
@@ -49,20 +67,10 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
     costLineEdit->setValidator(new QIntValidator(0, MAX_BID, this));
     infoGridLayout->addWidget(new QLabel("Cost:"), CostRow, LabelColumn);
     infoGridLayout->addWidget(costLineEdit, CostRow, ItemColumn);
-
-    // Cancel button
-    QPushButton* cancelButton = new QPushButton("Cancel");
-    connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
-
-    // Draft button
-    QPushButton* draftButton = new QPushButton("Draft");
-    draftButton->setDefault(true);
-    connect(draftButton, &QPushButton::clicked, this, &QDialog::accept);
-
-    // Button layout
-    QHBoxLayout* buttonsLayout = new QHBoxLayout;
-    buttonsLayout->addWidget(cancelButton);
-    buttonsLayout->addWidget(draftButton);
+    connect(costLineEdit, &QLineEdit::textEdited, this, [=](const QString& text) {
+        m_draftResults.cost = text.toInt();
+        draftButton->setDisabled(!m_draftResults.cost || !m_draftResults.ownerId);
+    });
 
     // Main layout
     QVBoxLayout* mainLayout = new QVBoxLayout;
@@ -75,4 +83,9 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
     setWindowTitle(tr("Draft Player..."));
     setLayout(mainLayout);
     setModal(true);
+}
+
+const DraftDialog::Results& DraftDialog::GetDraftResults() const
+{
+    return m_draftResults;
 }

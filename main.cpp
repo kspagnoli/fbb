@@ -21,6 +21,7 @@
 #include <QListWidget>
 #include <QStackedWidget>
 #include <QComboBox>
+#include <QMessageBox>
 
 #include <memory>
 #include <string>
@@ -79,12 +80,18 @@ public:
         // Otherwise create a draft dialog
         if (event->type() == QEvent::MouseButtonRelease) {
 
-            QDialog* draftDialog = new DraftDialog(model, index);
+            DraftDialog* draftDialog = new DraftDialog(model, index);
             draftDialog->show();
             draftDialog->raise();
             draftDialog->activateWindow();
 
+            // On draft
             connect(draftDialog, &QDialog::accepted, [=]() -> void {
+
+                // Get results
+                const DraftDialog::Results& results = draftDialog->GetDraftResults();
+
+                // Update draft status
                 model->setData(index, uint32_t(Player::Status::Drafted));
             });
 
@@ -345,21 +352,22 @@ int main(int argc, char *argv[])
     app.setStyle(QStyleFactory::create("Fusion"));
 
     QPalette darkPalette;
-    darkPalette.setColor(QPalette::Window,QColor(53,53,53));
-    darkPalette.setColor(QPalette::WindowText,Qt::white);
-    darkPalette.setColor(QPalette::Base,QColor(25,25,25));
-    darkPalette.setColor(QPalette::AlternateBase,QColor(53,53,53));
-    darkPalette.setColor(QPalette::ToolTipBase,Qt::white);
-    darkPalette.setColor(QPalette::ToolTipText,Qt::white);
-    darkPalette.setColor(QPalette::Text,Qt::white);
-    darkPalette.setColor(QPalette::Button,QColor(53,53,53));
-    darkPalette.setColor(QPalette::ButtonText,Qt::white);
-    darkPalette.setColor(QPalette::BrightText,Qt::red);
-    darkPalette.setColor(QPalette::Link,QColor(42,130,218));
-    darkPalette.setColor(QPalette::Highlight,QColor(42,130,218));
-    darkPalette.setColor(QPalette::HighlightedText,Qt::black);
-
+    darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::WindowText, Qt::white);
+    darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
+    darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+    darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+    darkPalette.setColor(QPalette::Text, Qt::white);
+    darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::ButtonText, Qt::white);
+    darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText, Qt::darkGray);
+    darkPalette.setColor(QPalette::BrightText, Qt::red);
+    darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+    darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+    darkPalette.setColor(QPalette::HighlightedText, Qt::black);
     app.setPalette(darkPalette);
+
     app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }");
 
     MainWindow mainWin;
