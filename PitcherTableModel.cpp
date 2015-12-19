@@ -1,6 +1,7 @@
 #include "PitcherTableModel.h"
 #include "Pitcher.h"
 #include "PlayerAppearances.h"
+#include "ZScore.h"
 
 #include <vector>
 #include <fstream>
@@ -103,6 +104,62 @@ PitcherTableModel::PitcherTableModel(const std::string& filename, const PlayerAp
             continue;
         }
     }
+
+    // Calculated zScores
+    GET_ZSCORE(m_vecPitchers, SO, zSO);
+    GET_ZSCORE(m_vecPitchers, W, zW);
+    GET_ZSCORE(m_vecPitchers, SV, zSV);
+    GET_ZSCORE(m_vecPitchers, ERA, zERA);
+    GET_ZSCORE(m_vecPitchers, WHIP, zWHIP);
+
+    // Calculated weighted zScores
+    for (Pitcher& pitcher : m_vecPitchers) {
+        pitcher.wERA = pitcher.IP * pitcher.zERA;
+        pitcher.wWHIP = pitcher.IP * pitcher.zWHIP;
+    }
+    GET_ZSCORE(m_vecPitchers, wERA, zERA);
+    GET_ZSCORE(m_vecPitchers, wWHIP, zWHIP);
+
+    // Invert ERA and WHIP... lower is better
+    for (Pitcher& pitcher : m_vecPitchers) {
+        pitcher.zERA =  -pitcher.zERA;
+        pitcher.zWHIP = -pitcher.zWHIP;
+    }
+
+    // Sum zscore
+    for (Pitcher& pitcher : m_vecPitchers) {
+        pitcher.zScore = (pitcher.zSO + pitcher.zW + pitcher.zSV + pitcher.zERA + pitcher.zWHIP);
+    }
+
+    // Re-rank based on z-score
+    std::sort(m_vecPitchers.begin(), m_vecPitchers.end(), [](const auto& lhs, const auto& rhs) {
+        return lhs.zScore > rhs.zScore;
+    });
+
+    const size_t HITTER_RATIO = 68;
+    const size_t BUDGET = 260;
+    const size_t NUM_OWNERS = 12;
+    const size_t NUM_PITCHERS_PER_OWNER = 10;
+    const size_t TOTAL_PITCHERS = NUM_PITCHERS_PER_OWNER * NUM_OWNERS;
+    const size_t TOTAL_PITCHER_MONEY = (NUM_OWNERS * BUDGET * (100-HITTER_RATIO)) / size_t(100);
+
+    // Get the "replacement player"
+    auto zReplacement = m_vecPitchers[TOTAL_PITCHERS].zScore;
+
+    // Scale all players based off the replacement player
+    float sumPositiveZScores = 0;
+    std::for_each(std::begin(m_vecPitchers), std::end(m_vecPitchers), [&](Pitcher& pitcher) {
+        pitcher.zScore -= zReplacement;
+        if (pitcher.zScore > 0) {
+            sumPositiveZScores += pitcher.zScore;
+        }
+    });
+
+    // Apply cost ratio
+    static const float costPerZ = float(TOTAL_PITCHER_MONEY) / sumPositiveZScores;
+    std::for_each(std::begin(m_vecPitchers), std::end(m_vecPitchers), [&](Pitcher& pitcher) {
+        pitcher.cost = pitcher.zScore * costPerZ;
+    });
 }
 
 //------------------------------------------------------------------------------
@@ -128,12 +185,14 @@ QVariant PitcherTableModel::data(const QModelIndex& index, int role) const
 {
     const Pitcher& pitcher = m_vecPitchers.at(index.row());
 
-    if (role == Qt::DisplayRole || role == RawDataRole) {
+    if (role == Qt::DisplayRole || role == Qt::EditRole || role == RawDataRole) {
 
         switch (index.column())
         {
         case COLUMN_RANK:
             return index.row() + 1;
+        case COLUMN_DRAFT_STATUS:
+            return uint32_t(pitcher.status);
         case COLUMN_NAME:
             return QString::fromStdString(pitcher.name);
         case COLUMN_TEAM:
@@ -200,16 +259,20 @@ QVariant PitcherTableModel::data(const QModelIndex& index, int role) const
 
     if (role == Qt::ToolTipRole) {
 
-        // switch(index.column())
-        // {
-        // case Z_SCORE:
-        //     return QString("zAVG: %1\nzR:   %2\nzRBI: %3\nzHR:  %4\nzSB:  %5")
-        //         .arg(pitcher.zAverage)
-        //         .arg(pitcher.zRuns)
-        //         .arg(pitcher.zRBIs)
-        //         .arg(pitcher.zHomeRuns)
-        //         .arg(pitcher.zStolenBases);
-        // }
+        switch (index.column())
+        {
+        case COLUMN_Z:
+            return QString("zERA:  %1\n"
+                           "zSO:   %2\n"
+                           "zWHIP: %3\n"
+                           "zW:    %4\n"
+                           "zSV:   %5")
+                .arg(pitcher.zERA)
+                .arg(pitcher.zSO)
+                .arg(pitcher.zWHIP)
+                .arg(pitcher.zW)
+                .arg(pitcher.zSV);
+        }
     }
 
     return QVariant();
@@ -228,6 +291,8 @@ QVariant PitcherTableModel::headerData(int section, Qt::Orientation orientation,
             {
             case COLUMN_RANK:
                 return "#";
+            case COLUMN_DRAFT_STATUS:
+                return "Status";
             case COLUMN_NAME:
                 return "Name";
             case COLUMN_TEAM:
@@ -257,4 +322,29 @@ QVariant PitcherTableModel::headerData(int section, Qt::Orientation orientation,
     }
 
     return QVariant();
+}
+
+Qt::ItemFlags PitcherTableModel::flags(const QModelIndex& index) const
+{
+    switch (index.column())
+    {
+    case COLUMN_DRAFT_STATUS:
+        return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
+    default:
+        return QAbstractItemModel::flags(index);
+    }
+}
+
+bool PitcherTableModel::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    Pitcher& pitcher = m_vecPitchers.at(index.row());
+
+    switch (index.column())
+    {
+    case COLUMN_DRAFT_STATUS:
+        pitcher.status = Player::Status(value.toInt());
+        return true;
+    default:
+        return false;
+    }
 }

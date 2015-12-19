@@ -1,5 +1,7 @@
 #include "HitterTableModel.h"
 #include "Hitter.h"
+#include "ZScore.h"
+#include "Teams.h"
 
 #include <vector>
 #include <fstream>
@@ -9,6 +11,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <iostream>
+#include <QAbstractItemDelegate>
 
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
@@ -93,22 +96,26 @@ HitterTableModel::HitterTableModel(const std::string& filename, const PlayerAppe
                 continue;
             }
 
+            if (LookupTeamGroup(hitter.team).leauge != Leauge::NL) {
+                continue;
+            }
+
             // Lookup appearances 
-            const auto& appearances = playerApperances.Lookup(hitter.name);
-            if (appearances.atC  >= 20) { hitter.positions |= int32_t(Hitter::Position::Catcher); }
-            if (appearances.at1B >= 20) { hitter.positions |= int32_t(Hitter::Position::First); }
-            if (appearances.at2B >= 20) { hitter.positions |= int32_t(Hitter::Position::Second); }
-            if (appearances.atSS >= 20) { hitter.positions |= int32_t(Hitter::Position::SS); }
-            if (appearances.at3B >= 20) { hitter.positions |= int32_t(Hitter::Position::Third); }
-            if (appearances.atOF >= 20) { hitter.positions |= int32_t(Hitter::Position::Outfield); }
-            if (appearances.atDH >= 20) { hitter.positions |= int32_t(Hitter::Position::DH); }
+            try {
+                const auto& appearances = playerApperances.Lookup(hitter.name);
+                if (appearances.atC > 0) { hitter.positions |= int32_t(Hitter::Position::Catcher); }
+                if (appearances.at1B > 0) { hitter.positions |= int32_t(Hitter::Position::First); }
+                if (appearances.at2B > 0) { hitter.positions |= int32_t(Hitter::Position::Second); }
+                if (appearances.atSS > 0) { hitter.positions |= int32_t(Hitter::Position::SS); }
+                if (appearances.at3B > 0) { hitter.positions |= int32_t(Hitter::Position::Third); }
+                if (appearances.atOF > 0) { hitter.positions |= int32_t(Hitter::Position::Outfield); }
+                if (appearances.atDH > 0) { hitter.positions |= int32_t(Hitter::Position::DH); }
+            } catch (std::runtime_error& e) {
+                std::cerr << "[Hitter] " << e.what() << std::endl;
+            }
 
             // Store in vector
             m_vecHitters.emplace_back(hitter);
-
-        } catch (std::runtime_error& e) {
-
-            std::cerr << "[Hitter] " << e.what() << std::endl;
 
         } catch (...) {
 
@@ -116,6 +123,55 @@ HitterTableModel::HitterTableModel(const std::string& filename, const PlayerAppe
             continue;
         }
     }
+
+    // Calculated zScores
+    GET_ZSCORE(m_vecHitters, AVG, zAVG);
+    GET_ZSCORE(m_vecHitters, HR, zHR);
+    GET_ZSCORE(m_vecHitters, R, zR);
+    GET_ZSCORE(m_vecHitters, RBI, zRBI);
+    GET_ZSCORE(m_vecHitters, SB, zSB);
+
+    // Calculated weighted zScores
+    for (Hitter& hitter : m_vecHitters) {
+        hitter.wAVG = hitter.AB * hitter.zAVG;
+    }
+    GET_ZSCORE(m_vecHitters, wAVG, zAVG);
+
+    // Sum zScores
+    for (Hitter& hitter : m_vecHitters) {
+        hitter.zScore = (hitter.zAVG + hitter.zHR + hitter.zR + hitter.zRBI + hitter.zSB);
+    }
+
+    // Re-rank based on z-score
+    std::sort(std::begin(m_vecHitters), std::end(m_vecHitters), [](const auto& lhs, const auto& rhs) {
+        return lhs.zScore > rhs.zScore;
+    });
+
+    // [TODO] make me a setting
+    const size_t HITTER_RATIO = 68;
+    const size_t BUDGET = 260;
+    const size_t NUM_OWNERS = 12;
+    const size_t NUM_HITTERS_PER_OWNER = 14;
+    const size_t TOTAL_HITTERS = NUM_HITTERS_PER_OWNER * NUM_OWNERS;
+    const size_t TOTAL_HITTER_MONEY = (NUM_OWNERS * BUDGET * HITTER_RATIO) / size_t(100);
+
+    // Get the "replacement player"
+    auto zReplacement = m_vecHitters[TOTAL_HITTERS].zScore;
+
+    // Scale all players based off the replacement player
+    float sumPositiveZScores = 0;
+    std::for_each(std::begin(m_vecHitters), std::end(m_vecHitters), [&](Hitter& hitter) {
+        hitter.zScore -= zReplacement;
+        if (hitter.zScore > 0) {
+            sumPositiveZScores += hitter.zScore;
+        }
+    });
+
+    // Apply cost ratio
+    static const float costPerZ = float(TOTAL_HITTER_MONEY) / sumPositiveZScores;
+    std::for_each(std::begin(m_vecHitters), std::end(m_vecHitters), [&](Hitter& hitter) {
+        hitter.cost = hitter.zScore * costPerZ;
+    });
 }
 
 //------------------------------------------------------------------------------
@@ -141,12 +197,14 @@ QVariant HitterTableModel::data(const QModelIndex& index, int role) const
 {
     const Hitter& hitter = m_vecHitters.at(index.row());
 
-    if (role == Qt::DisplayRole || role == RawDataRole) {
+    if (role == Qt::DisplayRole || role == Qt::EditRole || role == RawDataRole) {
 
         switch (index.column())
         {
         case COLUMN_RANK:
             return index.row() + 1;
+        case COLUMN_DRAFT_STATUS:
+            return uint32_t(hitter.status);
         case COLUMN_NAME:
             return QString::fromStdString(hitter.name);
         case COLUMN_TEAM:
@@ -174,9 +232,17 @@ QVariant HitterTableModel::data(const QModelIndex& index, int role) const
         case COLUMN_SB:
             return hitter.SB;
         case COLUMN_ESTIMATE:
-            return hitter.cost;
+            if (role == RawDataRole) {
+                return hitter.cost;
+            } else {
+                return QString("$%1").arg(QString::number(hitter.cost, 'f', 2));
+            }
         case COLUMN_Z:
-            return hitter.zScore;
+            if (role == RawDataRole) {
+                return hitter.zScore;
+            } else {
+                return QString::number(hitter.zScore, 'f', 3);
+            }
         case COLUMN_COMMENT:
             return QString::fromStdString(hitter.comment);
         }
@@ -197,16 +263,20 @@ QVariant HitterTableModel::data(const QModelIndex& index, int role) const
     
     if (role == Qt::ToolTipRole) {
 
-        // switch(index.column())
-        // {
-        // case Z_SCORE:
-        //     return QString("zAVG: %1\nzR:   %2\nzRBI: %3\nzHR:  %4\nzSB:  %5")
-        //         .arg(pitcher.zAverage)
-        //         .arg(pitcher.zRuns)
-        //         .arg(pitcher.zRBIs)
-        //         .arg(pitcher.zHomeRuns)
-        //         .arg(pitcher.zStolenBases);
-        // }
+        switch(index.column())
+        {
+        case COLUMN_Z:
+            return QString("zAVG: %1\n"
+                           "zR:   %2\n"
+                           "zRBI: %3\n"
+                           "zHR:  %4\n"
+                           "zSB:  %5")
+                .arg(hitter.zAVG)
+                .arg(hitter.zR)
+                .arg(hitter.zRBI)
+                .arg(hitter.zHR)
+                .arg(hitter.zSB);
+        }
     }
 
     return QVariant();
@@ -225,6 +295,8 @@ QVariant HitterTableModel::headerData(int section, Qt::Orientation orientation, 
             {
             case COLUMN_RANK:
                 return "#";
+            case COLUMN_DRAFT_STATUS:
+                return "Status";
             case COLUMN_NAME:
                 return "Name";
             case COLUMN_TEAM:
@@ -254,4 +326,36 @@ QVariant HitterTableModel::headerData(int section, Qt::Orientation orientation, 
     }
 
     return QVariant();
+}
+
+//------------------------------------------------------------------------------
+// flags (override)
+//------------------------------------------------------------------------------
+Qt::ItemFlags HitterTableModel::flags(const QModelIndex &index) const
+{
+    switch (index.column()) 
+    {
+    case COLUMN_DRAFT_STATUS:
+        return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
+    default:
+        return QAbstractItemModel::flags(index);
+    }
+}
+
+//------------------------------------------------------------------------------
+// setData (override)
+//------------------------------------------------------------------------------
+bool HitterTableModel::setData(const QModelIndex& index, const QVariant& value, int role)
+{
+    Hitter& hitter = m_vecHitters.at(index.row());
+
+    switch (index.column())
+    {
+    case COLUMN_DRAFT_STATUS:
+        hitter.status = Player::Status(value.toInt());
+        return true;
+    default:
+        return false;
+    }
+
 }

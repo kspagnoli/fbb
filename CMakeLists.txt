@@ -9,7 +9,9 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
 # Add boost includes
-include_directories($ENV{BOOST_ROOT})
+include_directories(
+    $ENV{BOOST_ROOT}
+    CMAKE_INCLUDE_CURRENT_DIR)
 
 # Find the QtWidgets library
 find_package(Qt5Widgets REQUIRED)
@@ -17,15 +19,20 @@ find_package(Qt5Widgets REQUIRED)
 # Source files
 set(SOURCE
     main.cpp
+    DraftDialog.cpp
     HitterSortFilterProxyModel.cpp
     HitterTableModel.cpp
     PitcherSortFilterProxyModel.cpp
     PitcherTableModel.cpp
     PlayerAppearances.cpp
+    HittingStats.cpp
+    PitchingStats.cpp
     SelectedPlayer.cpp)
 
+file(GLOB HEADERS *.h)
+
 # Tell CMake to create the helloworld executable
-add_executable(helloworld WIN32 ${SOURCE})
+add_executable(helloworld WIN32 ${SOURCE} ${HEADERS})
 
 foreach(plugin ${Qt5GUI_PLUGINS})
   get_target_property(_loc ${plugin} LOCATION)

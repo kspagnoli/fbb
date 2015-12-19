@@ -14,8 +14,8 @@ PitcherSortFilterProxyModel::PitcherSortFilterProxyModel()
 //------------------------------------------------------------------------------
 bool PitcherSortFilterProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    const QVariant& leftData = sourceModel()->data(left);
-    const QVariant& rightData = sourceModel()->data(right);
+    const QVariant& leftData = sourceModel()->data(left, PitcherTableModel::RawDataRole);
+    const QVariant& rightData = sourceModel()->data(right, PitcherTableModel::RawDataRole);
 
     return leftData < rightData;
 }

@@ -6,17 +6,15 @@
 //------------------------------------------------------------------------------
 // HitterSortFilterProxyModel
 //------------------------------------------------------------------------------
-HitterSortFilterProxyModel::HitterSortFilterProxyModel()
-{
-}
+HitterSortFilterProxyModel::HitterSortFilterProxyModel() = default;
 
 //------------------------------------------------------------------------------
 // lessThan (override)
 //------------------------------------------------------------------------------
 bool HitterSortFilterProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    const QVariant& leftData = sourceModel()->data(left);
-    const QVariant& rightData = sourceModel()->data(right);
+    const QVariant& leftData = sourceModel()->data(left, HitterTableModel::RawDataRole);
+    const QVariant& rightData = sourceModel()->data(right, HitterTableModel::RawDataRole);
 
     return leftData < rightData;
 }
@@ -51,6 +49,11 @@ bool HitterSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
 
     auto AcceptPosition = [&]() -> bool
     {
+        // HAX
+        if (pos == uint32_t(Hitter::Position::None)) {
+            return true;
+        }
+
         if (m_acceptC && (pos & uint32_t(Hitter::Position::Catcher))) {
             return true;
         }

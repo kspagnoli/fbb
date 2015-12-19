@@ -15,6 +15,7 @@ public:
     enum COLUMN
     {
         COLUMN_RANK,
+        COLUMN_DRAFT_STATUS,
         COLUMN_NAME,
         COLUMN_TEAM,
         COLUMN_POSITION,
@@ -35,10 +36,12 @@ public:
     HitterTableModel(const std::string& filename, const PlayerApperances& playerApperances, QObject* parent);
 
     // QAbstractTableModel interfaces
-    int rowCount(const QModelIndex &) const override;
-    int columnCount(const QModelIndex &) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
-    QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+    virtual int rowCount(const QModelIndex &) const override;
+    virtual int columnCount(const QModelIndex &) const override;
+    virtual QVariant data(const QModelIndex& index, int role) const override;
+    virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+    virtual Qt::ItemFlags flags(const QModelIndex& index) const override;
+    virtual bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
 
     // Data roles
     static const int RawDataRole = Qt::UserRole + 1;

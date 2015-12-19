@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------
 // Pitcher
 //------------------------------------------------------------------------------
-struct Pitcher : public Player
+struct Pitcher : Player
 {
     enum class Position
     {
@@ -32,4 +32,8 @@ struct Pitcher : public Player
     float zSV = 0;
     float zERA = 0;
     float zWHIP = 0;
+
+    // weighted score
+    float wERA = 0;
+    float wWHIP = 0;
 };

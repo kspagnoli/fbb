@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------
 // Hitter 
 //------------------------------------------------------------------------------
-struct Hitter : public Player
+struct Hitter : Player
 {
     enum class Position
     {
@@ -41,4 +41,7 @@ struct Hitter : public Player
     float zHR = 0;
     float zRBI = 0;
     float zSB = 0;
+
+    // weighted zScores
+    float wAVG = 0;
 };
