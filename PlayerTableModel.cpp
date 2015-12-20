@@ -82,6 +82,9 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     std::fstream batters(filename);
     std::string row;
 
+    // Vector of new hitters
+    std::vector<Player> vecHitters;
+
     // Tokenize header data
     using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
     std::getline(batters, row);
@@ -121,7 +124,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
             Tokenizer tokenizer(row);
             std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
 
-            // Parse into hitter data
+            // Parse into player data
             Player player;
             player.name = QString::fromStdString(parsed[LUT["Name"]]);
             player.team = QString::fromStdString(parsed[LUT["Team"]]);
@@ -161,7 +164,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
             player.catergory = Player::Hitter;
 
             // Store in vector
-            m_vecPlayers.emplace_back(player);
+            vecHitters.emplace_back(player);
 
         } catch (...) {
 
@@ -171,34 +174,34 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     }
 
     // Calculated zScores
-    GET_ZSCORE(m_vecPlayers, hitting.AVG, hitting.zAVG);
-    GET_ZSCORE(m_vecPlayers, hitting.HR, hitting.zHR);
-    GET_ZSCORE(m_vecPlayers, hitting.R, hitting.zR);
-    GET_ZSCORE(m_vecPlayers, hitting.RBI, hitting.zRBI);
-    GET_ZSCORE(m_vecPlayers, hitting.SB, hitting.zSB);
+    GET_ZSCORE(vecHitters, hitting.AVG, hitting.zAVG);
+    GET_ZSCORE(vecHitters, hitting.HR, hitting.zHR);
+    GET_ZSCORE(vecHitters, hitting.R, hitting.zR);
+    GET_ZSCORE(vecHitters, hitting.RBI, hitting.zRBI);
+    GET_ZSCORE(vecHitters, hitting.SB, hitting.zSB);
 
     // Calculated weighted zScores
-    for (Player& player : m_vecPlayers) {
+    for (Player& player : vecHitters) {
         player.hitting.wAVG = player.hitting.AB * player.hitting.zAVG;
     }
-    GET_ZSCORE(m_vecPlayers, hitting.wAVG, hitting.zAVG);
+    GET_ZSCORE(vecHitters, hitting.wAVG, hitting.zAVG);
 
     // Sum zScores
-    for (Player& player : m_vecPlayers) {
+    for (Player& player : vecHitters) {
         player.zScore = (player.hitting.zAVG + player.hitting.zHR + player.hitting.zR + player.hitting.zRBI + player.hitting.zSB);
     }
 
     // Re-rank based on z-score
-    std::sort(std::begin(m_vecPlayers), std::end(m_vecPlayers), [](const auto& lhs, const auto& rhs) {
+    std::sort(std::begin(vecHitters), std::end(vecHitters), [](const auto& lhs, const auto& rhs) {
         return lhs.zScore > rhs.zScore;
     });
 
     // Get the "replacement player"
-    auto zReplacement = m_vecPlayers[TOTAL_HITTERS].zScore;
+    auto zReplacement = vecHitters[TOTAL_HITTERS].zScore;
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
-    std::for_each(std::begin(m_vecPlayers), std::end(m_vecPlayers), [&](Player& player) {
+    std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& player) {
         player.zScore -= zReplacement;
         if (player.zScore > 0) {
             sumPositiveZScores += player.zScore;
@@ -207,9 +210,14 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 
     // Apply cost ratio
     static const float costPerZ = float(TOTAL_HITTER_MONEY) / sumPositiveZScores;
-    std::for_each(std::begin(m_vecPlayers), std::end(m_vecPlayers), [&](Player& player) {
+    std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& player) {
         player.cost = player.zScore * costPerZ;
     });
+
+    // Add to main storage
+    for (const Player& player : vecHitters) {
+        m_vecPlayers.push_back(player);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -217,12 +225,15 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 //------------------------------------------------------------------------------
 void PlayerTableModel::LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances)
 {
+    // Openg file
     std::fstream pitchers(filename);
     std::string row;
-
-    using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
+    
+    // Vector of new hitters
+    std::vector<Player> vecPitchers;
 
     // Tokenize header data
+    using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
     std::getline(pitchers, row);
     Tokenizer tokenizer(row);
 
@@ -281,11 +292,11 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
                 player.eligiblePositions|= int32_t(Player::Relief);
             }
 
-
-            // 
+            // Set catergory
             player.catergory = Player::Pitcher;
-                
-            m_vecPlayers.emplace_back(player);
+            
+            // Add to pitchers
+            vecPitchers.emplace_back(player);
 
         } catch (std::runtime_error& e) {
 
@@ -299,42 +310,42 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     }
 
     // Calculated zScores
-    GET_ZSCORE(m_vecPlayers, pitching.SO,   pitching.zSO);
-    GET_ZSCORE(m_vecPlayers, pitching.W,    pitching.zW);
-    GET_ZSCORE(m_vecPlayers, pitching.SV,   pitching.zSV);
-    GET_ZSCORE(m_vecPlayers, pitching.ERA,  pitching.zERA);
-    GET_ZSCORE(m_vecPlayers, pitching.WHIP, pitching.zWHIP);
+    GET_ZSCORE(vecPitchers, pitching.SO,   pitching.zSO);
+    GET_ZSCORE(vecPitchers, pitching.W,    pitching.zW);
+    GET_ZSCORE(vecPitchers, pitching.SV,   pitching.zSV);
+    GET_ZSCORE(vecPitchers, pitching.ERA,  pitching.zERA);
+    GET_ZSCORE(vecPitchers, pitching.WHIP, pitching.zWHIP);
 
     // Calculated weighted zScores
-    for (Player& player : m_vecPlayers) {
+    for (Player& player : vecPitchers) {
         player.pitching.wERA = player.pitching.IP * player.pitching.zERA;
         player.pitching.wWHIP = player.pitching.IP * player.pitching.zWHIP;
     }
-    GET_ZSCORE(m_vecPlayers, pitching.wERA,  pitching.zERA);
-    GET_ZSCORE(m_vecPlayers, pitching.wWHIP, pitching.zWHIP);
+    GET_ZSCORE(vecPitchers, pitching.wERA,  pitching.zERA);
+    GET_ZSCORE(vecPitchers, pitching.wWHIP, pitching.zWHIP);
 
     // Invert ERA and WHIP... lower is better
-    for (Player& player : m_vecPlayers) {
+    for (Player& player : vecPitchers) {
         player.pitching.zERA =  -player.pitching.zERA;
         player.pitching.zWHIP = -player.pitching.zWHIP;
     }
 
     // Sum zscore
-    for (Player& player : m_vecPlayers) {
+    for (Player& player : vecPitchers) {
         player.zScore = (player.pitching.zSO + player.pitching.zW + player.pitching.zSV + player.pitching.zERA + player.pitching.zWHIP);
     }
 
     // Re-rank based on z-score
-    std::sort(m_vecPlayers.begin(), m_vecPlayers.end(), [](const auto& lhs, const auto& rhs) {
+    std::sort(vecPitchers.begin(), vecPitchers.end(), [](const auto& lhs, const auto& rhs) {
         return lhs.zScore > rhs.zScore;
     });
 
     // Get the "replacement player"
-    auto zReplacement = m_vecPlayers[TOTAL_PITCHERS].zScore;
+    auto zReplacement = vecPitchers[TOTAL_PITCHERS].zScore;
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
-    std::for_each(std::begin(m_vecPlayers), std::end(m_vecPlayers), [&](Player& pitcher) {
+    std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
         pitcher.zScore -= zReplacement;
         if (pitcher.zScore > 0) {
             sumPositiveZScores += pitcher.zScore;
@@ -343,9 +354,14 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
 
     // Apply cost ratio
     static const float costPerZ = float(TOTAL_PITCHER_MONEY) / sumPositiveZScores;
-    std::for_each(std::begin(m_vecPlayers), std::end(m_vecPlayers), [&](Player& pitcher) {
+    std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
         pitcher.cost = pitcher.zScore * costPerZ;
     });
+
+    // Add to main storage
+    for (const Player& player : vecPitchers) {
+        m_vecPlayers.push_back(player);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -425,6 +441,31 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             return player.hitting.RBI;
         case COLUMN_SB:
             return player.hitting.SB;
+
+        case COLUMN_IP:
+            if (role == RawDataRole) {
+                return player.pitching.IP;
+            } else {
+                QString::number(player.pitching.IP, 'f', 1);
+            }
+        case COLUMN_SO:
+            return player.pitching.SO;
+        case COLUMN_ERA:
+            if (role == RawDataRole) {
+                return player.pitching.ERA;
+            } else {
+                return QString::number(player.pitching.ERA, 'f', 3);
+            }
+        case COLUMN_WHIP:
+            if (role == RawDataRole) {
+                return player.pitching.WHIP;
+            } else {
+                return QString::number(player.pitching.WHIP, 'f', 3);
+            }
+        case COLUMN_W:
+            return player.pitching.W;
+        case COLUMN_SV:
+            return player.pitching.SV;
         case COLUMN_ESTIMATE:
             if (role == RawDataRole) {
                 return player.cost;
@@ -464,16 +505,34 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
         switch(index.column())
         {
         case COLUMN_Z:
-            return QString("zAVG: %1\n"
-                           "zR:   %2\n"
-                           "zRBI: %3\n"
-                           "zHR:  %4\n"
-                           "zSB:  %5")
-                .arg(player.hitting.zAVG)
-                .arg(player.hitting.zR)
-                .arg(player.hitting.zRBI)
-                .arg(player.hitting.zHR)
-                .arg(player.hitting.zSB);
+
+            if (player.catergory == Player::Hitter) {
+                return QString(
+                    "zAVG: %1\n"
+                    "zR:   %2\n"
+                    "zRBI: %3\n"
+                    "zHR:  %4\n"
+                    "zSB:  %5")
+                    .arg(player.hitting.zAVG)
+                    .arg(player.hitting.zR)
+                    .arg(player.hitting.zRBI)
+                    .arg(player.hitting.zHR)
+                    .arg(player.hitting.zSB);
+            } 
+            
+            if (player.catergory == Player::Pitcher) {
+                return QString(
+                    "zERA:  %1\n"
+                    "zSO:   %2\n"
+                    "zWHIP: %3\n"
+                    "zW:    %4\n"
+                    "zSV:   %5")
+                    .arg(player.pitching.zERA)
+                    .arg(player.pitching.zSO)
+                    .arg(player.pitching.zWHIP)
+                    .arg(player.pitching.zW)
+                    .arg(player.pitching.zSV);
+            }
         }
     }
 
@@ -521,6 +580,18 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
                 return "RBI";
             case COLUMN_SB:
                 return "SB";
+            case COLUMN_IP:
+                return "IP";
+            case COLUMN_SO:
+                return "KO";
+            case COLUMN_ERA:
+                return "ERA";
+            case COLUMN_WHIP:
+                return "WHIP";
+            case COLUMN_W:
+                return "W";
+            case COLUMN_SV:
+                return "SV";
             case COLUMN_ESTIMATE:
                 return "$";
             case COLUMN_Z:

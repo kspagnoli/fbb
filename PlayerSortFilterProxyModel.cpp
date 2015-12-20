@@ -41,13 +41,10 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
 //------------------------------------------------------------------------------
 bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
 {
-    // First check the category
-
     auto AcceptCatergoty = [&]() -> bool
     {
         const QModelIndex& catergoryIndex = sourceModel()->index(sourceRow, PlayerTableModel::COLUMN_CATERGORY, sourceParent);
         Player::Catergory catergory = Player::Catergory(sourceModel()->data(catergoryIndex).toUInt());
-
         return catergory == m_catergory;
     };
 
@@ -108,7 +105,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
             return true;
         }
 
-        return false;
+        return true;
     };
 
     return AcceptCatergoty() && AcceptTeam() && AcceptPosition();
@@ -201,6 +198,24 @@ void PlayerSortFilterProxyModel::OnFilterOF(bool checked)
 void PlayerSortFilterProxyModel::OnFilterDH(bool checked)
 {
     m_acceptDH = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterSP
+//------------------------------------------------------------------------------
+void PlayerSortFilterProxyModel::OnFilterSP(bool checked)
+{
+    m_acceptSP = checked;
+    QSortFilterProxyModel::filterChanged();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterRP
+//------------------------------------------------------------------------------
+void PlayerSortFilterProxyModel::OnFilterRP(bool checked)
+{
+    m_acceptRP = checked;
     QSortFilterProxyModel::filterChanged();
 }
 

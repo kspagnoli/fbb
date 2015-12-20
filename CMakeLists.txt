@@ -24,8 +24,6 @@ set(SOURCE
     PlayerTableModel.cpp
     HittingStats.cpp
     Owner.cpp
-    PitcherSortFilterProxyModel.cpp
-    PitcherTableModel.cpp
     PitchingStats.cpp
     PlayerAppearances.cpp
     SelectedPlayer.cpp

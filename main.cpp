@@ -35,9 +35,6 @@
 #include "DraftDialog.h"
 #include "PlayerTableModel.h"
 #include "PlayerSortFilterProxyModel.h"
-#include "Pitcher.h"
-#include "PitcherTableModel.h"
-#include "PitcherSortFilterProxyModel.h"
 #include "SelectedPlayer.h"
 #include "PlayerAppearances.h"
 #include "DraftDelegate.h"
@@ -78,23 +75,29 @@ public:
             model->setData(paidIndex, results.cost);
         });
 
-        // Hitter table
+        // Player table model
         PlayerTableModel* playerTableModel = new PlayerTableModel(this);
         playerTableModel->LoadHittingProjections("2015_hitters.csv", appearances);
+        playerTableModel->LoadPitchingProjections("2015_pitchers.csv", appearances);
+
+        // Hitter sort-model
         PlayerSortFilterProxyModel* hitterSortFilterProxyModel = new PlayerSortFilterProxyModel(Player::Hitter);
         hitterSortFilterProxyModel->setSourceModel(playerTableModel);
         hitterSortFilterProxyModel->setSortRole(PlayerTableModel::RawDataRole);
+
+        // Hitter table view
         QTableView* hitterTableView = MakeTableView(hitterSortFilterProxyModel, 0);
         hitterTableView->setItemDelegateForColumn(PlayerTableModel::COLUMN_DRAFT_BUTTON, draftDelegate);
         hitterTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
-        // Pitcher table
-        PitcherTableModel* pitcherTableModel = new PitcherTableModel("2015_pitchers.csv", appearances, this);
-        PitcherSortFilterProxyModel* pitcherSortFilterProxyModel = new PitcherSortFilterProxyModel();
-        pitcherSortFilterProxyModel->setSourceModel(pitcherTableModel);
-        pitcherSortFilterProxyModel->setSortRole(PitcherTableModel::RawDataRole);
+        // Hitter sort-model
+        PlayerSortFilterProxyModel* pitcherSortFilterProxyModel = new PlayerSortFilterProxyModel(Player::Pitcher);
+        pitcherSortFilterProxyModel->setSourceModel(playerTableModel);
+        pitcherSortFilterProxyModel->setSortRole(PlayerTableModel::RawDataRole);
+
+        // Hitter table view
         QTableView* pitcherTableView = MakeTableView(pitcherSortFilterProxyModel, 0);
-        pitcherTableView->setItemDelegateForColumn(PitcherTableModel::COLUMN_DRAFT_STATUS, draftDelegate);
+        pitcherTableView->setItemDelegateForColumn(PlayerTableModel::COLUMN_DRAFT_BUTTON, draftDelegate);
         pitcherTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
         // layout
@@ -115,7 +118,7 @@ public:
         // NL filter action
         QAction* filterNL = new QAction(this);
         connect(filterNL, &QAction::toggled, hitterSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterNL);
-        connect(filterNL, &QAction::toggled, pitcherSortFilterProxyModel, &PitcherSortFilterProxyModel::OnFilterNL);
+        connect(filterNL, &QAction::toggled, pitcherSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterNL);
         filterNL->setText(tr("NL"));
         filterNL->setToolTip("Toggle National Leauge");
         filterNL->setCheckable(true);
@@ -124,7 +127,7 @@ public:
         // AL filter action
         QAction* filterAL = new QAction(this);
         connect(filterAL, &QAction::toggled, hitterSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterAL);
-        connect(filterAL, &QAction::toggled, pitcherSortFilterProxyModel, &PitcherSortFilterProxyModel::OnFilterAL);
+        connect(filterAL, &QAction::toggled, pitcherSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterAL);
         filterAL->setText(tr("AL"));
         filterAL->setToolTip("Toggle American Leauge");
         filterAL->setCheckable(true);
@@ -133,7 +136,7 @@ public:
         // FA filter action
         QAction* filterFA = new QAction(this);
         connect(filterFA, &QAction::toggled, hitterSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterFA);
-        connect(filterFA, &QAction::toggled, pitcherSortFilterProxyModel, &PitcherSortFilterProxyModel::OnFilterFA);
+        connect(filterFA, &QAction::toggled, pitcherSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterFA);
         filterFA->setText(tr("FA"));
         filterFA->setToolTip("Toggle Free Agents");
         filterFA->setCheckable(true);
@@ -149,7 +152,7 @@ public:
 
         // Starter filter action
         QAction* filterStarter = new QAction(this);
-        connect(filterStarter, &QAction::toggled, pitcherSortFilterProxyModel, &PitcherSortFilterProxyModel::OnFilterSP);
+        connect(filterStarter, &QAction::toggled, pitcherSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterSP);
         filterStarter->setText(tr("SP"));
         filterStarter->setToolTip("Toggle Starting Pitchers");
         filterStarter->setCheckable(true);
@@ -157,7 +160,7 @@ public:
 
         // Relief filter action
         QAction* filterRelief = new QAction(this);
-        connect(filterRelief, &QAction::toggled, pitcherSortFilterProxyModel, &PitcherSortFilterProxyModel::OnFilterRP);
+        connect(filterRelief, &QAction::toggled, pitcherSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterRP);
         filterRelief->setText(tr("RP"));
         filterRelief->setToolTip("Toggle Relief Pitchers");
         filterRelief->setCheckable(true);

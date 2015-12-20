@@ -27,16 +27,21 @@ public slots:
     void OnFilter3B(bool checked);
     void OnFilterOF(bool checked);
     void OnFilterDH(bool checked);
+
+    void OnFilterSP(bool checked);
+    void OnFilterRP(bool checked);
     
 private:
 
-    // main type
+    // Main type
     Player::CatergoryMask m_catergory;
 
-    // filters
+    // General filters
     bool m_acceptNL = true;
     bool m_acceptAL = true;
     bool m_acceptFA = true;
+
+    // Hitting filters
     bool m_acceptC = true;
     bool m_accept1B = true;
     bool m_accept2B = true;
@@ -45,4 +50,7 @@ private:
     bool m_acceptOF = true;
     bool m_acceptDH = true;
 
+    // Pitching filters
+    bool m_acceptSP = true;
+    bool m_acceptRP = true;
 };

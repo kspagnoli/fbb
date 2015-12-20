@@ -34,12 +34,12 @@ public:
         COLUMN_SB,
 
         // Pitching
-        // COLUMN_IP,
-        // COLUMN_SO,
-        // COLUMN_ERA,
-        // COLUMN_WHIP,
-        // COLUMN_W,
-        // COLUMN_SV,
+        COLUMN_IP,
+        COLUMN_SO,
+        COLUMN_ERA,
+        COLUMN_WHIP,
+        COLUMN_W,
+        COLUMN_SV,
 
         // General
         COLUMN_Z,
