@@ -20,8 +20,11 @@ struct Hitter : Player
     };
     using PositionMask = uint32_t;
 
-    // positions
+    // Positions
     PositionMask positions = PositionMask(Position::None);
+
+    // Position draft to play
+    PositionMask draftPosition = PositionMask(Position::None);
 
     // sub-stat
     uint32_t PA = 0;

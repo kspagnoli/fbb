@@ -7,9 +7,6 @@
 //------------------------------------------------------------------------------
 struct Player
 {
-    // Flags
-    static const int32_t Undrafted = -1;
-
     // Player Status
     enum class Status
     {
@@ -27,7 +24,7 @@ struct Player
     Status status = Status::Majors;
 
     // Fantasy
-    int32_t ownerId = Undrafted;
+    int32_t ownerId = 0;
     float paid = 0;
 
     // Estimate

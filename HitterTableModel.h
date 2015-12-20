@@ -15,7 +15,10 @@ public:
     enum COLUMN
     {
         COLUMN_RANK,
-        COLUMN_DRAFT_STATUS,
+        COLUMN_DRAFT_BUTTON,
+        COLUMN_OWNER,
+        COLUMN_DRAFT_POSITION,
+        COLUMN_PAID,
         COLUMN_NAME,
         COLUMN_TEAM,
         COLUMN_POSITION,
@@ -29,7 +32,7 @@ public:
         COLUMN_ESTIMATE,
         COLUMN_COMMENT,
 
-        COLUMN_COUNT
+        COLUMN_COUNT,
     };
 
     // Constructor

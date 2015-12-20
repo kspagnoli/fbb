@@ -18,16 +18,18 @@ find_package(Qt5Widgets REQUIRED)
 
 # Source files
 set(SOURCE
-    main.cpp
+    DraftDelegate.cpp
     DraftDialog.cpp
     HitterSortFilterProxyModel.cpp
     HitterTableModel.cpp
+    HittingStats.cpp
+    Owner.cpp
     PitcherSortFilterProxyModel.cpp
     PitcherTableModel.cpp
-    PlayerAppearances.cpp
-    HittingStats.cpp
     PitchingStats.cpp
-    SelectedPlayer.cpp)
+    PlayerAppearances.cpp
+    SelectedPlayer.cpp
+    main.cpp)
 
 file(GLOB HEADERS *.h)
 

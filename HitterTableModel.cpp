@@ -14,10 +14,34 @@
 #include <QAbstractItemDelegate>
 
 //------------------------------------------------------------------------------
+// GetOwnerName (TEMP helper)
+//------------------------------------------------------------------------------
+static QString GetOwnerName(uint32_t ownerId)
+{
+    switch (ownerId)
+    {
+    case 0:
+        return "--";
+    case 1:
+        return "Team A";
+    case 2:
+        return "Team B";
+    default:
+        return "???";
+    }
+}
+
+//------------------------------------------------------------------------------
 // PositionToString (static helper)
 //------------------------------------------------------------------------------
 static QString PositionToString(const Hitter::PositionMask& positions)
 {
+    // Quick return for unknown
+    if (positions == uint32_t(Hitter::Position::None)) {
+        return "--";
+    }
+
+    // Build up list
     QStringList vecPos;
     if (positions & uint32_t(Hitter::Position::Catcher)) { vecPos.push_back("C"); }
     if (positions & uint32_t(Hitter::Position::First)) { vecPos.push_back("1B"); }
@@ -203,8 +227,26 @@ QVariant HitterTableModel::data(const QModelIndex& index, int role) const
         {
         case COLUMN_RANK:
             return index.row() + 1;
-        case COLUMN_DRAFT_STATUS:
+        case COLUMN_DRAFT_BUTTON:
             return uint32_t(hitter.status);
+        case COLUMN_OWNER:
+            if (role == RawDataRole) {
+                return hitter.ownerId;
+            } else {
+                return GetOwnerName(hitter.ownerId);
+            }
+        case COLUMN_PAID:
+            if (role == RawDataRole) {
+                return hitter.paid;
+            } else {
+                return hitter.paid != 0 ? QString("$%1").arg(hitter.paid) : QString("--");
+            }
+        case COLUMN_DRAFT_POSITION:
+            if (role == RawDataRole) {
+                return hitter.draftPosition;
+            } else {
+                return PositionToString(hitter.draftPosition);
+            }
         case COLUMN_NAME:
             return QString::fromStdString(hitter.name);
         case COLUMN_TEAM:
@@ -252,6 +294,9 @@ QVariant HitterTableModel::data(const QModelIndex& index, int role) const
 
         switch (index.column())
         {
+        case COLUMN_PAID:
+        case COLUMN_OWNER:
+            return Qt::AlignmentFlag(int(Qt::AlignCenter) | int(Qt::AlignVCenter));
         case COLUMN_NAME:
         case COLUMN_TEAM:
         case COLUMN_COMMENT:
@@ -295,8 +340,14 @@ QVariant HitterTableModel::headerData(int section, Qt::Orientation orientation, 
             {
             case COLUMN_RANK:
                 return "#";
-            case COLUMN_DRAFT_STATUS:
+            case COLUMN_DRAFT_BUTTON:
                 return "Status";
+            case COLUMN_OWNER:
+                return "Owner";
+            case COLUMN_PAID:
+                return "Paid";
+            case COLUMN_DRAFT_POSITION:
+                return "Position";
             case COLUMN_NAME:
                 return "Name";
             case COLUMN_TEAM:
@@ -335,7 +386,7 @@ Qt::ItemFlags HitterTableModel::flags(const QModelIndex &index) const
 {
     switch (index.column()) 
     {
-    case COLUMN_DRAFT_STATUS:
+    case COLUMN_DRAFT_BUTTON:
         return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
     default:
         return QAbstractItemModel::flags(index);
@@ -351,8 +402,14 @@ bool HitterTableModel::setData(const QModelIndex& index, const QVariant& value, 
 
     switch (index.column())
     {
-    case COLUMN_DRAFT_STATUS:
+    case COLUMN_DRAFT_BUTTON:
         hitter.status = Player::Status(value.toInt());
+        return true;
+    case COLUMN_PAID:
+        hitter.paid = value.toInt();
+        return true;
+    case COLUMN_OWNER:
+        hitter.ownerId = value.toInt();
         return true;
     default:
         return false;

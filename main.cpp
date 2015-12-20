@@ -22,10 +22,15 @@
 #include <QStackedWidget>
 #include <QComboBox>
 #include <QMessageBox>
+#include <QSettings>
+#include <QDataStream>
+#include <QBuffer>
+#include <QSplitterHandle>
 
 #include <memory>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "DraftDialog.h"
 #include "Hitter.h"
@@ -36,75 +41,8 @@
 #include "PitcherSortFilterProxyModel.h"
 #include "SelectedPlayer.h"
 #include "PlayerAppearances.h"
-
-class DraftDelegate : public QAbstractItemDelegate
-{
-public:
-
-    DraftDelegate(QWidget* parent)
-        : QAbstractItemDelegate(parent)
-        , m_parent(parent)
-    {
-    }
-
-    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override
-    {
-        Player::Status status = Player::Status(index.data().toInt());
-
-        option.state;
-
-        // Player is available
-        if (status != Player::Status::Drafted) {
-
-            QStyleOptionButton pushButtonOption;
-            pushButtonOption.rect = option.rect;
-            pushButtonOption.text = "Draft";
-            pushButtonOption.state = option.state != QStyle::State_Selected ? QStyle::State_Raised : QStyle::State_Sunken; // [XXX] does nothing!
-
-            QApplication::style()->drawControl(QStyle::CE_PushButton, &pushButtonOption, painter);
-        } 
-    }
-
-    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override
-    {
-        return QSize(option.rect.width(), option.rect.height());
-    }
-
-    bool editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index) override
-    {
-        // Skip if already drafted
-        if (Player::Status(index.data().toInt()) == Player::Status::Drafted) {
-            return false;
-        }
-
-        // Otherwise create a draft dialog
-        if (event->type() == QEvent::MouseButtonRelease) {
-
-            DraftDialog* draftDialog = new DraftDialog(model, index);
-            draftDialog->show();
-            draftDialog->raise();
-            draftDialog->activateWindow();
-
-            // On draft
-            connect(draftDialog, &QDialog::accepted, [=]() -> void {
-
-                // Get results
-                const DraftDialog::Results& results = draftDialog->GetDraftResults();
-
-                // Update draft status
-                model->setData(index, uint32_t(Player::Status::Drafted));
-            });
-
-            return true;
-        }
-
-        return false;
-    }
-
-private:
-
-    QWidget* m_parent;
-};
+#include "DraftDelegate.h"
+#include "OwnerSortFilterProxyModel.h"
 
 //
 class MainWindow : public QMainWindow
@@ -114,33 +52,53 @@ public:
 
     MainWindow()
     {
+        // Settings persistence
+        ReadSettings();
+
+        // Appearance LUT
         PlayerApperances appearances("2015_appearances.csv");
 
-        // hitter table
+        // Draft delegate
+        DraftDelegate* draftDelegate = new DraftDelegate(this);
+        connect(draftDelegate, &DraftDelegate::Drafted, [=](const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model) {
+
+            // Player row
+            uint32_t row = index.row();
+
+            // Update status
+            model->setData(index, uint32_t(Player::Status::Drafted));
+
+            // Update owner
+            uint32_t ownerColumn = HitterTableModel::COLUMN_OWNER;
+            QModelIndex ownerIndex = model->index(row, ownerColumn);
+            model->setData(ownerIndex, results.ownerId);
+
+            // Update paid amount
+            uint32_t paidColumn = HitterTableModel::COLUMN_PAID;
+            QModelIndex paidIndex = model->index(row, paidColumn);
+            model->setData(paidIndex, results.cost);
+        });
+
+        // Hitter table
         HitterTableModel* hitterTableModel = new HitterTableModel("2015_hitters.csv", appearances, this);
         HitterSortFilterProxyModel* hitterSortFilterProxyModel = new HitterSortFilterProxyModel();
         hitterSortFilterProxyModel->setSourceModel(hitterTableModel);
         hitterSortFilterProxyModel->setSortRole(HitterTableModel::RawDataRole);
         QTableView* hitterTableView = MakeTableView(hitterSortFilterProxyModel, 0);
-        hitterTableView->setItemDelegateForColumn(HitterTableModel::COLUMN_DRAFT_STATUS, new DraftDelegate(this));
+        hitterTableView->setItemDelegateForColumn(HitterTableModel::COLUMN_DRAFT_BUTTON, draftDelegate);
         hitterTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
-        // pitcher table
+        // Pitcher table
         PitcherTableModel* pitcherTableModel = new PitcherTableModel("2015_pitchers.csv", appearances, this);
         PitcherSortFilterProxyModel* pitcherSortFilterProxyModel = new PitcherSortFilterProxyModel();
         pitcherSortFilterProxyModel->setSourceModel(pitcherTableModel);
         pitcherSortFilterProxyModel->setSortRole(PitcherTableModel::RawDataRole);
         QTableView* pitcherTableView = MakeTableView(pitcherSortFilterProxyModel, 0);
-        pitcherTableView->setItemDelegateForColumn(PitcherTableModel::COLUMN_DRAFT_STATUS, new DraftDelegate(this));
+        pitcherTableView->setItemDelegateForColumn(PitcherTableModel::COLUMN_DRAFT_STATUS, draftDelegate);
         pitcherTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
         // layout
         QVBoxLayout* vBoxLayout = new QVBoxLayout();
-
-        // selected player widget
-        // SelectedPlayer* selectedPlayer = new SelectedPlayer(this);
-        // selectedPlayer->setFixedHeight(100);
-        // vBoxLayout->addWidget(selectedPlayer);
 
         enum class Tabs
         {
@@ -205,7 +163,7 @@ public:
         filterRelief->setCheckable(true);
         filterRelief->toggle();
 
-        // Pictching filter group
+        // Pitching filter group
         QActionGroup* pitchingFilters = new QActionGroup(this);
         pitchingFilters->addAction(filterStarter);
         pitchingFilters->addAction(filterRelief);
@@ -301,6 +259,16 @@ public:
         // Set default filter group
         ToggleFilterGroups(tabs->currentIndex());
 
+        // Owner view
+        OwnerSortFilterProxyModel* test = new OwnerSortFilterProxyModel(1);
+        test->setSourceModel(hitterTableModel);
+        QTableView* testView = MakeTableView(test, 0);
+        testView->setFixedHeight(200);
+        vBoxLayout->addWidget(testView);
+        connect(draftDelegate, &DraftDelegate::Drafted, [=](const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model) {
+            test->invalidate();
+        });
+
         // set as main window
         QWidget* central = new QWidget();
         QMainWindow::setCentralWidget(central);
@@ -316,6 +284,41 @@ public:
     }
 
 private:
+
+    // Owner names
+    QVector<QString> m_vecOwners;
+
+    static std::unique_ptr<QSettings> Settings()
+    {
+        return std::make_unique<QSettings>(QSettings::IniFormat, QSettings::UserScope, "SpagTech", "FbbDemo");
+    }
+
+    void WriteSettings() const
+    {
+        auto settings = Settings();
+
+        // Main window
+        settings->beginGroup("MainWindow");
+        settings->setValue("size", size());
+        settings->setValue("pos", pos());
+        settings->endGroup();
+    }
+
+    void ReadSettings()
+    {
+        auto settings = Settings();
+
+        // Main window
+        settings->beginGroup("MainWindow");
+        resize(settings->value("size", QSize(400, 400)).toSize());
+        move(settings->value("pos", QPoint(200, 200)).toPoint());
+        settings->endGroup();
+    }
+
+    void closeEvent(QCloseEvent* event) override
+    {
+        WriteSettings();
+    }
 
     // Table factory
     QTableView* MakeTableView(QAbstractItemModel* model, int sortColumn)

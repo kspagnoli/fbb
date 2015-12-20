@@ -14,8 +14,9 @@
 enum
 {
     PlayerNameRow,
-    OwnerComboBoxRow,
+    OwnerRow,
     CostRow,
+    PositionRow,
 };
 
 enum
@@ -54,8 +55,8 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
     QComboBox* ownerComboBox = new QComboBox;
     QStringList list ={ "Select...", "Team A", "Team B" };
     ownerComboBox->addItems(list);
-    infoGridLayout->addWidget(new QLabel("Owner:"), OwnerComboBoxRow, LabelColumn);
-    infoGridLayout->addWidget(ownerComboBox, OwnerComboBoxRow, ItemColumn);
+    infoGridLayout->addWidget(new QLabel("Owner:"), OwnerRow, LabelColumn);
+    infoGridLayout->addWidget(ownerComboBox, OwnerRow, ItemColumn);
     connect(ownerComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, [=](int index) {
         m_draftResults.ownerId = index;
         draftButton->setDisabled(!m_draftResults.cost || !m_draftResults.ownerId);
@@ -70,6 +71,16 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
     connect(costLineEdit, &QLineEdit::textEdited, this, [=](const QString& text) {
         m_draftResults.cost = text.toInt();
         draftButton->setDisabled(!m_draftResults.cost || !m_draftResults.ownerId);
+    });
+
+    // Owner combo box
+    QComboBox* positionComboBox = new QComboBox;
+    positionComboBox->addItems(QStringList{"C", "1B"});
+    infoGridLayout->addWidget(new QLabel("Position:"), PositionRow, LabelColumn);
+    infoGridLayout->addWidget(positionComboBox, PositionRow, ItemColumn);
+    connect(ownerComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, [=](int index) {
+        // m_draftResults.ownerId = index;
+        // draftButton->setDisabled(!m_draftResults.cost || !m_draftResults.ownerId);
     });
 
     // Main layout
