@@ -1,5 +1,5 @@
 #include "DraftDialog.h"
-#include "HitterTableModel.h"
+#include "PlayerTableModel.h"
 
 #include <QGridLayout>
 #include <QString>
@@ -46,7 +46,7 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
     QGridLayout* infoGridLayout = new QGridLayout;
 
     // Player name
-    QModelIndex playerNameIndex = model->index(index.row(), HitterTableModel::COLUMN_NAME);
+    QModelIndex playerNameIndex = model->index(index.row(), PlayerTableModel::COLUMN_NAME);
     QString playerName = model->data(playerNameIndex).toString();
     infoGridLayout->addWidget(new QLabel("Player Name:"), PlayerNameRow, LabelColumn);
     infoGridLayout->addWidget(new QLabel(playerName), PlayerNameRow, ItemColumn);

@@ -1,11 +1,12 @@
 #pragma once
 
-#include "Pitcher.h"
+#include "PlayerAppearances.h"
+#include "Player.h"
 #include <QAbstractTableModel>
 
 class PlayerApperances;
 
-class PitcherTableModel : public QAbstractTableModel
+class HitterTableModel : public QAbstractTableModel
 {
 
 public:
@@ -14,26 +15,28 @@ public:
     enum COLUMN
     {
         COLUMN_RANK,
-        COLUMN_DRAFT_STATUS,
+        COLUMN_DRAFT_BUTTON,
+        COLUMN_OWNER,
+        COLUMN_DRAFT_POSITION,
+        COLUMN_PAID,
         COLUMN_NAME,
         COLUMN_TEAM,
-        COLUMN_CATERGORY,
         COLUMN_POSITION,
-        COLUMN_IP,
-        COLUMN_SO,
-        COLUMN_ERA,
-        COLUMN_WHIP,
-        COLUMN_W,
-        COLUMN_SV,
+        COLUMN_AB,
+        COLUMN_AVG,
+        COLUMN_HR,
+        COLUMN_R,
+        COLUMN_RBI,
+        COLUMN_SB,
         COLUMN_Z,
         COLUMN_ESTIMATE,
         COLUMN_COMMENT,
 
-        COLUMN_COUNT
+        COLUMN_COUNT,
     };
 
     // Constructor
-    PitcherTableModel(const std::string& filename, const PlayerApperances& appearances, QObject* parent);
+    HitterTableModel(const std::string& filename, const PlayerApperances& playerApperances, QObject* parent);
 
     // QAbstractTableModel interfaces
     virtual int rowCount(const QModelIndex &) const override;
@@ -49,5 +52,5 @@ public:
 private:
 
     // Hitter data model
-    std::vector<Pitcher> m_vecPitchers;
+    std::vector<Player> m_vecPlayers;
 };

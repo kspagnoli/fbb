@@ -2,7 +2,7 @@
 
 #include <QSortFilterProxyModel>
 
-#include "HitterTableModel.h"
+#include "PlayerTableModel.h"
 
 class OwnerSortFilterProxyModel : public QSortFilterProxyModel
 {
@@ -17,9 +17,9 @@ public:
     {
         switch (sourceColumn)
         {
-        case HitterTableModel::COLUMN_DRAFT_POSITION:
-        case HitterTableModel::COLUMN_NAME:
-        case HitterTableModel::COLUMN_PAID:
+        case PlayerTableModel::COLUMN_DRAFT_POSITION:
+        case PlayerTableModel::COLUMN_NAME:
+        case PlayerTableModel::COLUMN_PAID:
             return true;
         default:
             return false;
@@ -28,8 +28,8 @@ public:
 
     virtual bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override
     {
-        const QModelIndex& ownerIndex = sourceModel()->index(sourceRow, HitterTableModel::COLUMN_OWNER, sourceParent);
-        uint32_t ownerId = sourceModel()->data(ownerIndex, HitterTableModel::RawDataRole).toInt();
+        const QModelIndex& ownerIndex = sourceModel()->index(sourceRow, PlayerTableModel::COLUMN_OWNER, sourceParent);
+        uint32_t ownerId = sourceModel()->data(ownerIndex, PlayerTableModel::RawDataRole).toInt();
         return (ownerId == m_ownerId);
     }
 

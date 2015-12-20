@@ -20,8 +20,8 @@ find_package(Qt5Widgets REQUIRED)
 set(SOURCE
     DraftDelegate.cpp
     DraftDialog.cpp
-    HitterSortFilterProxyModel.cpp
-    HitterTableModel.cpp
+    PlayerSortFilterProxyModel.cpp
+    PlayerTableModel.cpp
     HittingStats.cpp
     Owner.cpp
     PitcherSortFilterProxyModel.cpp

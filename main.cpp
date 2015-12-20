@@ -33,9 +33,8 @@
 #include <iostream>
 
 #include "DraftDialog.h"
-#include "Hitter.h"
-#include "HitterTableModel.h"
-#include "HitterSortFilterProxyModel.h"
+#include "PlayerTableModel.h"
+#include "PlayerSortFilterProxyModel.h"
 #include "Pitcher.h"
 #include "PitcherTableModel.h"
 #include "PitcherSortFilterProxyModel.h"
@@ -69,23 +68,23 @@ public:
             model->setData(index, uint32_t(Player::Status::Drafted));
 
             // Update owner
-            uint32_t ownerColumn = HitterTableModel::COLUMN_OWNER;
+            uint32_t ownerColumn = PlayerTableModel::COLUMN_OWNER;
             QModelIndex ownerIndex = model->index(row, ownerColumn);
             model->setData(ownerIndex, results.ownerId);
 
             // Update paid amount
-            uint32_t paidColumn = HitterTableModel::COLUMN_PAID;
+            uint32_t paidColumn = PlayerTableModel::COLUMN_PAID;
             QModelIndex paidIndex = model->index(row, paidColumn);
             model->setData(paidIndex, results.cost);
         });
 
         // Hitter table
-        HitterTableModel* hitterTableModel = new HitterTableModel("2015_hitters.csv", appearances, this);
-        HitterSortFilterProxyModel* hitterSortFilterProxyModel = new HitterSortFilterProxyModel();
+        PlayerTableModel* hitterTableModel = new PlayerTableModel("2015_hitters.csv", appearances, this);
+        PlayerSortFilterProxyModel* hitterSortFilterProxyModel = new PlayerSortFilterProxyModel(Player::Hitter);
         hitterSortFilterProxyModel->setSourceModel(hitterTableModel);
-        hitterSortFilterProxyModel->setSortRole(HitterTableModel::RawDataRole);
+        hitterSortFilterProxyModel->setSortRole(PlayerTableModel::RawDataRole);
         QTableView* hitterTableView = MakeTableView(hitterSortFilterProxyModel, 0);
-        hitterTableView->setItemDelegateForColumn(HitterTableModel::COLUMN_DRAFT_BUTTON, draftDelegate);
+        hitterTableView->setItemDelegateForColumn(PlayerTableModel::COLUMN_DRAFT_BUTTON, draftDelegate);
         hitterTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
         // Pitcher table
@@ -114,7 +113,7 @@ public:
 
         // NL filter action
         QAction* filterNL = new QAction(this);
-        connect(filterNL, &QAction::toggled, hitterSortFilterProxyModel, &HitterSortFilterProxyModel::OnFilterNL);
+        connect(filterNL, &QAction::toggled, hitterSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterNL);
         connect(filterNL, &QAction::toggled, pitcherSortFilterProxyModel, &PitcherSortFilterProxyModel::OnFilterNL);
         filterNL->setText(tr("NL"));
         filterNL->setToolTip("Toggle National Leauge");
@@ -123,7 +122,7 @@ public:
 
         // AL filter action
         QAction* filterAL = new QAction(this);
-        connect(filterAL, &QAction::toggled, hitterSortFilterProxyModel, &HitterSortFilterProxyModel::OnFilterAL);
+        connect(filterAL, &QAction::toggled, hitterSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterAL);
         connect(filterAL, &QAction::toggled, pitcherSortFilterProxyModel, &PitcherSortFilterProxyModel::OnFilterAL);
         filterAL->setText(tr("AL"));
         filterAL->setToolTip("Toggle American Leauge");
@@ -132,7 +131,7 @@ public:
 
         // FA filter action
         QAction* filterFA = new QAction(this);
-        connect(filterFA, &QAction::toggled, hitterSortFilterProxyModel, &HitterSortFilterProxyModel::OnFilterFA);
+        connect(filterFA, &QAction::toggled, hitterSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterFA);
         connect(filterFA, &QAction::toggled, pitcherSortFilterProxyModel, &PitcherSortFilterProxyModel::OnFilterFA);
         filterFA->setText(tr("FA"));
         filterFA->setToolTip("Toggle Free Agents");
@@ -187,13 +186,13 @@ public:
         };
 
         // Hitter filters
-        QAction* filterC  = MakeHitterFilter("C",  "Filter Catchers",           &HitterSortFilterProxyModel::OnFilterC);
-        QAction* filter1B = MakeHitterFilter("1B", "Filter 1B",                 &HitterSortFilterProxyModel::OnFilter1B);
-        QAction* filter2B = MakeHitterFilter("2B", "Filter 2B",                 &HitterSortFilterProxyModel::OnFilter2B);
-        QAction* filterSS = MakeHitterFilter("SS", "Filter SS",                 &HitterSortFilterProxyModel::OnFilterSS);
-        QAction* filter3B = MakeHitterFilter("3B", "Filter 3B",                 &HitterSortFilterProxyModel::OnFilter3B);
-        QAction* filterOF = MakeHitterFilter("OF", "Filter Outfielders",        &HitterSortFilterProxyModel::OnFilterOF);
-        QAction* filterDH = MakeHitterFilter("DH", "Filter Designated Hitters", &HitterSortFilterProxyModel::OnFilterDH);
+        QAction* filterC  = MakeHitterFilter("C",  "Filter Catchers",           &PlayerSortFilterProxyModel::OnFilterC);
+        QAction* filter1B = MakeHitterFilter("1B", "Filter 1B",                 &PlayerSortFilterProxyModel::OnFilter1B);
+        QAction* filter2B = MakeHitterFilter("2B", "Filter 2B",                 &PlayerSortFilterProxyModel::OnFilter2B);
+        QAction* filterSS = MakeHitterFilter("SS", "Filter SS",                 &PlayerSortFilterProxyModel::OnFilterSS);
+        QAction* filter3B = MakeHitterFilter("3B", "Filter 3B",                 &PlayerSortFilterProxyModel::OnFilter3B);
+        QAction* filterOF = MakeHitterFilter("OF", "Filter Outfielders",        &PlayerSortFilterProxyModel::OnFilterOF);
+        QAction* filterDH = MakeHitterFilter("DH", "Filter Designated Hitters", &PlayerSortFilterProxyModel::OnFilterDH);
 
         // Menu spacer
         QWidget* spacer = new QWidget(this);
@@ -202,7 +201,7 @@ public:
         // Completion Widget
         QCompleter* completer = new QCompleter(this);
         completer->setModel(hitterTableModel);
-        completer->setCompletionColumn(HitterTableModel::COLUMN_NAME);
+        completer->setCompletionColumn(PlayerTableModel::COLUMN_NAME);
         completer->setFilterMode(Qt::MatchContains);
 
         // Select the target 

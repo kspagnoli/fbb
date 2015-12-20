@@ -71,8 +71,8 @@ PitcherTableModel::PitcherTableModel(const std::string& filename, const PlayerAp
             std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
 
             Pitcher pitcher;
-            pitcher.name = parsed[LUT["Name"]];
-            pitcher.team = parsed[LUT["Team"]];
+            pitcher.name = QString::fromStdString(parsed[LUT["Name"]]);
+            pitcher.team = QString::fromStdString(parsed[LUT["Team"]]);
             pitcher.IP = boost::lexical_cast<decltype(pitcher.IP)>(parsed[LUT["IP"]]);
             pitcher.ERA = boost::lexical_cast<decltype(pitcher.ERA)>(parsed[LUT["ERA"]]);
             pitcher.WHIP = boost::lexical_cast<decltype(pitcher.WHIP)>(parsed[LUT["WHIP"]]);
@@ -85,7 +85,7 @@ PitcherTableModel::PitcherTableModel(const std::string& filename, const PlayerAp
             }
 
             // Lookup appearances 
-            const auto& appearances = playerApperances.Lookup(pitcher.name);
+            const auto& appearances = playerApperances.Lookup(pitcher.name.toStdString());
             if (float(appearances.G) * 0.9f < float(appearances.GS)) { 
                 pitcher.positions |= int32_t(Pitcher::Position::Starter); 
             } else {
@@ -194,9 +194,9 @@ QVariant PitcherTableModel::data(const QModelIndex& index, int role) const
         case COLUMN_DRAFT_STATUS:
             return uint32_t(pitcher.status);
         case COLUMN_NAME:
-            return QString::fromStdString(pitcher.name);
+            return pitcher.name;
         case COLUMN_TEAM:
-            return QString::fromStdString(pitcher.team);
+            return pitcher.team;
         case COLUMN_POSITION:
             if (role == RawDataRole) {
                 return pitcher.positions;
@@ -240,7 +240,7 @@ QVariant PitcherTableModel::data(const QModelIndex& index, int role) const
                 return QString("$%1").arg(QString::number(pitcher.cost, 'f', 2));
             }
         case COLUMN_COMMENT:
-            return QString::fromStdString(pitcher.comment);
+            return pitcher.comment;
         }
     }
 
@@ -297,6 +297,8 @@ QVariant PitcherTableModel::headerData(int section, Qt::Orientation orientation,
                 return "Name";
             case COLUMN_TEAM:
                 return "Team";
+            case COLUMN_CATERGORY:
+                return "Catergory";
             case COLUMN_POSITION:
                 return "Position";
             case COLUMN_IP:

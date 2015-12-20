@@ -1,7 +1,6 @@
 #include "HitterSortFilterProxyModel.h"
 #include "HitterTableModel.h"
 #include "Teams.h"
-#include "Hitter.h"
 
 //------------------------------------------------------------------------------
 // HitterSortFilterProxyModel
@@ -50,35 +49,35 @@ bool HitterSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
     auto AcceptPosition = [&]() -> bool
     {
         // HAX
-        if (pos == uint32_t(Hitter::Position::None)) {
+        if (pos == Player::Position::None) {
             return true;
         }
 
-        if (m_acceptC && (pos & uint32_t(Hitter::Position::Catcher))) {
+        if (m_acceptC && (pos & Player::Catcher)) {
             return true;
         }
 
-        if (m_accept1B && (pos & uint32_t(Hitter::Position::First))) {
+        if (m_accept1B && (pos & Player::First)) {
             return true;
         }
 
-        if (m_accept2B && (pos & uint32_t(Hitter::Position::Second))) {
+        if (m_accept2B && (pos & Player::Second)) {
             return true;
         }
 
-        if (m_acceptSS && (pos & uint32_t(Hitter::Position::SS))) {
+        if (m_acceptSS && (pos & Player::SS)) {
             return true;
         }
 
-        if (m_accept3B && (pos & uint32_t(Hitter::Position::Third))) {
+        if (m_accept3B && (pos & Player::Third)) {
             return true;
         }
 
-        if (m_acceptOF && (pos & uint32_t(Hitter::Position::Outfield))) {
+        if (m_acceptOF && (pos & Player::Outfield)) {
             return true;
         }
 
-        if (m_acceptDH && (pos & uint32_t(Hitter::Position::DH))) {
+        if (m_acceptDH && (pos & Player::DH)) {
             return true;
         }
 
