@@ -14,6 +14,7 @@ public:
     // Columns
     enum COLUMN
     {
+        // General
         COLUMN_RANK,
         COLUMN_DRAFT_BUTTON,
         COLUMN_OWNER,
@@ -23,12 +24,24 @@ public:
         COLUMN_TEAM,
         COLUMN_CATERGORY,
         COLUMN_POSITION,
+
+        // Hitting
         COLUMN_AB,
         COLUMN_AVG,
         COLUMN_HR,
         COLUMN_R,
         COLUMN_RBI,
         COLUMN_SB,
+
+        // Pitching
+        // COLUMN_IP,
+        // COLUMN_SO,
+        // COLUMN_ERA,
+        // COLUMN_WHIP,
+        // COLUMN_W,
+        // COLUMN_SV,
+
+        // General
         COLUMN_Z,
         COLUMN_ESTIMATE,
         COLUMN_COMMENT,
@@ -37,7 +50,11 @@ public:
     };
 
     // Constructor
-    PlayerTableModel(const std::string& filename, const PlayerApperances& playerApperances, QObject* parent);
+    PlayerTableModel(QObject* parent);
+
+    // 
+    void LoadHittingProjections(const std::string& filename, const PlayerApperances& playerApperances);
+    void LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances);
 
     // QAbstractTableModel interfaces
     virtual int rowCount(const QModelIndex &) const override;

@@ -13,6 +13,17 @@
 #include <iostream>
 #include <QAbstractItemDelegate>
 
+// [XXX] make me settings
+static const size_t HITTER_RATIO = 68;
+static const size_t BUDGET = 260;
+static const size_t NUM_OWNERS = 12;
+static const size_t NUM_HITTERS_PER_OWNER = 14;
+static const size_t NUM_PITCHERS_PER_OWNER = 10;
+static const size_t TOTAL_HITTERS = NUM_HITTERS_PER_OWNER * NUM_OWNERS;
+static const size_t TOTAL_HITTER_MONEY = (NUM_OWNERS * BUDGET * HITTER_RATIO) / size_t(100);
+static const size_t TOTAL_PITCHERS = NUM_PITCHERS_PER_OWNER * NUM_OWNERS;
+static const size_t TOTAL_PITCHER_MONEY = (NUM_OWNERS * BUDGET * (100 - HITTER_RATIO)) / size_t(100);
+
 //------------------------------------------------------------------------------
 // GetOwnerName
 // [XXX] Temp!
@@ -57,8 +68,15 @@ static QString PositionToString(const Player::PositionMask& positions)
 //------------------------------------------------------------------------------
 // PlayerTableModel
 //------------------------------------------------------------------------------
-PlayerTableModel::PlayerTableModel(const std::string& filename, const PlayerApperances& playerApperances, QObject* parent)
+PlayerTableModel::PlayerTableModel(QObject* parent)
     : QAbstractTableModel(parent)
+{
+}
+
+//------------------------------------------------------------------------------
+// PlayerTableModel
+//------------------------------------------------------------------------------
+void PlayerTableModel::LoadHittingProjections(const std::string& filename, const PlayerApperances& playerApperances)
 {
     // Open file
     std::fstream batters(filename);
@@ -128,7 +146,7 @@ PlayerTableModel::PlayerTableModel(const std::string& filename, const PlayerAppe
             // Lookup appearances 
             try {
                 const auto& appearances = playerApperances.Lookup(player.name.toStdString());
-                if (appearances.atC > 0)  { player.eligiblePositions |=  Player::Catcher; }
+                if (appearances.atC > 0) { player.eligiblePositions |=  Player::Catcher; }
                 if (appearances.at1B > 0) { player.eligiblePositions |= Player::First; }
                 if (appearances.at2B > 0) { player.eligiblePositions |= Player::Second; }
                 if (appearances.atSS > 0) { player.eligiblePositions |= Player::SS; }
@@ -154,10 +172,10 @@ PlayerTableModel::PlayerTableModel(const std::string& filename, const PlayerAppe
 
     // Calculated zScores
     GET_ZSCORE(m_vecPlayers, hitting.AVG, hitting.zAVG);
-    GET_ZSCORE(m_vecPlayers, hitting.HR,  hitting.zHR);
-    GET_ZSCORE(m_vecPlayers, hitting.R,   hitting.zR);
+    GET_ZSCORE(m_vecPlayers, hitting.HR, hitting.zHR);
+    GET_ZSCORE(m_vecPlayers, hitting.R, hitting.zR);
     GET_ZSCORE(m_vecPlayers, hitting.RBI, hitting.zRBI);
-    GET_ZSCORE(m_vecPlayers, hitting.SB,  hitting.zSB);
+    GET_ZSCORE(m_vecPlayers, hitting.SB, hitting.zSB);
 
     // Calculated weighted zScores
     for (Player& player : m_vecPlayers) {
@@ -175,14 +193,6 @@ PlayerTableModel::PlayerTableModel(const std::string& filename, const PlayerAppe
         return lhs.zScore > rhs.zScore;
     });
 
-    // [TODO] make me a setting
-    const size_t HITTER_RATIO = 68;
-    const size_t BUDGET = 260;
-    const size_t NUM_OWNERS = 12;
-    const size_t NUM_HITTERS_PER_OWNER = 14;
-    const size_t TOTAL_HITTERS = NUM_HITTERS_PER_OWNER * NUM_OWNERS;
-    const size_t TOTAL_HITTER_MONEY = (NUM_OWNERS * BUDGET * HITTER_RATIO) / size_t(100);
-
     // Get the "replacement player"
     auto zReplacement = m_vecPlayers[TOTAL_HITTERS].zScore;
 
@@ -199,6 +209,142 @@ PlayerTableModel::PlayerTableModel(const std::string& filename, const PlayerAppe
     static const float costPerZ = float(TOTAL_HITTER_MONEY) / sumPositiveZScores;
     std::for_each(std::begin(m_vecPlayers), std::end(m_vecPlayers), [&](Player& player) {
         player.cost = player.zScore * costPerZ;
+    });
+}
+
+//------------------------------------------------------------------------------
+// PlayerTableModel
+//------------------------------------------------------------------------------
+void PlayerTableModel::LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances)
+{
+    std::fstream pitchers(filename);
+    std::string row;
+
+    using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
+
+    // Tokenize header data
+    std::getline(pitchers, row);
+    Tokenizer tokenizer(row);
+
+    std::unordered_map<std::string, uint32_t> LUT =
+    {
+        { "Name",0 },
+        { "Team",0 },
+        { "IP",0 },
+        { "SO",0 },
+        { "ERA",0 },
+        { "WHIP",0 },
+        { "W",0 },
+        { "SV",0 },
+    };
+
+    // Parse header
+    for (auto& entry : LUT) {
+
+        // find entry key
+        auto itr = std::find(tokenizer.begin(), tokenizer.end(), entry.first);
+        if (itr != tokenizer.end()) {
+
+            // set value
+            entry.second = std::distance(tokenizer.begin(), itr);
+        }
+    }
+
+    // Loop rows
+    while (std::getline(pitchers, row)) {
+
+        // Tokenization and/or lexical casts might fail if the data is malformed
+        try {
+
+            Tokenizer tokenizer(row);
+            std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
+
+            Player player;
+            player.name = QString::fromStdString(parsed[LUT["Name"]]);
+            player.team = QString::fromStdString(parsed[LUT["Team"]]);
+            player.pitching.IP = boost::lexical_cast<decltype(player.pitching.IP)>(parsed[LUT["IP"]]);
+            player.pitching.ERA = boost::lexical_cast<decltype(player.pitching.ERA)>(parsed[LUT["ERA"]]);
+            player.pitching.WHIP = boost::lexical_cast<decltype(player.pitching.WHIP)>(parsed[LUT["WHIP"]]);
+            player.pitching.W = boost::lexical_cast<decltype(player.pitching.W)>(parsed[LUT["W"]]);
+            player.pitching.SO = boost::lexical_cast<decltype(player.pitching.SO)>(parsed[LUT["SO"]]);
+            player.pitching.SV = boost::lexical_cast<decltype(player.pitching.SV)>(parsed[LUT["SV"]]);
+
+            if (player.pitching.IP < 5) {
+                continue;
+            }
+
+            // Lookup appearances 
+            const auto& appearances = playerApperances.Lookup(player.name.toStdString());
+            if (float(appearances.G) * 0.9f < float(appearances.GS)) {
+                player.eligiblePositions |= int32_t(Player::Starter);
+            } else {
+                player.eligiblePositions|= int32_t(Player::Relief);
+            }
+
+
+            // 
+            player.catergory = Player::Pitcher;
+                
+            m_vecPlayers.emplace_back(player);
+
+        } catch (std::runtime_error& e) {
+
+            std::cerr << "[Pitcher] " << e.what() << std::endl;
+
+        } catch (...) {
+
+            // Try next if something went wrong
+            continue;
+        }
+    }
+
+    // Calculated zScores
+    GET_ZSCORE(m_vecPlayers, pitching.SO,   pitching.zSO);
+    GET_ZSCORE(m_vecPlayers, pitching.W,    pitching.zW);
+    GET_ZSCORE(m_vecPlayers, pitching.SV,   pitching.zSV);
+    GET_ZSCORE(m_vecPlayers, pitching.ERA,  pitching.zERA);
+    GET_ZSCORE(m_vecPlayers, pitching.WHIP, pitching.zWHIP);
+
+    // Calculated weighted zScores
+    for (Player& player : m_vecPlayers) {
+        player.pitching.wERA = player.pitching.IP * player.pitching.zERA;
+        player.pitching.wWHIP = player.pitching.IP * player.pitching.zWHIP;
+    }
+    GET_ZSCORE(m_vecPlayers, pitching.wERA,  pitching.zERA);
+    GET_ZSCORE(m_vecPlayers, pitching.wWHIP, pitching.zWHIP);
+
+    // Invert ERA and WHIP... lower is better
+    for (Player& player : m_vecPlayers) {
+        player.pitching.zERA =  -player.pitching.zERA;
+        player.pitching.zWHIP = -player.pitching.zWHIP;
+    }
+
+    // Sum zscore
+    for (Player& player : m_vecPlayers) {
+        player.zScore = (player.pitching.zSO + player.pitching.zW + player.pitching.zSV + player.pitching.zERA + player.pitching.zWHIP);
+    }
+
+    // Re-rank based on z-score
+    std::sort(m_vecPlayers.begin(), m_vecPlayers.end(), [](const auto& lhs, const auto& rhs) {
+        return lhs.zScore > rhs.zScore;
+    });
+
+    // Get the "replacement player"
+    auto zReplacement = m_vecPlayers[TOTAL_PITCHERS].zScore;
+
+    // Scale all players based off the replacement player
+    float sumPositiveZScores = 0;
+    std::for_each(std::begin(m_vecPlayers), std::end(m_vecPlayers), [&](Player& pitcher) {
+        pitcher.zScore -= zReplacement;
+        if (pitcher.zScore > 0) {
+            sumPositiveZScores += pitcher.zScore;
+        }
+    });
+
+    // Apply cost ratio
+    static const float costPerZ = float(TOTAL_PITCHER_MONEY) / sumPositiveZScores;
+    std::for_each(std::begin(m_vecPlayers), std::end(m_vecPlayers), [&](Player& pitcher) {
+        pitcher.cost = pitcher.zScore * costPerZ;
     });
 }
 

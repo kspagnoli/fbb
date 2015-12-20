@@ -79,9 +79,10 @@ public:
         });
 
         // Hitter table
-        PlayerTableModel* hitterTableModel = new PlayerTableModel("2015_hitters.csv", appearances, this);
+        PlayerTableModel* playerTableModel = new PlayerTableModel(this);
+        playerTableModel->LoadHittingProjections("2015_hitters.csv", appearances);
         PlayerSortFilterProxyModel* hitterSortFilterProxyModel = new PlayerSortFilterProxyModel(Player::Hitter);
-        hitterSortFilterProxyModel->setSourceModel(hitterTableModel);
+        hitterSortFilterProxyModel->setSourceModel(playerTableModel);
         hitterSortFilterProxyModel->setSortRole(PlayerTableModel::RawDataRole);
         QTableView* hitterTableView = MakeTableView(hitterSortFilterProxyModel, 0);
         hitterTableView->setItemDelegateForColumn(PlayerTableModel::COLUMN_DRAFT_BUTTON, draftDelegate);
@@ -200,14 +201,14 @@ public:
 
         // Completion Widget
         QCompleter* completer = new QCompleter(this);
-        completer->setModel(hitterTableModel);
+        completer->setModel(playerTableModel);
         completer->setCompletionColumn(PlayerTableModel::COLUMN_NAME);
         completer->setFilterMode(Qt::MatchContains);
 
         // Select the target 
         connect(completer, static_cast<void (QCompleter::*)(const QModelIndex&)>(&QCompleter::activated), [=](const QModelIndex& index) {
             int key = completer->completionModel()->index(index.row(), 0).data().toInt();
-            QModelIndex sourceIdx = hitterTableModel->index(key-1, 0);
+            QModelIndex sourceIdx = playerTableModel->index(key-1, 0);
             auto row = hitterSortFilterProxyModel->mapFromSource(sourceIdx).row();
             hitterTableView->selectRow(row);
         });
@@ -260,7 +261,7 @@ public:
 
         // Owner view
         OwnerSortFilterProxyModel* test = new OwnerSortFilterProxyModel(1);
-        test->setSourceModel(hitterTableModel);
+        test->setSourceModel(playerTableModel);
         QTableView* testView = MakeTableView(test, 0);
         testView->setFixedHeight(200);
         vBoxLayout->addWidget(testView);
