@@ -46,14 +46,8 @@ static QString GetOwnerName(uint32_t ownerId)
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
 //------------------------------------------------------------------------------
-static QString PositionToString(const Player::PositionMask& positions)
+QStringList PositionToStringList(const Player::PositionMask& positions)
 {
-    // Quick return for unknown
-    if (positions == uint32_t(Player::None)) {
-        return "--";
-    }
-
-    // Build up list
     QStringList vecPos;
     if (positions & Player::Catcher) { vecPos.push_back("C"); }
     if (positions & Player::First) { vecPos.push_back("1B"); }
@@ -64,7 +58,21 @@ static QString PositionToString(const Player::PositionMask& positions)
     if (positions & Player::DH) { vecPos.push_back("DH"); }
     if (positions & Player::Starter) { vecPos.push_back("SP"); }
     if (positions & Player::Relief) { vecPos.push_back("RP"); }
-    return vecPos.join(", ");
+    return vecPos;
+}
+
+//------------------------------------------------------------------------------
+// PositionToString (static helper)
+//------------------------------------------------------------------------------
+QString PositionToString(const Player::PositionMask& positions)
+{
+    // Quick return for unknown
+    if (positions == uint32_t(Player::None)) {
+        return "--";
+    }
+
+    // Build up list
+    return PositionToStringList(positions).join(", ");
 }
 
 //------------------------------------------------------------------------------
@@ -406,11 +414,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
                 return player.paid != 0 ? QString("$%1").arg(player.paid) : QString("--");
             }
         case COLUMN_DRAFT_POSITION:
-            if (role == RawDataRole) {
-                return player.draftPosition;
-            } else {
-                return PositionToString(player.draftPosition);
-            }
+            return player.draftPosition;
         case COLUMN_NAME:
             return player.name;
         case COLUMN_TEAM:
@@ -634,6 +638,9 @@ bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, 
         return true;
     case COLUMN_OWNER:
         player.ownerId = value.toInt();
+        return true;
+    case COLUMN_DRAFT_POSITION:
+        player.draftPosition = value.toString();
         return true;
     default:
         return false;

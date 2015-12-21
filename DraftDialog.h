@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDialog>
+#include <QString>
 
 class QAbstractItemModel;
 class QModelIndex;
@@ -13,7 +14,7 @@ public:
     {
         uint32_t ownerId = 0;
         uint32_t cost = 0;
-        uint32_t position = 0;
+        QString position = 0;
     };
 
     DraftDialog(QAbstractItemModel* model, const QModelIndex& index);

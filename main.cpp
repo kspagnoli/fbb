@@ -73,6 +73,11 @@ public:
             uint32_t paidColumn = PlayerTableModel::COLUMN_PAID;
             QModelIndex paidIndex = model->index(row, paidColumn);
             model->setData(paidIndex, results.cost);
+
+            // Update position 
+            uint32_t draftPositionColumn = PlayerTableModel::COLUMN_DRAFT_POSITION;
+            QModelIndex draftPositionIndex = model->index(row, draftPositionColumn);
+            model->setData(draftPositionIndex, results.position);
         });
 
         // Player table model

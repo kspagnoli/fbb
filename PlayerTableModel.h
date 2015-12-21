@@ -6,6 +6,11 @@
 
 class PlayerApperances;
 
+// Helpers
+QStringList PositionToStringList(const Player::PositionMask& positions);
+QString PositionToString(const Player::PositionMask& positions);
+Player::PositionMask StringToPosition(const QString& positions);
+
 class PlayerTableModel : public QAbstractTableModel
 {
 

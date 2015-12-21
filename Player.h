@@ -60,7 +60,7 @@ struct Player
     // Fantasy
     int32_t ownerId = 0;
     float paid = 0;
-    PositionMask draftPosition = Position::None;
+    QString draftPosition;
 
     // Cost estimate
     float zScore = 0;

@@ -2,6 +2,7 @@
 #include "Player.h"
 
 #include <QApplication>
+#include <QSortFilterProxyModel>
 
 DraftDelegate::DraftDelegate(QWidget* parent)
     : QAbstractItemDelegate(parent)
@@ -41,7 +42,13 @@ bool DraftDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const 
     // Otherwise create a draft dialog
     if (event->type() == QEvent::MouseButtonRelease) {
 
-        DraftDialog* draftDialog = new DraftDialog(model, index);
+        // This was probably from a proxy model
+        QSortFilterProxyModel* proxyModel = dynamic_cast<QSortFilterProxyModel*>(model);
+        QAbstractItemModel* srcModel = proxyModel ? proxyModel->sourceModel() : model;
+        QModelIndex srcIndex = proxyModel ? proxyModel->mapToSource(index) : index;
+
+        // Popup
+        DraftDialog* draftDialog = new DraftDialog(srcModel, srcIndex);
         draftDialog->show();
         draftDialog->raise();
         draftDialog->activateWindow();
@@ -49,7 +56,7 @@ bool DraftDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const 
         // On successful draft, signal results
         connect(draftDialog, &QDialog::accepted, [=]() -> void {
             const DraftDialog::Results& results = draftDialog->GetDraftResults();
-            emit Drafted(results, index, model);
+            emit Drafted(results, srcIndex, srcModel);
         });
 
         return true;

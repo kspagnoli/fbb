@@ -10,6 +10,7 @@
 #include <QModelIndex>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QSortFilterProxyModel>
 
 enum
 {
@@ -46,42 +47,51 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
     QGridLayout* infoGridLayout = new QGridLayout;
 
     // Player name
-    QModelIndex playerNameIndex = model->index(index.row(), PlayerTableModel::COLUMN_NAME);
-    QString playerName = model->data(playerNameIndex).toString();
-    infoGridLayout->addWidget(new QLabel("Player Name:"), PlayerNameRow, LabelColumn);
-    infoGridLayout->addWidget(new QLabel(playerName), PlayerNameRow, ItemColumn);
+    {
+        QModelIndex playerNameIndex = model->index(index.row(), PlayerTableModel::COLUMN_NAME);
+        QString playerName = model->data(playerNameIndex).toString();
+        infoGridLayout->addWidget(new QLabel("Player Name:"), PlayerNameRow, LabelColumn);
+        infoGridLayout->addWidget(new QLabel(playerName), PlayerNameRow, ItemColumn);
+    }
 
     // Owner combo box
-    QComboBox* ownerComboBox = new QComboBox;
-    QStringList list ={ "Select...", "Team A", "Team B" };
-    ownerComboBox->addItems(list);
-    infoGridLayout->addWidget(new QLabel("Owner:"), OwnerRow, LabelColumn);
-    infoGridLayout->addWidget(ownerComboBox, OwnerRow, ItemColumn);
-    connect(ownerComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, [=](int index) {
-        m_draftResults.ownerId = index;
-        draftButton->setDisabled(!m_draftResults.cost || !m_draftResults.ownerId);
-    });
+    {
+        QComboBox* ownerComboBox = new QComboBox;
+        QStringList list ={ "Select...", "Team A", "Team B" };
+        ownerComboBox->addItems(list);
+        infoGridLayout->addWidget(new QLabel("Owner:"), OwnerRow, LabelColumn);
+        infoGridLayout->addWidget(ownerComboBox, OwnerRow, ItemColumn);
+        connect(ownerComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, [=](int index) {
+            m_draftResults.ownerId = index;
+            draftButton->setDisabled(!m_draftResults.cost || !m_draftResults.ownerId);
+        });
+    }
 
     // Cost line edit
-    const uint32_t MAX_BID = 250;
-    QLineEdit* costLineEdit = new QLineEdit;
-    costLineEdit->setValidator(new QIntValidator(0, MAX_BID, this));
-    infoGridLayout->addWidget(new QLabel("Cost:"), CostRow, LabelColumn);
-    infoGridLayout->addWidget(costLineEdit, CostRow, ItemColumn);
-    connect(costLineEdit, &QLineEdit::textEdited, this, [=](const QString& text) {
-        m_draftResults.cost = text.toInt();
-        draftButton->setDisabled(!m_draftResults.cost || !m_draftResults.ownerId);
-    });
+    {
+        const uint32_t MAX_BID = 250;
+        QLineEdit* costLineEdit = new QLineEdit;
+        costLineEdit->setValidator(new QIntValidator(0, MAX_BID, this));
+        infoGridLayout->addWidget(new QLabel("Cost:"), CostRow, LabelColumn);
+        infoGridLayout->addWidget(costLineEdit, CostRow, ItemColumn);
+        connect(costLineEdit, &QLineEdit::textEdited, this, [=](const QString& text) {
+            m_draftResults.cost = text.toInt();
+            draftButton->setDisabled(!m_draftResults.cost || !m_draftResults.ownerId);
+        });
+    }
 
-    // Owner combo box
-    QComboBox* positionComboBox = new QComboBox;
-    positionComboBox->addItems(QStringList{"C", "1B"});
-    infoGridLayout->addWidget(new QLabel("Position:"), PositionRow, LabelColumn);
-    infoGridLayout->addWidget(positionComboBox, PositionRow, ItemColumn);
-    connect(ownerComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, [=](int index) {
-        // m_draftResults.ownerId = index;
-        // draftButton->setDisabled(!m_draftResults.cost || !m_draftResults.ownerId);
-    });
+    // Position combo box
+    {
+        QComboBox* positionComboBox = new QComboBox;
+        QModelIndex playerPositionsIndex = model->index(index.row(), PlayerTableModel::COLUMN_POSITION);
+        uint32_t playerPositions = model->data(playerPositionsIndex, PlayerTableModel::RawDataRole).toUInt();
+        positionComboBox->addItems(PositionToStringList(playerPositions));
+        infoGridLayout->addWidget(new QLabel("Position:"), PositionRow, LabelColumn);
+        infoGridLayout->addWidget(positionComboBox, PositionRow, ItemColumn);
+        connect(positionComboBox, static_cast<void (QComboBox::*)(const QString&)>(&QComboBox::activated), this, [=](const QString& position) {
+            m_draftResults.position = position;
+        });
+    }
 
     // Main layout
     QVBoxLayout* mainLayout = new QVBoxLayout;
