@@ -31,6 +31,25 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
     case PlayerTableModel::COLUMN_CATERGORY:
     case PlayerTableModel::COLUMN_DRAFT_POSITION:
         return false;
+
+    // Hitting
+    case PlayerTableModel::COLUMN_AB:
+    case PlayerTableModel::COLUMN_AVG:
+    case PlayerTableModel::COLUMN_HR:
+    case PlayerTableModel::COLUMN_R:
+    case PlayerTableModel::COLUMN_RBI:
+    case PlayerTableModel::COLUMN_SB:
+        return m_catergory == Player::Hitter;
+
+    // Pitching
+    case PlayerTableModel::COLUMN_IP:
+    case PlayerTableModel::COLUMN_SO:
+    case PlayerTableModel::COLUMN_ERA:
+    case PlayerTableModel::COLUMN_WHIP:
+    case PlayerTableModel::COLUMN_W:
+    case PlayerTableModel::COLUMN_SV:
+        return m_catergory == Player::Pitcher;
+
     default:
         return true;
     }
@@ -105,7 +124,15 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
             return true;
         }
 
-        return true;
+        if (m_acceptSP && (pos & Player::Starter)) {
+            return true;
+        }
+
+        if (m_acceptRP && (pos & Player::Relief)) {
+            return true;
+        }
+
+        return false;
     };
 
     return AcceptCatergoty() && AcceptTeam() && AcceptPosition();

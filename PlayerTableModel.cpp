@@ -62,6 +62,8 @@ static QString PositionToString(const Player::PositionMask& positions)
     if (positions & Player::Third) { vecPos.push_back("3B"); }
     if (positions & Player::Outfield) { vecPos.push_back("OF"); }
     if (positions & Player::DH) { vecPos.push_back("DH"); }
+    if (positions & Player::Starter) { vecPos.push_back("SP"); }
+    if (positions & Player::Relief) { vecPos.push_back("RP"); }
     return vecPos.join(", ");
 }
 
@@ -139,10 +141,6 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 
             // Skip players with little-to-no AB
             if (player.hitting.AB < 10) {
-                continue;
-            }
-
-            if (LookupTeamGroup(player.team.toStdString()).leauge != Leauge::NL) {
                 continue;
             }
 
