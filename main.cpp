@@ -108,17 +108,26 @@ public:
         // layout
         QVBoxLayout* vBoxLayout = new QVBoxLayout();
 
-        enum class Tabs
-        {
-            Hitters,
-            Pitchers,
-        };
-
         // hitter/pitcher tab View
-        QTabWidget* tabs = new QTabWidget(this);
-        tabs->insertTab(int(Tabs::Hitters), hitterTableView, "Hitters");
-        tabs->insertTab(int(Tabs::Pitchers), pitcherTableView, "Pitchers");
-        vBoxLayout->addWidget(tabs);
+        enum Tabs { Hitters, Pitchers, Unknown };
+        QTabWidget* hitterPitcherTabs = new QTabWidget(this);
+        hitterPitcherTabs->insertTab(Tabs::Hitters, hitterTableView, "Hitters");
+        hitterPitcherTabs->insertTab(Tabs::Pitchers, pitcherTableView, "Pitchers");
+        vBoxLayout->addWidget(hitterPitcherTabs);
+
+        // Tab lookup helper
+        auto CaterogyToTab = [](uint32_t catergory) 
+        {
+            switch (catergory)
+            {
+            case Player::Hitter:
+                return Tabs::Hitters;
+            case Player::Pitcher:
+                return Tabs::Pitchers;
+            default:
+                return Tabs::Unknown;
+            }
+        };
 
         // NL filter action
         QAction* filterNL = new QAction(this);
@@ -212,13 +221,26 @@ public:
         completer->setModel(playerTableModel);
         completer->setCompletionColumn(PlayerTableModel::COLUMN_NAME);
         completer->setFilterMode(Qt::MatchContains);
+        completer->setCaseSensitivity(Qt::CaseInsensitive);
 
         // Select the target 
         connect(completer, static_cast<void (QCompleter::*)(const QModelIndex&)>(&QCompleter::activated), [=](const QModelIndex& index) {
             int key = completer->completionModel()->index(index.row(), 0).data().toInt();
             QModelIndex sourceIdx = playerTableModel->index(key-1, 0);
-            auto row = hitterSortFilterProxyModel->mapFromSource(sourceIdx).row();
-            hitterTableView->selectRow(row);
+
+            auto catergoryIndex = playerTableModel->index(sourceIdx.row(), PlayerTableModel::COLUMN_CATERGORY);
+            auto catergory = playerTableModel->data(catergoryIndex, PlayerTableModel::RawDataRole).toUInt();
+
+            if (catergory == Player::Catergory::Hitter) {
+                auto row = hitterSortFilterProxyModel->mapFromSource(sourceIdx).row();
+                hitterTableView->selectRow(row);
+            } 
+            
+            if (catergory == Player::Catergory::Pitcher) {
+                auto row = pitcherSortFilterProxyModel->mapFromSource(sourceIdx).row();
+                pitcherTableView->selectRow(row);
+                hitterPitcherTabs->setCurrentIndex(CaterogyToTab(catergory));
+            }
         });
 
         // Search widget
@@ -259,13 +281,13 @@ public:
         };
 
         // Connect tab filters
-        connect(tabs, &QTabWidget::currentChanged, this, [=](int index)
+        connect(hitterPitcherTabs, &QTabWidget::currentChanged, this, [=](int index)
         {
             ToggleFilterGroups(index);
         });
 
         // Set default filter group
-        ToggleFilterGroups(tabs->currentIndex());
+        ToggleFilterGroups(hitterPitcherTabs->currentIndex());
 
         // Owner view
         OwnerSortFilterProxyModel* test = new OwnerSortFilterProxyModel(1);
