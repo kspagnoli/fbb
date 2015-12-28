@@ -144,7 +144,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
 void PlayerSortFilterProxyModel::OnFilterNL(bool checked)
 {
     m_acceptNL = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -153,7 +153,7 @@ void PlayerSortFilterProxyModel::OnFilterNL(bool checked)
 void PlayerSortFilterProxyModel::OnFilterAL(bool checked)
 {
     m_acceptAL = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -162,7 +162,7 @@ void PlayerSortFilterProxyModel::OnFilterAL(bool checked)
 void PlayerSortFilterProxyModel::OnFilterFA(bool checked)
 {
     m_acceptFA = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -171,7 +171,7 @@ void PlayerSortFilterProxyModel::OnFilterFA(bool checked)
 void PlayerSortFilterProxyModel::OnFilterC(bool checked)
 {
     m_acceptC = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -180,7 +180,7 @@ void PlayerSortFilterProxyModel::OnFilterC(bool checked)
 void PlayerSortFilterProxyModel::OnFilter1B(bool checked)
 {
     m_accept1B = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -189,7 +189,7 @@ void PlayerSortFilterProxyModel::OnFilter1B(bool checked)
 void PlayerSortFilterProxyModel::OnFilter2B(bool checked)
 {
     m_accept2B = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -198,7 +198,7 @@ void PlayerSortFilterProxyModel::OnFilter2B(bool checked)
 void PlayerSortFilterProxyModel::OnFilterSS(bool checked)
 {
     m_acceptSS = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -207,7 +207,7 @@ void PlayerSortFilterProxyModel::OnFilterSS(bool checked)
 void PlayerSortFilterProxyModel::OnFilter3B(bool checked)
 {
     m_accept3B = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -216,7 +216,7 @@ void PlayerSortFilterProxyModel::OnFilter3B(bool checked)
 void PlayerSortFilterProxyModel::OnFilterOF(bool checked)
 {
     m_acceptOF = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -225,7 +225,7 @@ void PlayerSortFilterProxyModel::OnFilterOF(bool checked)
 void PlayerSortFilterProxyModel::OnFilterDH(bool checked)
 {
     m_acceptDH = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -234,7 +234,7 @@ void PlayerSortFilterProxyModel::OnFilterDH(bool checked)
 void PlayerSortFilterProxyModel::OnFilterSP(bool checked)
 {
     m_acceptSP = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------
@@ -243,7 +243,7 @@ void PlayerSortFilterProxyModel::OnFilterSP(bool checked)
 void PlayerSortFilterProxyModel::OnFilterRP(bool checked)
 {
     m_acceptRP = checked;
-    QSortFilterProxyModel::filterChanged();
+    QSortFilterProxyModel::invalidate();
 }
 
 

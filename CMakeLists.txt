@@ -15,6 +15,7 @@ include_directories(
 
 # Find the QtWidgets library
 find_package(Qt5Widgets REQUIRED)
+find_package(Qt5Charts REQUIRED)
 
 # Source files
 set(SOURCE
@@ -26,6 +27,7 @@ set(SOURCE
     Owner.cpp
     PitchingStats.cpp
     PlayerAppearances.cpp
+    PlayerScatterPlotChart.cpp
     SelectedPlayer.cpp
     main.cpp)
 
@@ -34,10 +36,7 @@ file(GLOB HEADERS *.h)
 # Tell CMake to create the helloworld executable
 add_executable(helloworld WIN32 ${SOURCE} ${HEADERS})
 
-foreach(plugin ${Qt5GUI_PLUGINS})
-  get_target_property(_loc ${plugin} LOCATION)
-  message("Plugin ${plugin} is at location ${_loc}")
-endforeach()
-
 # Use the Widgets module from Qt 5.
-target_link_libraries(helloworld Qt5::Widgets)
+target_link_libraries( helloworld Qt5::Widgets)
+target_link_libraries( helloworld Qt5::Charts)
+

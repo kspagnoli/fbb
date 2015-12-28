@@ -26,6 +26,7 @@
 #include <QDataStream>
 #include <QBuffer>
 #include <QSplitterHandle>
+#include <QToolTip>
 
 #include <memory>
 #include <string>
@@ -39,6 +40,7 @@
 #include "PlayerAppearances.h"
 #include "DraftDelegate.h"
 #include "OwnerSortFilterProxyModel.h"
+#include "PlayerScatterPlotChart.h"
 
 //
 class MainWindow : public QMainWindow
@@ -190,6 +192,8 @@ public:
         QActionGroup* hittingFilters = new QActionGroup(this);
         hittingFilters->setExclusive(false);
 
+
+
         // Filter helper
         auto MakeHitterFilter = [=](QString text, QString toolTip, const auto& onFilterFn) -> QAction*
         {
@@ -200,6 +204,7 @@ public:
             action->setCheckable(true);
             action->toggle();
             hittingFilters->addAction(action);
+
             return action;
         };
 
@@ -281,8 +286,7 @@ public:
         };
 
         // Connect tab filters
-        connect(hitterPitcherTabs, &QTabWidget::currentChanged, this, [=](int index)
-        {
+        connect(hitterPitcherTabs, &QTabWidget::currentChanged, this, [=](int index) {
             ToggleFilterGroups(index);
         });
 
@@ -298,6 +302,13 @@ public:
         connect(draftDelegate, &DraftDelegate::Drafted, [=](const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model) {
             test->invalidate();
         });
+
+        // Player scatter plot
+        PlayerScatterPlotChart* chartView = new PlayerScatterPlotChart(playerTableModel, hitterSortFilterProxyModel, this);
+        chartView->setFixedHeight(400);
+        connect(hitterSortFilterProxyModel, &QSortFilterProxyModel::layoutChanged, chartView, &PlayerScatterPlotChart::Update);
+        connect(playerTableModel, &QAbstractItemModel::dataChanged, chartView, &PlayerScatterPlotChart::Update);
+        vBoxLayout->addWidget(chartView);
 
         // set as main window
         QWidget* central = new QWidget();

@@ -90,6 +90,13 @@ struct Player
         // weighted zScores
         float wAVG = 0;
 
+        // SPG
+        float spgAVG = 0;
+        float spgR = 0;
+        float spgHR = 0;
+        float spgRBI = 0;
+        float spgSB = 0;
+
     } hitting;
 
     struct PitchingStats
