@@ -148,7 +148,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
             player.hitting.AVG = float(player.hitting.H) / float(player.hitting.AB);
 
             // Skip players with little-to-no AB
-            if (player.hitting.AB < 10) {
+            if (player.hitting.AB < 100) {
                 continue;
             }
 
@@ -199,6 +199,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     //SBSGP  =[@SB] / 9.4
     //AVGSGP =(([@H] + 1768) / ([@AB] + 6617) - 0.267) / 0.0024
 
+    
     for (Player& player : vecHitters) {
         player.hitting.zR   = player.hitting.R / 24.6f;
         player.hitting.zHR  = player.hitting.HR / 10.4f;
@@ -206,6 +207,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
         player.hitting.zSB  = player.hitting.SB / 9.4f;
         player.hitting.zAVG = ((player.hitting.H + 1768.0f) / (player.hitting.AB + 6617.0f) - 0.267f) / 0.0024f;
     }
+    
 
     // Sum zScores
     for (Player& player : vecHitters) {
@@ -266,16 +268,16 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
     std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& player) {
-        player.zScore -= zReplacement;
-        if (player.zScore > 0) {
-            sumPositiveZScores += player.zScore;
+        auto temp = player.zScore - zReplacement;
+        if (temp > 0) {
+            sumPositiveZScores += temp;
         }
     });
 
     // Apply cost ratio
     static const float costPerZ = float(TOTAL_HITTER_MONEY) / sumPositiveZScores;
     std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& player) {
-        player.cost = player.zScore * costPerZ;
+        player.cost = (player.zScore - zReplacement) * costPerZ;
     });
 
     // Add to main storage
@@ -289,7 +291,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 //------------------------------------------------------------------------------
 void PlayerTableModel::LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances)
 {
-    // Openg file
+    // Open file
     std::fstream pitchers(filename);
     std::string row;
     

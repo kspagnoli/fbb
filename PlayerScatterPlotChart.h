@@ -1,10 +1,6 @@
 #pragma once
 
-#include <QtCharts/QChart>
 #include <QtCharts/QChartView>
-#include <QtCharts/QScatterSeries>
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QLegendMarker>
 
 #include <QAbstractItemModel>
 #include <QSortFilterProxyModel>
@@ -12,6 +8,8 @@
 #include "PlayerTableModel.h"
 
 QT_CHARTS_USE_NAMESPACE
+
+class Callout;
 
 class PlayerScatterPlotChart : public QChartView
 {
@@ -26,7 +24,11 @@ public:
 
 private:
 
-    QAbstractItemModel* m_model;
-    QSortFilterProxyModel* m_proxyModel;
+    void HoverTooltip(QPointF point, bool state);
+    QString CurrentSortName() const;
+
+    QAbstractItemModel* m_model = nullptr;
+    QSortFilterProxyModel* m_proxyModel = nullptr;
+    Callout* m_tooltip = nullptr;
 };
 
