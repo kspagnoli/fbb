@@ -10,17 +10,16 @@
 
 ////////////////////////////////////////////////////////////////////////////
 
-
 #include <QtGui/QPainter>
 #include <QtGui/QFontMetrics>
 #include <QtWidgets/QGraphicsSceneMouseEvent>
 #include <QtGui/QMouseEvent>
 
-class Callout : public QGraphicsItem
+class PlayerChartCallout : public QGraphicsItem
 {
 public:
 
-    Callout(QGraphicsItem* parent = 0)
+    PlayerChartCallout(QGraphicsItem* parent = 0)
         : QGraphicsItem(parent)
     {
     }
@@ -57,11 +56,12 @@ public:
         Q_UNUSED(widget);
 
         QPainterPath path;
-        path.addRoundedRect(m_rect, 5, 5);
+        path.addRect(m_rect);
 
         QPointF anchor = mapFromParent(m_anchor);
 
         if (!m_rect.contains(anchor)) {
+
             QPointF point1, point2;
 
             // establish the position of the anchor point in relation to m_rect
@@ -97,6 +97,7 @@ public:
             path = path.simplified();
         }
 
+        painter->setPen(QColor(QRgb(0xffffff)));
         painter->setBrush(QColor(QRgb(0x2a82da)));
         painter->drawPath(path);
         painter->drawText(m_textRect, m_text);
@@ -104,12 +105,7 @@ public:
 
 protected:
 
-    void mousePressEvent(QGraphicsSceneMouseEvent *event)
-    {
-        event->setAccepted(true);
-    }
-
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     {
         if (event->buttons() & Qt::LeftButton) {
             setPos(mapToParent(event->pos() - event->buttonDownPos(Qt::LeftButton)));
@@ -132,18 +128,38 @@ private:
 PlayerScatterPlotChart::PlayerScatterPlotChart(QAbstractItemModel* model, QSortFilterProxyModel* proxyModel, QWidget* parent)
     : m_model(model)
     , m_proxyModel(proxyModel)
+    , m_yAxis(new QValueAxis(this))
+    , m_xAxis(new QValueAxis(this))
+    , m_undraftedSeries(new QScatterSeries(this))
+    , m_draftedSeries(new QScatterSeries(this))
 {
+    // Create the main chart
     QChart* myChart = new QChart();
     setChart(myChart);
 
+    // Chart configuration
     chart()->setDropShadowEnabled(false);
-    chart()->setAnimationOptions(QChart::AllAnimations);
     chart()->legend()->setAlignment(Qt::AlignBottom);
     chart()->setBackgroundRoundness(0.f);
+    chart()->setMargins(QMargins(5, 10, 10, 5));
 
-    setContentsMargins(0, 0, 0, 0);
+    // View configuration
+    setRenderHint(QPainter::Antialiasing);
     setMouseTracking(true);
 
+    // Drafted player series
+    m_undraftedSeries->setName("Undrafted");
+    m_undraftedSeries->setMarkerSize(MARKER_SIZE);
+
+    // Undrafted player series
+    m_draftedSeries->setName("Drafted");
+    m_draftedSeries->setMarkerSize(MARKER_SIZE);
+
+    // Setup hovering
+    connect(m_undraftedSeries, &QScatterSeries::hovered, this, &PlayerScatterPlotChart::HoverTooltip);
+    connect(m_draftedSeries, &QScatterSeries::hovered, this, &PlayerScatterPlotChart::HoverTooltip);
+
+    // Set initial values
     Update();
 }
 
@@ -155,25 +171,31 @@ void PlayerScatterPlotChart::resizeEvent(QResizeEvent* event)
 
 void PlayerScatterPlotChart::Update()
 {
-    const int MARKER_SIZE = 7;
-
-    chart()->removeAllSeries();
-
-    QScatterSeries* undraftedSeries = new QScatterSeries();
-    undraftedSeries->setName("Undrafted");
-    undraftedSeries->setMarkerSize(MARKER_SIZE);
-
-    QScatterSeries* draftedSeries = new QScatterSeries();
-    draftedSeries->setName("Drafted");
-    draftedSeries->setMarkerSize(MARKER_SIZE);
+    // Reset the series values
+    m_undraftedSeries->clear();
+    m_draftedSeries->clear();
 
     // Scale to widget width
-    int maxSize = width() / (MARKER_SIZE+1);
+    int maxSize = chart()->plotArea().width() / (MARKER_SIZE+1);
+    
+    // Calculate entries to show
+    int rowCount = m_proxyModel->rowCount();
+    auto entriesToShow = std::min(rowCount, maxSize);
+
+    // Calculate number of tick marks to show
+    auto xTicks = chart()->plotArea().width() / ((MARKER_SIZE + 1) * 4);
+    auto yTicks = chart()->plotArea().height() / ((MARKER_SIZE + 1) * 4);
+
+    // Value range
+    float minValue = std::numeric_limits<float>::max();
+    float maxValue = std::numeric_limits<float>::min();
+
+    // Value format
+    QString valueFormat = m_proxyModel->headerData(m_proxyModel->sortColumn(), Qt::Horizontal, Qt::ToolTipRole).toString();
 
     [&]
     {
-        int rowCount = m_proxyModel->rowCount();
-        for (auto row = 0; row < std::min(rowCount, maxSize); row++) {
+        for (auto row = 0; row < entriesToShow; row++) {
 
             auto col = m_proxyModel->sortColumn();
             auto proxyIndex = m_proxyModel->index(row, col);
@@ -184,28 +206,47 @@ void PlayerScatterPlotChart::Update()
             auto ownerId = m_model->data(ownerIndex, PlayerTableModel::RawDataRole).toInt();
 
             if (ownerId == 0) {
-                undraftedSeries->append(row + 1, value);
+                m_undraftedSeries->append(row+1, value);
             } else {
-                draftedSeries->append(row + 1, value);
+                m_draftedSeries->append(row+1, value);
             }
+
+            minValue = std::min(minValue, value);
+            maxValue = std::max(maxValue, value);
         }
     }();
 
-    setRenderHint(QPainter::Antialiasing);
-    chart()->addSeries(undraftedSeries);
-    chart()->addSeries(draftedSeries);
-    chart()->createDefaultAxes();
+    // yRange padding
+    auto yRange = maxValue - minValue;
+    auto yRangePadding = yRange * 0.07f;
 
-    chart()->axisX()->setTitleText("Rank");
-    chart()->axisY()->setTitleText(CurrentSortName());
+    // Add to chart
+    chart()->addSeries(m_undraftedSeries);
+    chart()->addSeries(m_draftedSeries);
 
-    connect(undraftedSeries, &QScatterSeries::hovered, this, &PlayerScatterPlotChart::HoverTooltip);
+    // Configure x-axis
+    m_xAxis->setTitleText("Rank");
+    m_xAxis->setTickCount(xTicks);
+    m_xAxis->setLabelFormat("%i");
+    m_xAxis->setRange(0, entriesToShow+1);
+    m_draftedSeries->attachAxis(m_xAxis);
+    m_undraftedSeries->attachAxis(m_xAxis);
+    chart()->addAxis(m_xAxis, Qt::AlignBottom);
+
+    // Configure y-axis
+    m_yAxis->setTitleText(CurrentSortName());
+    m_yAxis->setTickCount(yTicks);
+    m_yAxis->setLabelFormat(valueFormat);
+    m_yAxis->setRange(minValue - yRangePadding, maxValue + yRangePadding);
+    m_draftedSeries->attachAxis(m_yAxis);
+    m_undraftedSeries->attachAxis(m_yAxis);
+    chart()->addAxis(m_yAxis, Qt::AlignLeft);
 }
 
 void PlayerScatterPlotChart::HoverTooltip(QPointF point, bool state)
 {
     if (m_tooltip == 0) {
-        m_tooltip = new Callout(chart());
+        m_tooltip = new PlayerChartCallout(chart());
     }
 
     if (state) {
@@ -218,7 +259,7 @@ void PlayerScatterPlotChart::HoverTooltip(QPointF point, bool state)
 
         m_tooltip->setText(QString("Player: %1\n"
                                    "%2: %3").arg(name).arg(CurrentSortName()).arg(point.y()));
-        QXYSeries *series = qobject_cast<QXYSeries *>(sender());
+        QXYSeries* series = qobject_cast<QXYSeries*>(sender());
         m_tooltip->setAnchor(chart()->mapToPosition(point, series));
         m_tooltip->setPos(chart()->mapToPosition(point, series) + QPoint(10, -50));
         m_tooltip->setZValue(11);

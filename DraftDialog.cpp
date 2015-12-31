@@ -85,12 +85,16 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
         QComboBox* positionComboBox = new QComboBox;
         QModelIndex playerPositionsIndex = model->index(index.row(), PlayerTableModel::COLUMN_POSITION);
         uint32_t playerPositions = model->data(playerPositionsIndex, PlayerTableModel::RawDataRole).toUInt();
-        positionComboBox->addItems(PositionToStringList(playerPositions));
+        QStringList positionStrings = PositionToStringList(playerPositions);
+        positionComboBox->addItems(positionStrings);
         infoGridLayout->addWidget(new QLabel("Position:"), PositionRow, LabelColumn);
         infoGridLayout->addWidget(positionComboBox, PositionRow, ItemColumn);
         connect(positionComboBox, static_cast<void (QComboBox::*)(const QString&)>(&QComboBox::activated), this, [=](const QString& position) {
             m_draftResults.position = position;
         });
+
+        // Set default position to first in the list
+        m_draftResults.position = positionStrings.first();
     }
 
     // Main layout

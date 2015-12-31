@@ -84,7 +84,30 @@ PlayerTableModel::PlayerTableModel(QObject* parent)
 }
 
 //------------------------------------------------------------------------------
-// PlayerTableModel
+// AddDummyPositions
+//------------------------------------------------------------------------------
+void PlayerTableModel::AddDummyPositions()
+{
+    // Valid positions
+    QStringList vecDraftPositions = {
+        "C", "C", "1B", "2B", "SS", "3B", "MI", "CI", "OF", "OF", "OF", "OF", "OF", "U",
+        "P", "P", "P", "P", "P", "P", "P", "P", "P", "P",
+    };
+
+    // Count the number of repeat for each dummy position
+    QMap<QString, uint16_t> dummyCount;
+
+    // Loop 'em
+    for (const QString& draftPosition : vecDraftPositions) {
+        Player player;
+        player.dummy = ++dummyCount[draftPosition];
+        player.draftPosition = draftPosition;
+        m_vecPlayers.push_back(player);
+    }
+}
+
+//------------------------------------------------------------------------------
+// LoadHittingProjections
 //------------------------------------------------------------------------------
 void PlayerTableModel::LoadHittingProjections(const std::string& filename, const PlayerApperances& playerApperances)
 {
@@ -192,13 +215,13 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     }
     GET_ZSCORE(vecHitters, vecHitters.size(), hitting.wAVG, hitting.zAVG);
 
-
-    //RSGP   =[@R] / 24.6
-    //HRSGP  =[@HR] / 10.4
-    //RBISGP =[@RBI] / 24.6
-    //SBSGP  =[@SB] / 9.4
-    //AVGSGP =(([@H] + 1768) / ([@AB] + 6617) - 0.267) / 0.0024
-
+    // Some SGP formulas...
+    //
+    // RSGP   =[@R] / 24.6
+    // HRSGP  =[@HR] / 10.4
+    // RBISGP =[@RBI] / 24.6
+    // SBSGP  =[@SB] / 9.4
+    // AVGSGP =(([@H] + 1768) / ([@AB] + 6617) - 0.267) / 0.0024
     
     for (Player& player : vecHitters) {
         player.hitting.zR   = player.hitting.R / 24.6f;
@@ -207,7 +230,6 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
         player.hitting.zSB  = player.hitting.SB / 9.4f;
         player.hitting.zAVG = ((player.hitting.H + 1768.0f) / (player.hitting.AB + 6617.0f) - 0.267f) / 0.0024f;
     }
-    
 
     // Sum zScores
     for (Player& player : vecHitters) {
@@ -287,7 +309,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 }
 
 //------------------------------------------------------------------------------
-// PlayerTableModel
+// LoadPitchingProjections
 //------------------------------------------------------------------------------
 void PlayerTableModel::LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances)
 {
@@ -542,6 +564,8 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             }
         case COLUMN_COMMENT:
             return player.comment;
+        case COLUMN_DUMMY:
+            return player.dummy;
         }
     } 
     
@@ -608,8 +632,8 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
 {
     if (orientation == Qt::Horizontal) {
 
-        if (role == Qt::DisplayRole) {
-
+        if (role == Qt::DisplayRole)
+        {
             switch (section)
             {
             case COLUMN_RANK:
@@ -660,6 +684,39 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
                 return "zScore";
             case COLUMN_COMMENT:
                 return "Comment";
+            case COLUMN_DUMMY:
+                return "Dummy";
+            }
+        }
+
+        if (role == Qt::ToolTipRole) {
+
+            switch (section)
+            {
+            case COLUMN_PAID:
+            case COLUMN_ESTIMATE:
+                return "$%d";
+
+            case COLUMN_AVG:
+            case COLUMN_ERA:
+            case COLUMN_WHIP:
+            case COLUMN_Z:
+                return "%0.3f";
+
+            case COLUMN_RANK:
+            case COLUMN_AB:
+            case COLUMN_HR:
+            case COLUMN_R:
+            case COLUMN_RBI:
+            case COLUMN_SB:
+            case COLUMN_IP:
+            case COLUMN_SO:
+            case COLUMN_W:
+            case COLUMN_SV:
+                return "%i";
+
+            default:
+                return "??";
             }
         }
     }

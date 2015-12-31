@@ -124,4 +124,7 @@ struct Player
 
     // Comment
     QString comment;
+
+    // Dummy position used for "open positions" in the owners view
+    uint32_t dummy = 0;
 };

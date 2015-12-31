@@ -50,6 +50,7 @@ public:
         COLUMN_Z,
         COLUMN_ESTIMATE,
         COLUMN_COMMENT,
+        COLUMN_DUMMY,
 
         COLUMN_COUNT,
     };
@@ -57,7 +58,10 @@ public:
     // Constructor
     PlayerTableModel(QObject* parent);
 
-    // 
+    // Load dummy positions for roster-spots-to-fill
+    void AddDummyPositions();
+
+    // Load projections
     void LoadHittingProjections(const std::string& filename, const PlayerApperances& playerApperances);
     void LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances);
 
