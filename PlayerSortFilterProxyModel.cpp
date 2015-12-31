@@ -28,6 +28,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
 {
     switch (sourceColumn)
     {
+    case PlayerTableModel::COLUMN_INDEX:
     case PlayerTableModel::COLUMN_CATERGORY:
     case PlayerTableModel::COLUMN_DRAFT_POSITION:
     case PlayerTableModel::COLUMN_DUMMY:

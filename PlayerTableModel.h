@@ -20,7 +20,7 @@ public:
     enum COLUMN
     {
         // General
-        COLUMN_RANK,
+        COLUMN_INDEX,
         COLUMN_DRAFT_BUTTON,
         COLUMN_OWNER,
         COLUMN_DRAFT_POSITION,

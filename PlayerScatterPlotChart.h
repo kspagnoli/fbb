@@ -25,6 +25,7 @@ public:
 
     virtual void resizeEvent(QResizeEvent* event) override;
 
+    void SetProxyModel(QSortFilterProxyModel* proxyModel);
     void Update();
 
 private:
@@ -32,6 +33,7 @@ private:
     static const int MARKER_SIZE = 7;
 
     void HoverTooltip(QPointF point, bool state);
+    void OnReleased(QPointF point);
     QString CurrentSortName() const;
 
     QAbstractItemModel* m_model = nullptr;

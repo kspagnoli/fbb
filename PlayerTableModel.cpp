@@ -14,7 +14,7 @@
 #include <QAbstractItemDelegate>
 
 // [XXX] make me settings
-static const size_t HITTER_RATIO = 68;
+static const size_t HITTER_RATIO = 63;
 static const size_t BUDGET = 260;
 static const size_t NUM_OWNERS = 12;
 static const size_t NUM_HITTERS_PER_OWNER = 14;
@@ -58,6 +58,8 @@ QStringList PositionToStringList(const Player::PositionMask& positions)
     if (positions & Player::DH) { vecPos.push_back("DH"); }
     if (positions & Player::Starter) { vecPos.push_back("SP"); }
     if (positions & Player::Relief) { vecPos.push_back("RP"); }
+    if (vecPos.empty()) { vecPos.push_back("??"); }
+
     return vecPos;
 }
 
@@ -330,7 +332,10 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
         { "Name",0 },
         { "Team",0 },
         { "IP",0 },
+        { "H",0 },
+        { "BB",0 },
         { "SO",0 },
+        { "ER", 0},
         { "ERA",0 },
         { "WHIP",0 },
         { "W",0 },
@@ -362,6 +367,9 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
             player.name = QString::fromStdString(parsed[LUT["Name"]]);
             player.team = QString::fromStdString(parsed[LUT["Team"]]);
             player.pitching.IP = boost::lexical_cast<decltype(player.pitching.IP)>(parsed[LUT["IP"]]);
+            player.pitching.ER = boost::lexical_cast<decltype(player.pitching.ER)>(parsed[LUT["ER"]]);
+            player.pitching.H = boost::lexical_cast<decltype(player.pitching.H)>(parsed[LUT["H"]]);
+            player.pitching.BB = boost::lexical_cast<decltype(player.pitching.BB)>(parsed[LUT["BB"]]);
             player.pitching.ERA = boost::lexical_cast<decltype(player.pitching.ERA)>(parsed[LUT["ERA"]]);
             player.pitching.WHIP = boost::lexical_cast<decltype(player.pitching.WHIP)>(parsed[LUT["WHIP"]]);
             player.pitching.W = boost::lexical_cast<decltype(player.pitching.W)>(parsed[LUT["W"]]);
@@ -416,6 +424,20 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     for (Player& player : vecPitchers) {
         player.pitching.zERA =  -player.pitching.zERA;
         player.pitching.zWHIP = -player.pitching.zWHIP;
+    }
+
+    // WSGP    =[@W] / 3.03
+    // SVSGP   =[@SV] / 9.95
+    // SOSGP   =[@SO] / 39.3
+    // ERASGP  =((475 + [@ER]) * 9 / (1192 + [@IP]) - 3.59) / -0.076
+    // WHIPSGP =((1466 + [@H] + [@BB]) / (1192 + [@IP]) - 1.23) / -0.015
+
+    for (Player& player : vecPitchers) {
+        player.pitching.zW    = player.pitching.W / 3.03;
+        player.pitching.zSV   = player.pitching.SV / 9.95;
+        player.pitching.zSO   = player.pitching.SO / 39.3;
+        player.pitching.zERA  = ((475 + player.pitching.ER) * 9 / (1192 + player.pitching.IP) - 3.59) / -0.076;
+        player.pitching.zWHIP = ((1466 + player.pitching.H + player.pitching.BB) / (1192 + player.pitching.IP) - 1.23) / -0.015;
     }
 
     // Sum zscore
@@ -479,8 +501,8 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
 
         switch (index.column())
         {
-        case COLUMN_RANK:
-            return index.row() + 1;
+        case COLUMN_INDEX:
+            return index.row();
         case COLUMN_DRAFT_BUTTON:
             return uint32_t(player.status);
         case COLUMN_OWNER:
@@ -632,11 +654,15 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
 {
     if (orientation == Qt::Horizontal) {
 
-        if (role == Qt::DisplayRole)
-        {
-            switch (section)
+        if (role == Qt::InitialSortOrderRole) {
+            return section;
+        }
+
+        if (role == Qt::DisplayRole) {
+
+            switch (section) 
             {
-            case COLUMN_RANK:
+            case COLUMN_INDEX:
                 return "#";
             case COLUMN_DRAFT_BUTTON:
                 return "Status";
@@ -703,7 +729,7 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
             case COLUMN_Z:
                 return "%0.3f";
 
-            case COLUMN_RANK:
+            case COLUMN_INDEX:
             case COLUMN_AB:
             case COLUMN_HR:
             case COLUMN_R:

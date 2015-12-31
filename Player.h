@@ -40,6 +40,7 @@ struct Player
     using CatergoryMask = uint32_t;
 
     // Player data
+    uint32_t index;
     QString name;
     QString team;                               // TODO: change to ID
     CatergoryMask catergory;
@@ -103,6 +104,9 @@ struct Player
     {
         // Stats
         float IP = 0;
+        float ER = 0;
+        uint32_t H = 0;
+        uint32_t BB = 0;
         uint32_t SO = 0;
         uint32_t W = 0;
         uint32_t SV = 0;

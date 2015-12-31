@@ -58,6 +58,11 @@ public:
         return AcceptDummy() || AcceptOwner();
     }
 
+    uint32_t GetTotalSpent() const 
+    {
+        return m_sumCost;
+    }
+
 public slots:
         
     void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
@@ -73,13 +78,16 @@ public slots:
         // Update sums
         m_sumCost += results.cost;
 
+        // Player
+
         // Invalidate filters
         invalidate();
     }
 
 private:
 
-    uint32_t m_ownerId;
+    uint32_t m_ownerId = 0;
     QMap<QString, uint32_t> m_mapPositionsDrafted;
-    uint32_t m_sumCost;
+    uint32_t m_sumCost = 0;
+
 };

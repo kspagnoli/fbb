@@ -141,7 +141,11 @@ PlayerScatterPlotChart::PlayerScatterPlotChart(QAbstractItemModel* model, QSortF
     chart()->setDropShadowEnabled(false);
     chart()->legend()->setAlignment(Qt::AlignBottom);
     chart()->setBackgroundRoundness(0.f);
+    chart()->setBackgroundVisible(true);
     chart()->setMargins(QMargins(5, 10, 10, 5));
+
+    // Style
+    setBackgroundBrush(Qt::white);
 
     // View configuration
     setRenderHint(QPainter::Antialiasing);
@@ -159,14 +163,24 @@ PlayerScatterPlotChart::PlayerScatterPlotChart(QAbstractItemModel* model, QSortF
     connect(m_undraftedSeries, &QScatterSeries::hovered, this, &PlayerScatterPlotChart::HoverTooltip);
     connect(m_draftedSeries, &QScatterSeries::hovered, this, &PlayerScatterPlotChart::HoverTooltip);
 
+    // Setup clicking
+    connect(m_undraftedSeries, &QScatterSeries::released, this, &PlayerScatterPlotChart::OnReleased);
+    connect(m_draftedSeries, &QScatterSeries::released, this, &PlayerScatterPlotChart::OnReleased);
+
     // Set initial values
     Update();
 }
 
 void PlayerScatterPlotChart::resizeEvent(QResizeEvent* event)
 {
-    Update();
     QChartView::resizeEvent(event);
+    Update();
+}
+
+void PlayerScatterPlotChart::SetProxyModel(QSortFilterProxyModel* proxyModel)
+{
+    m_proxyModel = proxyModel;
+    Update();
 }
 
 void PlayerScatterPlotChart::Update()
@@ -267,6 +281,11 @@ void PlayerScatterPlotChart::HoverTooltip(QPointF point, bool state)
     } else {
         m_tooltip->hide();
     }
+}
+
+void PlayerScatterPlotChart::OnReleased(QPointF point)
+{
+    auto proxyIndex = m_proxyModel->index(point.x() - 1, 0);
 }
 
 QString PlayerScatterPlotChart::CurrentSortName() const

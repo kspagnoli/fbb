@@ -42,6 +42,88 @@
 #include "OwnerSortFilterProxyModel.h"
 #include "PlayerScatterPlotChart.h"
 
+//class OwnerWidget 
+//{
+//public:
+//
+//    OwnerWidget(QWidget* parent)
+//        : m_model(new OwnerWidgetItemModel(parent))
+//        , m_tableView(new QTableView(parent))
+//    {
+//    }
+//
+//    QTableView* table()
+//    {
+//        return m_tableView;
+//    }
+//
+//private:
+//
+//    class OwnerWidgetItemModel : public QAbstractTableModel
+//    {
+//    public:
+//
+//        OwnerWidgetItemModel(QWidget* parent)
+//            : QAbstractTableModel(parent)
+//        {
+//        }
+//
+//        virtual int rowCount(const QModelIndex& index) const override
+//        {
+//            return 0;
+//        }
+//
+//        virtual int columnCount(const QModelIndex& index) const override
+//        {
+//            return Columns::COUNT;
+//        }
+//
+//        virtual QVariant data(const QModelIndex& index, int role) const override
+//        {
+//            return QVariant();
+//        }
+//
+//        virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const override
+//        {
+//            if (orientation == Qt::Horizontal && role == Qt::DisplayRole) {
+//
+//                switch (section)
+//                {
+//                case COLUMN_DRAFT_POSITION:
+//                    return "Pos.";
+//                case COLUMN_PAID:
+//                    return "$";
+//                case COLUMN_NAME:
+//                    return "Name";
+//                }
+//            }
+//
+//            return QVariant();
+//        }
+//
+//    private:
+//
+//        enum Columns {
+//            COLUMN_DRAFT_POSITION,
+//            COLUMN_PAID,
+//            COLUMN_NAME,
+//            COUNT,
+//        };
+//    };
+//
+//    struct OwnedPlayer
+//    {
+//        QString position;
+//        uint32_t cost;
+//        QString name;
+//    };
+//
+//    OwnedPlayer
+//
+//    OwnerWidgetItemModel* m_model;
+//    QTableView* m_tableView;
+//};
+
 //
 class MainWindow : public QMainWindow
 {
@@ -84,10 +166,9 @@ public:
 
         // Player table model
         PlayerTableModel* playerTableModel = new PlayerTableModel(this);
-        playerTableModel->AddDummyPositions();
         playerTableModel->LoadHittingProjections("2015_hitters.csv", appearances);
         playerTableModel->LoadPitchingProjections("2015_pitchers.csv", appearances);
-
+        playerTableModel->AddDummyPositions();
 
         // Hitter sort-model
         PlayerSortFilterProxyModel* hitterSortFilterProxyModel = new PlayerSortFilterProxyModel(Player::Hitter);
@@ -95,29 +176,29 @@ public:
         hitterSortFilterProxyModel->setSortRole(PlayerTableModel::RawDataRole);
 
         // Hitter table view
-        QTableView* hitterTableView = MakeTableView(hitterSortFilterProxyModel);
-        hitterTableView->setItemDelegateForColumn(PlayerTableModel::COLUMN_DRAFT_BUTTON, draftDelegate);
+        QTableView* hitterTableView = MakeTableView(hitterSortFilterProxyModel, true, PlayerTableModel::COLUMN_Z);
+        hitterTableView->setItemDelegateForColumn(FindColumn(hitterSortFilterProxyModel, PlayerTableModel::COLUMN_DRAFT_BUTTON), draftDelegate);
         hitterTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
-        // Hitter sort-model
+        // Pitcher sort-model
         PlayerSortFilterProxyModel* pitcherSortFilterProxyModel = new PlayerSortFilterProxyModel(Player::Pitcher);
         pitcherSortFilterProxyModel->setSourceModel(playerTableModel);
         pitcherSortFilterProxyModel->setSortRole(PlayerTableModel::RawDataRole);
         
-        // Hitter table view
-        QTableView* pitcherTableView = MakeTableView(pitcherSortFilterProxyModel);
-        pitcherTableView->setItemDelegateForColumn(PlayerTableModel::COLUMN_DRAFT_BUTTON, draftDelegate);
+        // Pitcher table view
+        QTableView* pitcherTableView = MakeTableView(pitcherSortFilterProxyModel, true, PlayerTableModel::COLUMN_Z);
+        pitcherTableView->setItemDelegateForColumn(FindColumn(pitcherSortFilterProxyModel, PlayerTableModel::COLUMN_DRAFT_BUTTON), draftDelegate);
         pitcherTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
-        // layout
-        QVBoxLayout* vBoxLayout = new QVBoxLayout();
+        // Top/Bottom splitter
+        QSplitter* topBottomSplitter = new QSplitter(Qt::Vertical);
 
-        // hitter/pitcher tab View
-        enum Tabs { Hitters, Pitchers, Unknown };
+        // Hitter/Pitcher tab View
+        enum PlayerTableTabs { Hitters, Pitchers, Unknown };
         QTabWidget* hitterPitcherTabs = new QTabWidget(this);
-        hitterPitcherTabs->insertTab(Tabs::Hitters, hitterTableView, "Hitters");
-        hitterPitcherTabs->insertTab(Tabs::Pitchers, pitcherTableView, "Pitchers");
-        vBoxLayout->addWidget(hitterPitcherTabs);
+        hitterPitcherTabs->insertTab(PlayerTableTabs::Hitters, hitterTableView, "Hitters");
+        hitterPitcherTabs->insertTab(PlayerTableTabs::Pitchers, pitcherTableView, "Pitchers");
+        topBottomSplitter->addWidget(hitterPitcherTabs);
 
         // Tab lookup helper
         auto CaterogyToTab = [](uint32_t catergory) 
@@ -125,11 +206,11 @@ public:
             switch (catergory)
             {
             case Player::Hitter:
-                return Tabs::Hitters;
+                return PlayerTableTabs::Hitters;
             case Player::Pitcher:
-                return Tabs::Pitchers;
+                return PlayerTableTabs::Pitchers;
             default:
-                return Tabs::Unknown;
+                return PlayerTableTabs::Unknown;
             }
         };
 
@@ -233,21 +314,24 @@ public:
 
             // Get player index
             int key = completer->completionModel()->index(index.row(), 0).data().toInt();
-            QModelIndex sourceIdx = playerTableModel->index(key-1, 0);
+            QModelIndex sourceIdx = playerTableModel->index(key, 1);
 
             // Lookup catergory
             auto catergoryIndex = playerTableModel->index(sourceIdx.row(), PlayerTableModel::COLUMN_CATERGORY);
             auto catergory = playerTableModel->data(catergoryIndex, PlayerTableModel::RawDataRole).toUInt();
 
+            // Change to tab
+            hitterPitcherTabs->setCurrentIndex(CaterogyToTab(catergory));
+
+            // Select row
             if (catergory == Player::Catergory::Hitter) {
                 auto row = hitterSortFilterProxyModel->mapFromSource(sourceIdx).row();
                 hitterTableView->selectRow(row);
-            } 
-            
-            if (catergory == Player::Catergory::Pitcher) {
+                hitterTableView->setFocus();
+            } else if (catergory == Player::Catergory::Pitcher) {
                 auto row = pitcherSortFilterProxyModel->mapFromSource(sourceIdx).row();
                 pitcherTableView->selectRow(row);
-                hitterPitcherTabs->setCurrentIndex(CaterogyToTab(catergory));
+                pitcherTableView->setFocus();
             }
         });
 
@@ -275,11 +359,11 @@ public:
         {
             switch (index)
             {
-            case uint32_t(Tabs::Hitters):
+            case uint32_t(PlayerTableTabs::Hitters):
                 pitchingFilters->setVisible(false);
                 hittingFilters->setVisible(true);
                 break;
-            case uint32_t(Tabs::Pitchers):
+            case uint32_t(PlayerTableTabs::Pitchers):
                 pitchingFilters->setVisible(true);
                 hittingFilters->setVisible(false);
                 break;
@@ -288,24 +372,23 @@ public:
             }
         };
 
-        // Connect tab filters
-        connect(hitterPitcherTabs, &QTabWidget::currentChanged, this, [=](int index) {
-            ToggleFilterGroups(index);
-        });
-
         // Set default filter group
         ToggleFilterGroups(hitterPitcherTabs->currentIndex());
 
-        // Owner view layout
+        //---------------------------------------------------------------------
+        // Bottom Section
+        //---------------------------------------------------------------------
+
+        // H-Layout for all owners
         QHBoxLayout* ownersLayout = new QHBoxLayout(this);
 
         // Loop owners
         for (int ownerId = 1; ownerId < 9; ownerId++) {
 
-            // !!!
+            // V-Layout per owner
             QVBoxLayout* perOwnerLayout = new QVBoxLayout(this);
 
-            // Label
+            // Owner name label
             QLabel* ownerLabel = new QLabel(QString("Owner #%1").arg(ownerId), this);
             ownerLabel->setAlignment(Qt::AlignCenter);
             perOwnerLayout->addWidget(ownerLabel);
@@ -315,13 +398,20 @@ public:
             ownerSortProxyModel->setSourceModel(playerTableModel);
             QTableView* ownerTableView = MakeTableView(ownerSortProxyModel, false);
             ownerTableView->setFixedWidth(200);
-  
-            // !
-            connect(draftDelegate, &DraftDelegate::Drafted, ownerSortProxyModel, &OwnerSortFilterProxyModel::OnDrafted);
-
             perOwnerLayout->addWidget(ownerTableView);
 
-            // !
+            // Summary labels
+            QLabel* summary = new QLabel( "Total: $0", this);
+            perOwnerLayout->addWidget(summary);
+  
+            // When drafted...
+            connect(draftDelegate, &DraftDelegate::Drafted, ownerSortProxyModel, &OwnerSortFilterProxyModel::OnDrafted);
+            connect(draftDelegate, &DraftDelegate::Drafted, [=](const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model) {
+                uint32_t total = ownerSortProxyModel->GetTotalSpent();
+                summary->setText(QString("Total: $%1").arg(total));
+            });
+            
+            // Add to layouts
             ownersLayout->addLayout(perOwnerLayout);
         }
 
@@ -333,26 +423,61 @@ public:
         class OwnerScrollArea : public QScrollArea {
         public:
             OwnerScrollArea(QWidget* parent) : QScrollArea(parent) {}
-            virtual QSize sizeHint() const override { return QSize(200, 250); }
+            virtual QSize sizeHint() const override { return QSize(200, 260); }
         };
 
         // Owner scroll area
         OwnerScrollArea* ownerScrollArea = new OwnerScrollArea(this);
         ownerScrollArea->setWidget(ownerWidget);
         ownerScrollArea->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-        vBoxLayout->addWidget(ownerScrollArea);
         
         // Player scatter plot
-        // PlayerScatterPlotChart* chartView = new PlayerScatterPlotChart(playerTableModel, hitterSortFilterProxyModel, this);
-        // chartView->setFixedHeight(200);
-        // connect(hitterSortFilterProxyModel, &QSortFilterProxyModel::layoutChanged, chartView, &PlayerScatterPlotChart::Update);
-        // connect(playerTableModel, &QAbstractItemModel::dataChanged, chartView, &PlayerScatterPlotChart::Update);
-        // vBoxLayout->addWidget(chartView);
+        PlayerScatterPlotChart* chartView = new PlayerScatterPlotChart(playerTableModel, hitterSortFilterProxyModel, this);
+        connect(hitterSortFilterProxyModel,  &QSortFilterProxyModel::layoutChanged, chartView, &PlayerScatterPlotChart::Update);
+        connect(pitcherSortFilterProxyModel, &QSortFilterProxyModel::layoutChanged, chartView, &PlayerScatterPlotChart::Update);
+        connect(playerTableModel, &QAbstractItemModel::dataChanged, chartView, &PlayerScatterPlotChart::Update);
+
+        // Bottom tabs
+        enum BottomSectionTabs { Rosters, ChartVie };
+        QTabWidget* bottomTabs = new QTabWidget(this);
+        bottomTabs->insertTab(BottomSectionTabs::Rosters, ownerScrollArea, "Rosters");
+        bottomTabs->insertTab(BottomSectionTabs::ChartVie, chartView, "Scatter Chart");
+        topBottomSplitter->addWidget(bottomTabs);
+
+        // Make top section 3x the size of the bottom
+        topBottomSplitter->setStretchFactor(0, 3);
+        topBottomSplitter->setStretchFactor(1, 1);
+
+        //----------------------------------------------------------------------
+        // Connections
+        //----------------------------------------------------------------------
+
+        // Connect tab filters
+        connect(hitterPitcherTabs, &QTabWidget::currentChanged, this, [=](int index) {
+            
+            // Update filters
+            ToggleFilterGroups(index);
+
+            // Update chart view
+            switch (index)
+            {
+            case PlayerTableTabs::Hitters:
+                chartView->SetProxyModel(hitterSortFilterProxyModel);
+                break;
+            case PlayerTableTabs::Pitchers:
+                chartView->SetProxyModel(pitcherSortFilterProxyModel);
+                break;
+            default:
+                break;
+            }
+        });
+
+        //----------------------------------------------------------------------
+        // Main
+        //----------------------------------------------------------------------
 
         // Set as main window
-        QWidget* central = new QWidget();
-        QMainWindow::setCentralWidget(central);
-        central->setLayout(vBoxLayout);
+        QMainWindow::setCentralWidget(topBottomSplitter);
 
         // Create menu bar
         QMenuBar* menuBar = new QMenuBar();
@@ -401,7 +526,7 @@ private:
     }
 
     // Table factory
-    QTableView* MakeTableView(QAbstractItemModel* model, bool sortingEnabled = true)
+    QTableView* MakeTableView(QAbstractItemModel* model, bool sortingEnabled = true, uint32_t modelSortColumn = 0)
     {
         QTableView* tableView = new QTableView();
         tableView->setModel(model);
@@ -415,7 +540,22 @@ private:
         tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         tableView->setSelectionMode(QAbstractItemView::SingleSelection);
         tableView->setFocusPolicy(Qt::StrongFocus);
+        if (sortingEnabled) {
+            tableView->sortByColumn(FindColumn(model, modelSortColumn));
+        }
         return tableView;
+    }
+
+    static int32_t FindColumn(QAbstractItemModel* model, uint32_t column)
+    {
+        for (int32_t i = 0; i < model->columnCount(); i++) {
+            uint32_t id = model->headerData(i, Qt::Horizontal, Qt::InitialSortOrderRole).toUInt();
+            if (id == column) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     const QString m_style =
