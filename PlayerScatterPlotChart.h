@@ -7,6 +7,7 @@
 
 #include "PlayerTableModel.h"
 
+// Forwards
 QT_CHARTS_BEGIN_NAMESPACE
 class QScatterSeries;
 class QValueAxis;
@@ -18,6 +19,7 @@ class PlayerChartCallout;
 
 class PlayerScatterPlotChart : public QChartView
 {
+    Q_OBJECT
 
 public:
 
@@ -27,6 +29,10 @@ public:
 
     void SetProxyModel(QSortFilterProxyModel* proxyModel);
     void Update();
+
+signals:
+
+    void PlayerClicked(const QModelIndex& index);
 
 private:
 

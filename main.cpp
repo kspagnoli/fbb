@@ -309,15 +309,11 @@ public:
         completer->setFilterMode(Qt::MatchContains);
         completer->setCaseSensitivity(Qt::CaseInsensitive);
 
-        // Select the target 
-        connect(completer, static_cast<void (QCompleter::*)(const QModelIndex&)>(&QCompleter::activated), [=](const QModelIndex& index) {
-
-            // Get player index
-            int key = completer->completionModel()->index(index.row(), 0).data().toInt();
-            QModelIndex sourceIdx = playerTableModel->index(key, 1);
-
+        // Select
+        auto HighlightPlayerInTable = [=](const QModelIndex& index)
+        {
             // Lookup catergory
-            auto catergoryIndex = playerTableModel->index(sourceIdx.row(), PlayerTableModel::COLUMN_CATERGORY);
+            auto catergoryIndex = playerTableModel->index(index.row(), PlayerTableModel::COLUMN_CATERGORY);
             auto catergory = playerTableModel->data(catergoryIndex, PlayerTableModel::RawDataRole).toUInt();
 
             // Change to tab
@@ -325,14 +321,25 @@ public:
 
             // Select row
             if (catergory == Player::Catergory::Hitter) {
-                auto row = hitterSortFilterProxyModel->mapFromSource(sourceIdx).row();
+                auto row = hitterSortFilterProxyModel->mapFromSource(index).row();
                 hitterTableView->selectRow(row);
                 hitterTableView->setFocus();
             } else if (catergory == Player::Catergory::Pitcher) {
-                auto row = pitcherSortFilterProxyModel->mapFromSource(sourceIdx).row();
+                auto row = pitcherSortFilterProxyModel->mapFromSource(index).row();
                 pitcherTableView->selectRow(row);
                 pitcherTableView->setFocus();
             }
+        };
+
+        // Select the target 
+        connect(completer, static_cast<void (QCompleter::*)(const QModelIndex&)>(&QCompleter::activated), [=](const QModelIndex& index) {
+
+            // Get player index
+            int key = completer->completionModel()->index(index.row(), 0).data().toInt();
+            QModelIndex sourceIdx = playerTableModel->index(key, 1);
+
+            // Highlight this player
+            HighlightPlayerInTable(sourceIdx);
         });
 
         // Search widget
@@ -470,6 +477,11 @@ public:
             default:
                 break;
             }
+        });
+
+        // Connect chart click
+        connect(chartView, &PlayerScatterPlotChart::PlayerClicked, this, [=](const QModelIndex& index) {
+            HighlightPlayerInTable(index);
         });
 
         //----------------------------------------------------------------------

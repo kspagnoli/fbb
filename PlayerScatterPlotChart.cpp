@@ -286,9 +286,14 @@ void PlayerScatterPlotChart::HoverTooltip(QPointF point, bool state)
 void PlayerScatterPlotChart::OnReleased(QPointF point)
 {
     auto proxyIndex = m_proxyModel->index(point.x() - 1, 0);
+    auto sourceIndex = m_proxyModel->mapToSource(proxyIndex);
+
+    emit PlayerClicked(sourceIndex);
 }
 
 QString PlayerScatterPlotChart::CurrentSortName() const
 {
     return m_proxyModel->headerData(m_proxyModel->sortColumn(), Qt::Horizontal, Qt::DisplayRole).toString();
 }
+
+#include "PlayerScatterPlotChart.moc"
