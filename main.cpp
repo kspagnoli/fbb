@@ -25,7 +25,6 @@
 #include <QSettings>
 #include <QDataStream>
 #include <QBuffer>
-#include <QSplitterHandle>
 #include <QToolTip>
 
 #include <memory>
@@ -41,6 +40,247 @@
 #include "DraftDelegate.h"
 #include "OwnerSortFilterProxyModel.h"
 #include "PlayerScatterPlotChart.h"
+
+// TODO: mve to settings
+static const uint32_t NUM_OWNERS = 9;
+
+
+static QString TableStyle()
+{
+    return R"""(
+        QTableView, QHeaderView, QToolTip {
+            font-family: "Consolas";
+            font-size: 11px;
+        }
+        )""";
+}
+
+//----------------------------------------------------------------------
+// Summary
+//----------------------------------------------------------------------
+
+class SummaryWidget : public QWidget
+{
+
+public:
+
+    SummaryWidget(uint32_t numOwners, QWidget* parent)
+        : QWidget(parent)
+        , m_tableModel(new SummaryTableModel(numOwners, parent))
+        , m_tableView(new QTableView)
+        , m_layout(new QVBoxLayout)
+    {
+
+        // widget layout
+        setLayout(m_layout);
+
+        // table view
+        m_tableView->setModel(m_tableModel);
+        m_tableView->verticalHeader()->hide();
+        m_tableView->setStyleSheet(TableStyle());
+        m_tableView->setAlternatingRowColors(true);
+        m_tableView->verticalHeader()->setDefaultSectionSize(15);
+        m_tableView->horizontalHeader()->setDefaultSectionSize(50);
+        m_tableView->setCornerButtonEnabled(true);
+        m_layout->addWidget(m_tableView);
+    }
+
+public slots:
+
+    void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
+    {
+        auto GetValue = [=](uint32_t column)
+        {
+            QModelIndex indexHR = model->index(index.row(), column);
+            return model->data(indexHR, PlayerTableModel::RawDataRole).toUInt();
+        };
+
+        // Hitting
+        // uint32_t AB = 0;
+        // uint32_t H = 0;
+        // uint32_t R = 0;
+        // uint32_t HR = 0;
+        // uint32_t RBI = 0;
+        // uint32_t SB = 0;
+        // uint32_t IP = 0;
+        // uint32_t HA = 0;
+        // uint32_t BB = 0;
+        // uint32_t W = 0;
+        // uint32_t K = 0;
+        // uint32_t S = 0;
+        // uint32_t SUM;
+
+        // Update values
+        m_tableModel->m_vecOwnerPoints[results.ownerId].AB  += GetValue(PlayerTableModel::COLUMN_AB);
+        // m_tableModel->m_vecOwnerPoints[results.ownerId].H   += GetValue(PlayerTableModel::COLUMN_H);
+        m_tableModel->m_vecOwnerPoints[results.ownerId].R   += GetValue(PlayerTableModel::COLUMN_R);
+        m_tableModel->m_vecOwnerPoints[results.ownerId].RBI += GetValue(PlayerTableModel::COLUMN_RBI);
+        m_tableModel->m_vecOwnerPoints[results.ownerId].SB  += GetValue(PlayerTableModel::COLUMN_SB);
+
+        m_tableModel->m_vecOwnerPoints[results.ownerId].IP  += GetValue(PlayerTableModel::COLUMN_IP);
+        // m_tableModel->m_vecOwnerPoints[results.ownerId].HA  += GetValue(PlayerTableModel::COLUMN_HA);
+        // m_tableModel->m_vecOwnerPoints[results.ownerId].BB  += GetValue(PlayerTableModel::COLUMN_BB);
+        m_tableModel->m_vecOwnerPoints[results.ownerId].W  += GetValue(PlayerTableModel::COLUMN_W);
+        m_tableModel->m_vecOwnerPoints[results.ownerId].K  += GetValue(PlayerTableModel::COLUMN_SO);
+        m_tableModel->m_vecOwnerPoints[results.ownerId].S  += GetValue(PlayerTableModel::COLUMN_SV);
+    }
+
+private:
+
+    class SummaryTableModel : public QAbstractTableModel
+    {
+
+        friend SummaryWidget;
+
+    public:
+
+        SummaryTableModel(uint32_t numOwners, QWidget* parent)
+            : QAbstractTableModel(parent)
+            , m_vecOwnerPoints(numOwners)
+        {
+        }
+
+        enum RankRows
+        {
+            TEAM,
+            BA,
+            R,
+            HR,
+            RBI,
+            SB,
+            ERA,
+            WHIP,
+            W,
+            K,
+            S,
+            SUM,
+
+            COUNT
+        };
+
+        virtual int rowCount(const QModelIndex& index) const override
+        {
+            return int(m_vecOwnerPoints.size());
+        }
+
+        virtual int columnCount(const QModelIndex& index) const override
+        {
+            return RankRows::COUNT;
+        }
+
+        virtual QVariant data(const QModelIndex& index, int role) const override
+        {
+            if (role != Qt::DisplayRole) {
+                return QVariant();
+            }
+
+            const OwnerPoints& player = m_vecOwnerPoints.at(index.row());
+
+            switch (index.column())
+            {
+            case RankRows::TEAM:
+                return index.row();
+            case RankRows::BA:
+                return player.AB == 0 ? "--" : QString::number(player.H / float(player.AB), 'f', 3);
+            case RankRows::R:
+                return player.R;
+            case RankRows::HR:
+                return player.HR;
+            case RankRows::RBI:
+                return player.RBI;
+            case RankRows::SB:
+                return player.SB;
+            case RankRows::ERA:
+                return player.IP == 0 ? "--" : QVariant(0);
+            case RankRows::WHIP:
+                return player.IP == 0 ? "--" : QVariant(0);
+            case RankRows::W:
+                return player.W;
+            case RankRows::K:
+                return player.K;
+            case RankRows::S:
+                return player.S;
+            case RankRows::SUM:
+                return player.SUM;
+            }
+
+            return QVariant();
+        }
+
+        virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const override
+        {
+            // Only care about display roles
+            if (role != Qt::DisplayRole) {
+                return QVariant();
+            }
+
+            if (orientation == Qt::Horizontal) {
+
+                switch (section)
+                {
+                case RankRows::TEAM:
+                    return "Team";
+                case RankRows::BA:
+                    return "AVG";
+                case RankRows::R:
+                    return "R";
+                case RankRows::HR:
+                    return "HR";
+                case RankRows::RBI:
+                    return "RBI";
+                case RankRows::SB:
+                    return "SB";
+                case RankRows::ERA:
+                    return "ERA";
+                case RankRows::WHIP:
+                    return "WHIP";
+                case RankRows::W:
+                    return "W";
+                case RankRows::K:
+                    return "K";
+                case RankRows::S:
+                    return "S";
+                case RankRows::SUM:         // TODO: sigma sign
+                    return "SUM";
+                default:
+                    break;
+                }
+            }
+
+            return QVariant();
+        }
+
+    private:
+
+        struct OwnerPoints
+        {
+            // Hitting
+            uint32_t AB = 0;
+            uint32_t H = 0;
+            uint32_t R = 0;
+            uint32_t HR = 0;
+            uint32_t RBI = 0;
+            uint32_t SB = 0;
+
+            // Pitching
+            uint32_t IP = 0;
+            uint32_t HA = 0;
+            uint32_t BB = 0;
+            uint32_t W = 0;
+            uint32_t K = 0;
+            uint32_t S = 0;
+
+            // Summary
+            uint32_t SUM;
+        };
+
+        std::vector<OwnerPoints> m_vecOwnerPoints;
+    };
+
+    QVBoxLayout* m_layout;
+    SummaryTableModel* m_tableModel;
+    QTableView* m_tableView;
+};
 
 //class OwnerWidget 
 //{
@@ -192,6 +432,7 @@ public:
 
         // Top/Bottom splitter
         QSplitter* topBottomSplitter = new QSplitter(Qt::Vertical);
+        topBottomSplitter->setContentsMargins(5, 5, 5, 5);
 
         // Hitter/Pitcher tab View
         enum PlayerTableTabs { Hitters, Pitchers, Unknown };
@@ -390,7 +631,7 @@ public:
         QHBoxLayout* ownersLayout = new QHBoxLayout(this);
 
         // Loop owners
-        for (int ownerId = 1; ownerId < 9; ownerId++) {
+        for (int ownerId = 1; ownerId <= NUM_OWNERS; ownerId++) {
 
             // V-Layout per owner
             QVBoxLayout* perOwnerLayout = new QVBoxLayout(this);
@@ -429,7 +670,9 @@ public:
         // OwnerScrollArea sizeHint helper
         class OwnerScrollArea : public QScrollArea {
         public:
-            OwnerScrollArea(QWidget* parent) : QScrollArea(parent) {}
+            OwnerScrollArea(QWidget* parent) : QScrollArea(parent) {
+                setFrameShape(QFrame::NoFrame);
+            }
             virtual QSize sizeHint() const override { return QSize(200, 260); }
         };
 
@@ -444,10 +687,14 @@ public:
         connect(pitcherSortFilterProxyModel, &QSortFilterProxyModel::layoutChanged, chartView, &PlayerScatterPlotChart::Update);
         connect(playerTableModel, &QAbstractItemModel::dataChanged, chartView, &PlayerScatterPlotChart::Update);
 
+        // Summary
+        SummaryWidget* summary = new SummaryWidget(NUM_OWNERS, this);
+
         // Bottom tabs
-        enum BottomSectionTabs { Rosters, ChartVie };
+        enum BottomSectionTabs { Rosters, SummaryWidget, ChartVie };
         QTabWidget* bottomTabs = new QTabWidget(this);
         bottomTabs->insertTab(BottomSectionTabs::Rosters, ownerScrollArea, "Rosters");
+        bottomTabs->insertTab(BottomSectionTabs::SummaryWidget, summary, "Summary");
         bottomTabs->insertTab(BottomSectionTabs::ChartVie, chartView, "Scatter Chart");
         topBottomSplitter->addWidget(bottomTabs);
 
@@ -483,6 +730,8 @@ public:
         connect(chartView, &PlayerScatterPlotChart::PlayerClicked, this, [=](const QModelIndex& index) {
             HighlightPlayerInTable(index);
         });
+
+        connect(draftDelegate, &DraftDelegate::Drafted, summary, &SummaryWidget::OnDrafted);
 
         //----------------------------------------------------------------------
         // Main
@@ -543,8 +792,11 @@ private:
         QTableView* tableView = new QTableView();
         tableView->setModel(model);
         tableView->setSortingEnabled(sortingEnabled);
+        if (sortingEnabled) {
+            tableView->sortByColumn(FindColumn(model, modelSortColumn));
+        }
         tableView->verticalHeader()->hide();
-        tableView->setStyleSheet(m_style);
+        tableView->setStyleSheet(TableStyle());
         tableView->setAlternatingRowColors(true);
         tableView->verticalHeader()->setDefaultSectionSize(15);
         tableView->resizeColumnsToContents();
@@ -552,9 +804,6 @@ private:
         tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         tableView->setSelectionMode(QAbstractItemView::SingleSelection);
         tableView->setFocusPolicy(Qt::StrongFocus);
-        if (sortingEnabled) {
-            tableView->sortByColumn(FindColumn(model, modelSortColumn));
-        }
         return tableView;
     }
 
@@ -569,14 +818,6 @@ private:
 
         return -1;
     }
-
-    const QString m_style =
-        R"""(
-        QTableView, QHeaderView, QToolTip {
-            font-family: "Consolas";
-            font-size: 11px;
-        }
-        )""";
 };
 
 int main(int argc, char *argv[])
@@ -604,7 +845,13 @@ int main(int argc, char *argv[])
     app.setPalette(darkPalette);
     */
 
-    app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }");
+    app.setStyleSheet(R"""(
+        QToolTip { 
+            color: #ffffff; 
+            background-color: #2a82da; 
+            border: 1px solid white; 
+        }
+        )""");
 
     MainWindow mainWin;
     mainWin.resize(1000, 800);
@@ -612,3 +859,4 @@ int main(int argc, char *argv[])
 
     return app.exec();
 }
+

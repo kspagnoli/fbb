@@ -14,7 +14,7 @@
 #include <QAbstractItemDelegate>
 
 // [XXX] make me settings
-static const size_t HITTER_RATIO = 63;
+static const size_t HITTER_RATIO = 66;
 static const size_t BUDGET = 260;
 static const size_t NUM_OWNERS = 12;
 static const size_t NUM_HITTERS_PER_OWNER = 14;
@@ -193,6 +193,11 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 
             // Set catergory
             player.catergory = Player::Hitter;
+
+            // XXX: NL-only!
+            if (LookupTeamGroup(player.team.toStdString()).leauge != Leauge::NL) {
+                continue;
+            }
 
             // Store in vector
             vecHitters.emplace_back(player);
@@ -382,10 +387,15 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
 
             // Lookup appearances 
             const auto& appearances = playerApperances.Lookup(player.name.toStdString());
-            if (float(appearances.G) * 0.9f < float(appearances.GS)) {
+            if (float(appearances.G) * 0.7f < float(appearances.GS)) {
                 player.eligiblePositions |= int32_t(Player::Starter);
             } else {
                 player.eligiblePositions|= int32_t(Player::Relief);
+            }
+
+            // XXX: NL-only!
+            if (LookupTeamGroup(player.team.toStdString()).leauge != Leauge::NL) {
+                continue;
             }
 
             // Set catergory
@@ -432,13 +442,13 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     // ERASGP  =((475 + [@ER]) * 9 / (1192 + [@IP]) - 3.59) / -0.076
     // WHIPSGP =((1466 + [@H] + [@BB]) / (1192 + [@IP]) - 1.23) / -0.015
 
-    for (Player& player : vecPitchers) {
-        player.pitching.zW    = player.pitching.W / 3.03;
-        player.pitching.zSV   = player.pitching.SV / 9.95;
-        player.pitching.zSO   = player.pitching.SO / 39.3;
-        player.pitching.zERA  = ((475 + player.pitching.ER) * 9 / (1192 + player.pitching.IP) - 3.59) / -0.076;
-        player.pitching.zWHIP = ((1466 + player.pitching.H + player.pitching.BB) / (1192 + player.pitching.IP) - 1.23) / -0.015;
-    }
+    // for (Player& player : vecPitchers) {
+    //     player.pitching.zW    = player.pitching.W / 3.03;
+    //     player.pitching.zSV   = player.pitching.SV / 9.95;
+    //     player.pitching.zSO   = player.pitching.SO / 39.3;
+    //     player.pitching.zERA  = ((475 + player.pitching.ER) * 9 / (1192 + player.pitching.IP) - 3.59) / -0.076;
+    //     player.pitching.zWHIP = ((1466 + player.pitching.H + player.pitching.BB) / (1192 + player.pitching.IP) - 1.23) / -0.015;
+    // }
 
     // Sum zscore
     for (Player& player : vecPitchers) {
