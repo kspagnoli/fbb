@@ -543,6 +543,8 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             }
         case COLUMN_AB:
             return player.hitting.AB;
+        case COLUMN_H:
+            return player.hitting.H;
         case COLUMN_AVG:
             if (role == RawDataRole) {
                 return player.hitting.zAVG;
@@ -564,6 +566,12 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             } else {
                 QString::number(player.pitching.IP, 'f', 1);
             }
+        case COLUMN_HA:
+            return player.pitching.H;
+        case COLUMN_BB:
+            return player.pitching.BB;
+        case COLUMN_ER:
+            return player.pitching.ER;
         case COLUMN_SO:
             return player.pitching.SO;
         case COLUMN_ERA:
@@ -692,6 +700,8 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
                 return "Pos.";
             case COLUMN_AB:
                 return "AB";
+            case COLUMN_H:
+                return "H";
             case COLUMN_AVG:
                 return "AVG";
             case COLUMN_HR:
@@ -704,6 +714,12 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
                 return "SB";
             case COLUMN_IP:
                 return "IP";
+            case COLUMN_HA:
+                return "HA";
+            case COLUMN_BB:
+                return "BB";
+            case COLUMN_ER:
+                return "ER";
             case COLUMN_SO:
                 return "KO";
             case COLUMN_ERA:
@@ -749,6 +765,9 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
             case COLUMN_SO:
             case COLUMN_W:
             case COLUMN_SV:
+            case COLUMN_H:
+            case COLUMN_HA:
+            case COLUMN_BB:
                 return "%i";
 
             default:

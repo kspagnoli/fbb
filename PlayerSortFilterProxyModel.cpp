@@ -28,11 +28,17 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
 {
     switch (sourceColumn)
     {
-    case PlayerTableModel::COLUMN_INDEX:
-    case PlayerTableModel::COLUMN_CATERGORY:
-    case PlayerTableModel::COLUMN_DRAFT_POSITION:
-    case PlayerTableModel::COLUMN_DUMMY:
-        return false;
+    // Both
+    case PlayerTableModel::COLUMN_DRAFT_BUTTON:
+    case PlayerTableModel::COLUMN_OWNER:
+    case PlayerTableModel::COLUMN_PAID:
+    case PlayerTableModel::COLUMN_NAME:
+    case PlayerTableModel::COLUMN_TEAM:
+    case PlayerTableModel::COLUMN_POSITION:
+    case PlayerTableModel::COLUMN_Z:
+    case PlayerTableModel::COLUMN_ESTIMATE:
+    case PlayerTableModel::COLUMN_COMMENT:
+        return true;
 
     // Hitting
     case PlayerTableModel::COLUMN_AB:
@@ -53,7 +59,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
         return m_catergory == Player::Pitcher;
 
     default:
-        return true;
+        return false;
     }
 }
 

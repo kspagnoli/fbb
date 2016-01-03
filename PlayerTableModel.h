@@ -32,6 +32,7 @@ public:
 
         // Hitting
         COLUMN_AB,
+        COLUMN_H,
         COLUMN_AVG,
         COLUMN_HR,
         COLUMN_R,
@@ -40,6 +41,9 @@ public:
 
         // Pitching
         COLUMN_IP,
+        COLUMN_HA,
+        COLUMN_BB,
+        COLUMN_ER,
         COLUMN_SO,
         COLUMN_ERA,
         COLUMN_WHIP,
