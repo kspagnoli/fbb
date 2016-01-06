@@ -57,7 +57,7 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
     // Owner combo box
     {
         QComboBox* ownerComboBox = new QComboBox;
-        QStringList list = { "Select...", "Team A", "Team B" };
+        QStringList list = { "Select...", "Team 1", "Team 2", "Team 3", "Team 4", "Team 5", "Team 6", "Team 7", "Team 8" };
         ownerComboBox->addItems(list);
         infoGridLayout->addWidget(new QLabel("Owner:"), OwnerRow, LabelColumn);
         infoGridLayout->addWidget(ownerComboBox, OwnerRow, ItemColumn);
