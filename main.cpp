@@ -347,14 +347,11 @@ public:
         m_sumTableView->setAlternatingRowColors(true);
         m_sumTableView->verticalHeader()->setDefaultSectionSize(15);
         m_sumTableView->setCornerButtonEnabled(true);
-        m_sumTableView->resizeColumnsToContents();
-
-        // set width
-        // uint32_t w = 2;
-        // for (int i = 0; i < m_rankProxyModel->columnCount(); ++i) {
-        //     w += m_sumTableView->columnWidth(i);
-        // }
-        // m_sumTableView->setFixedWidth(w);
+        
+        // 100% width
+        for (int i = 0; i < m_sumTableView->horizontalHeader()->count(); ++i) {
+            m_sumTableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::Stretch);
+        }
 
         // main layout
         setLayout(m_layout);
@@ -408,7 +405,17 @@ class OwnerItemModel : public QAbstractTableModel
 {
 public:
 
-    OwnerItemModel(QWidget* parent) : QAbstractTableModel(parent)
+    enum Columns
+    {
+        COLUMN_DRAFT_POSITION,
+        COLUMN_PAID,
+        COLUMN_NAME,
+        COUNT,
+    };
+
+    OwnerItemModel(uint32_t ownerId, QWidget* parent) 
+        : QAbstractTableModel(parent)
+        , m_ownerId(ownerId)
     {
         // Valid positions
         QStringList vecDraftPositions = {
@@ -478,27 +485,32 @@ public:
 
 public slots:
 
-void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
-{
-    // Find owner name
-    QString name = model->data(model->index(index.row(), PlayerTableModel::COLUMN_NAME), Qt::DisplayRole).toString();
+    void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
+    {
+        // Ignore other owners
+        if (results.ownerId != m_ownerId) {
+            return;
+        }
 
-    // Find the first opening in this position
-    auto itr = std::find_if(m_draftedPlayers.begin(), m_draftedPlayers.end(), [&](const PlayerPair& pp) {
-        return (pp.first == results.position && !pp.second);
-    });
+        // Find owner name
+        QString name = model->data(model->index(index.row(), PlayerTableModel::COLUMN_NAME), Qt::DisplayRole).toString();
 
-    // Insert this play in the opening
-    if (itr != m_draftedPlayers.end()) {
-        itr->second = std::make_shared<OwnedPlayer>(name, results.cost);
-        return;
+        // Find the first opening in this position
+        auto itr = std::find_if(m_draftedPlayers.begin(), m_draftedPlayers.end(), [&](const PlayerPair& pp) {
+            return (pp.first == results.position && !pp.second);
+        });
+
+        // Insert this play in the opening
+        if (itr != m_draftedPlayers.end()) {
+            itr->second = std::make_shared<OwnedPlayer>(name, results.cost);
+            return;
+        }
+
+        // No opening at this position so create a new row; we can edit it later
+        beginInsertRows(QModelIndex(), m_draftedPlayers.size(), m_draftedPlayers.size());
+        m_draftedPlayers.push_back(std::make_pair("??", std::make_shared<OwnedPlayer>(name, results.cost)));
+        endInsertRows();
     }
-
-    // No opening at this position so create a new row; we can edit it later
-    beginInsertRows(QModelIndex(), m_draftedPlayers.size(), m_draftedPlayers.size());
-    m_draftedPlayers.push_back(std::make_pair("??", std::make_shared<OwnedPlayer>(name, results.cost)));
-    endInsertRows();
-}
 
 private:
 
@@ -513,16 +525,10 @@ private:
         uint32_t cost;
     };
 
+    uint32_t m_ownerId;
+
     using PlayerPair = std::pair<QString, std::shared_ptr<OwnedPlayer>>;
     std::vector<PlayerPair> m_draftedPlayers;
-
-    enum Columns 
-    {
-        COLUMN_DRAFT_POSITION,
-        COLUMN_PAID,
-        COLUMN_NAME,
-        COUNT,
-    };
 };
 
 //------------------------------------------------------------------------------
@@ -572,7 +578,6 @@ public:
         PlayerTableModel* playerTableModel = new PlayerTableModel(this);
         playerTableModel->LoadHittingProjections("2015_hitters.csv", appearances);
         playerTableModel->LoadPitchingProjections("2015_pitchers.csv", appearances);
-        playerTableModel->AddDummyPositions();
 
         // Hitter sort-model
         PlayerSortFilterProxyModel* hitterSortFilterProxyModel = new PlayerSortFilterProxyModel(Player::Hitter);
@@ -792,7 +797,6 @@ public:
         //---------------------------------------------------------------------
 
         // Owner widget
-        OwnerItemModel* ownerItemModel = new OwnerItemModel(this);
         QHBoxLayout* ownersLayout = new QHBoxLayout(this);
 
         // Loop owners
@@ -801,6 +805,10 @@ public:
             // V-Layout per owner
             QVBoxLayout* perOwnerLayout = new QVBoxLayout(this);
 
+            // Item model for this owner
+            OwnerItemModel* ownerItemModel = new OwnerItemModel(ownerId, this);
+            connect(draftDelegate, &DraftDelegate::Drafted, ownerItemModel, &OwnerItemModel::OnDrafted);
+
             // Owner name label
             QLabel* ownerLabel = new QLabel(QString("Owner #%1").arg(ownerId), this);
             ownerLabel->setAlignment(Qt::AlignCenter);
@@ -808,13 +816,12 @@ public:
 
             // Table view
             QTableView* ownerTableView = MakeTableView(ownerItemModel, false);
-            ownerTableView->setFixedWidth(200);
+            ownerTableView->setFixedWidth(225);
             perOwnerLayout->addWidget(ownerTableView);
 
             // Summary labels
             QLabel* summary = new QLabel( "Total: $0", this);
             perOwnerLayout->addWidget(summary);
-  
             
             // Add to layouts
             ownersLayout->addLayout(perOwnerLayout);
@@ -830,13 +837,13 @@ public:
             OwnerScrollArea(QWidget* parent) : QScrollArea(parent) {
                 setFrameShape(QFrame::NoFrame);
             }
-            virtual QSize sizeHint() const override { return QSize(200, 260); }
+            virtual QSize sizeHint() const override { return QSize(220, 500); }
         };
 
         // Owner scroll area
         OwnerScrollArea* ownerScrollArea = new OwnerScrollArea(this);
         ownerScrollArea->setWidget(ownerWidget);
-        ownerScrollArea->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+        ownerScrollArea->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         ownerScrollArea->setBackgroundRole(QPalette::Light);
 
         // Player scatter plot
@@ -893,7 +900,6 @@ public:
         });
 
         // Connect drafted model
-        connect(draftDelegate, &DraftDelegate::Drafted, ownerItemModel, &OwnerItemModel::OnDrafted);
 
         // Connect summary model
         connect(draftDelegate, &DraftDelegate::Drafted, summaryModel, &SummaryTableModel::OnDrafted);

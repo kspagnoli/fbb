@@ -86,29 +86,6 @@ PlayerTableModel::PlayerTableModel(QObject* parent)
 }
 
 //------------------------------------------------------------------------------
-// AddDummyPositions
-//------------------------------------------------------------------------------
-void PlayerTableModel::AddDummyPositions()
-{
-    // Valid positions
-    QStringList vecDraftPositions = {
-        "C", "C", "1B", "2B", "SS", "3B", "MI", "CI", "OF", "OF", "OF", "OF", "OF", "U",
-        "P", "P", "P", "P", "P", "P", "P", "P", "P", "P",
-    };
-
-    // Count the number of repeat for each dummy position
-    QMap<QString, uint16_t> dummyCount;
-
-    // Loop 'em
-    for (const QString& draftPosition : vecDraftPositions) {
-        Player player;
-        player.dummy = ++dummyCount[draftPosition];
-        player.draftPosition = draftPosition;
-        m_vecPlayers.push_back(player);
-    }
-}
-
-//------------------------------------------------------------------------------
 // LoadHittingProjections
 //------------------------------------------------------------------------------
 void PlayerTableModel::LoadHittingProjections(const std::string& filename, const PlayerApperances& playerApperances)
@@ -604,8 +581,6 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             }
         case COLUMN_COMMENT:
             return player.comment;
-        case COLUMN_DUMMY:
-            return player.dummy;
         }
     } 
     
@@ -736,8 +711,6 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
                 return "zScore";
             case COLUMN_COMMENT:
                 return "Comment";
-            case COLUMN_DUMMY:
-                return "Dummy";
             }
         }
 

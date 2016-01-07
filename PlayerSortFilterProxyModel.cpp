@@ -68,13 +68,6 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
 //------------------------------------------------------------------------------
 bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
 {
-    auto RejectDummy = [&]() -> bool
-    {
-        const QModelIndex& dummyIndex = sourceModel()->index(sourceRow, PlayerTableModel::COLUMN_DUMMY, sourceParent);
-        bool isDummy = sourceModel()->data(dummyIndex).toBool();
-        return !isDummy;
-    };
-
     auto AcceptCatergoty = [&]() -> bool
     {
         const QModelIndex& catergoryIndex = sourceModel()->index(sourceRow, PlayerTableModel::COLUMN_CATERGORY, sourceParent);
@@ -150,7 +143,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
         return false;
     };
 
-    return RejectDummy() && AcceptCatergoty() && AcceptTeam() && AcceptPosition();
+    return AcceptCatergoty() && AcceptTeam() && AcceptPosition();
 }
 
 //------------------------------------------------------------------------------
