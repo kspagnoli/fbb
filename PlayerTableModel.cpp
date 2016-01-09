@@ -83,6 +83,8 @@ QString PositionToString(const Player::PositionMask& positions)
 PlayerTableModel::PlayerTableModel(QObject* parent)
     : QAbstractTableModel(parent)
 {
+    m_sumCost = BUDGET * NUM_OWNERS;
+    m_sumValue = BUDGET * NUM_OWNERS;
 }
 
 //------------------------------------------------------------------------------
@@ -273,8 +275,8 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
-    std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& player) {
-        auto temp = player.zScore - zReplacement;
+    std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& hitter) {
+        auto temp = hitter.zScore - zReplacement;
         if (temp > 0) {
             sumPositiveZScores += temp;
         }
@@ -413,19 +415,21 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
         player.pitching.zWHIP = -player.pitching.zWHIP;
     }
 
+    // SPG Formulas 
+    //
     // WSGP    =[@W] / 3.03
     // SVSGP   =[@SV] / 9.95
     // SOSGP   =[@SO] / 39.3
     // ERASGP  =((475 + [@ER]) * 9 / (1192 + [@IP]) - 3.59) / -0.076
     // WHIPSGP =((1466 + [@H] + [@BB]) / (1192 + [@IP]) - 1.23) / -0.015
 
-    // for (Player& player : vecPitchers) {
-    //     player.pitching.zW    = player.pitching.W / 3.03;
-    //     player.pitching.zSV   = player.pitching.SV / 9.95;
-    //     player.pitching.zSO   = player.pitching.SO / 39.3;
-    //     player.pitching.zERA  = ((475 + player.pitching.ER) * 9 / (1192 + player.pitching.IP) - 3.59) / -0.076;
-    //     player.pitching.zWHIP = ((1466 + player.pitching.H + player.pitching.BB) / (1192 + player.pitching.IP) - 1.23) / -0.015;
-    // }
+    for (Player& player : vecPitchers) {
+        player.pitching.zW    = player.pitching.W / 3.03;
+        player.pitching.zSV   = player.pitching.SV / 9.95;
+        player.pitching.zSO   = player.pitching.SO / 39.3;
+        player.pitching.zERA  = ((475 + player.pitching.ER) * 9 / (1192 + player.pitching.IP) - 3.59) / -0.076;
+        player.pitching.zWHIP = ((1466 + player.pitching.H + player.pitching.BB) / (1192 + player.pitching.IP) - 1.23) / -0.015;
+    }
 
     // Sum zscore
     for (Player& player : vecPitchers) {
@@ -443,9 +447,9 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
     std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
-        pitcher.zScore -= zReplacement;
-        if (pitcher.zScore > 0) {
-            sumPositiveZScores += pitcher.zScore;
+        auto temp = pitcher.zScore - zReplacement;
+        if (temp > 0) {
+            sumPositiveZScores += temp;
         }
     });
 
@@ -571,7 +575,8 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             if (role == RawDataRole) {
                 return player.cost;
             } else {
-                return QString("$%1").arg(QString::number(player.cost, 'f', 2));
+                float inflatedCost = m_inflationFactor * (player.cost);
+                return QString("$%1").arg(QString::number(inflatedCost, 'f', 2));
             }
         case COLUMN_Z:
             if (role == RawDataRole) {
@@ -603,36 +608,51 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
     
     if (role == Qt::ToolTipRole) {
 
-        switch(index.column())
+        switch (index.column())
         {
-        case COLUMN_Z:
+            case COLUMN_Z:
+            {
+                if (player.catergory == Player::Hitter) {
+                    return QString(
+                        "zAVG: %1\n"
+                        "zR:   %2\n"
+                        "zRBI: %3\n"
+                        "zHR:  %4\n"
+                        "zSB:  %5")
+                        .arg(player.hitting.zAVG)
+                        .arg(player.hitting.zR)
+                        .arg(player.hitting.zRBI)
+                        .arg(player.hitting.zHR)
+                        .arg(player.hitting.zSB);
+                }
 
-            if (player.catergory == Player::Hitter) {
+                if (player.catergory == Player::Pitcher) {
+                    return QString(
+                        "zERA:  %1\n"
+                        "zSO:   %2\n"
+                        "zWHIP: %3\n"
+                        "zW:    %4\n"
+                        "zSV:   %5")
+                        .arg(player.pitching.zERA)
+                        .arg(player.pitching.zSO)
+                        .arg(player.pitching.zWHIP)
+                        .arg(player.pitching.zW)
+                        .arg(player.pitching.zSV);
+                }
+            }
+
+            case COLUMN_ESTIMATE:
+            {
+                const float baseCost = player.cost;
+                const float inflatedCost = m_inflationFactor * baseCost;
+                const float diff =  baseCost - inflatedCost;
                 return QString(
-                    "zAVG: %1\n"
-                    "zR:   %2\n"
-                    "zRBI: %3\n"
-                    "zHR:  %4\n"
-                    "zSB:  %5")
-                    .arg(player.hitting.zAVG)
-                    .arg(player.hitting.zR)
-                    .arg(player.hitting.zRBI)
-                    .arg(player.hitting.zHR)
-                    .arg(player.hitting.zSB);
-            } 
-            
-            if (player.catergory == Player::Pitcher) {
-                return QString(
-                    "zERA:  %1\n"
-                    "zSO:   %2\n"
-                    "zWHIP: %3\n"
-                    "zW:    %4\n"
-                    "zSV:   %5")
-                    .arg(player.pitching.zERA)
-                    .arg(player.pitching.zSO)
-                    .arg(player.pitching.zWHIP)
-                    .arg(player.pitching.zW)
-                    .arg(player.pitching.zSV);
+                    "Inflated: $%1\n"
+                    "Base:     $%2\n"
+                    "Diff:     $%3\n")
+                    .arg(QString::number(inflatedCost, 'f', 2))
+                    .arg(QString::number(baseCost, 'f', 2))
+                    .arg(QString::number(diff, 'f', 2));
             }
         }
     }
@@ -714,7 +734,7 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
             }
         }
 
-        if (role == Qt::ToolTipRole) {
+        if (role == ChartFormatRole) {
 
             switch (section)
             {
@@ -794,4 +814,17 @@ bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, 
     emit dataChanged(index, index);
 
     return QAbstractItemModel::setData(index, value, role);
+}
+
+//------------------------------------------------------------------------------
+// OnDrafted (override)
+//------------------------------------------------------------------------------
+void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
+{
+    float value = model->data(model->index(index.row(), PlayerTableModel::COLUMN_ESTIMATE), PlayerTableModel::RawDataRole).toFloat();
+    m_sumCost -= results.cost;
+    m_sumValue -= value;
+    m_inflationFactor = (m_sumCost > 0) ? (m_sumCost / m_sumValue) : 1.0;
+
+    emit dataChanged(index, index);
 }

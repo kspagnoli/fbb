@@ -874,6 +874,9 @@ public:
         // Connections
         //----------------------------------------------------------------------
 
+        // Connect draft to player model
+        connect(draftDelegate, &DraftDelegate::Drafted, playerTableModel, &PlayerTableModel::OnDrafted);
+
         // Connect tab filters
         connect(hitterPitcherTabs, &QTabWidget::currentChanged, this, [=](int index) {
             
@@ -898,9 +901,7 @@ public:
         connect(chartView, &PlayerScatterPlotChart::PlayerClicked, this, [=](const QModelIndex& index) {
             HighlightPlayerInTable(index);
         });
-
-        // Connect drafted model
-
+        
         // Connect summary model
         connect(draftDelegate, &DraftDelegate::Drafted, summaryModel, &SummaryTableModel::OnDrafted);
 

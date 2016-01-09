@@ -2,6 +2,8 @@
 
 #include "PlayerAppearances.h"
 #include "Player.h"
+#include "DraftDelegate.h"
+
 #include <QAbstractTableModel>
 
 class PlayerApperances;
@@ -75,9 +77,20 @@ public:
 
     // Data roles
     static const int RawDataRole = Qt::UserRole + 1;
+    static const int ChartFormatRole = Qt::UserRole + 2;
+
+public slots:
+
+    //
+    void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model);
 
 private:
 
     // Hitter data model
     std::vector<Player> m_vecPlayers;
+
+    // Inflation factors
+    float m_sumValue = 0;
+    float m_sumCost = 0;
+    double m_inflationFactor = 1.0;
 };

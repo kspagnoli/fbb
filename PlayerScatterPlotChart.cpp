@@ -185,6 +185,14 @@ void PlayerScatterPlotChart::SetProxyModel(QSortFilterProxyModel* proxyModel)
 
 void PlayerScatterPlotChart::Update()
 {
+    // Value format
+    QString valueFormat = m_proxyModel->headerData(m_proxyModel->sortColumn(), Qt::Horizontal, PlayerTableModel::ChartFormatRole).toString();
+
+    // Not a value we want to sort on
+    if (valueFormat == "??") {
+        return;
+    }
+
     // Reset the series values
     m_undraftedSeries->clear();
     m_draftedSeries->clear();
@@ -203,9 +211,6 @@ void PlayerScatterPlotChart::Update()
     // Value range
     float minValue = std::numeric_limits<float>::max();
     float maxValue = std::numeric_limits<float>::min();
-
-    // Value format
-    QString valueFormat = m_proxyModel->headerData(m_proxyModel->sortColumn(), Qt::Horizontal, Qt::ToolTipRole).toString();
 
     [&]
     {
