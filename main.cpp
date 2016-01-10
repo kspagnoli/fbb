@@ -497,7 +497,8 @@ public slots:
 
         // Find the first opening in this position
         auto itr = std::find_if(m_draftedPlayers.begin(), m_draftedPlayers.end(), [&](const PlayerPair& pp) {
-            return (pp.first == results.position && !pp.second);
+            QString pos = PositionToString(results.position);
+            return (pp.first == pos && !pp.second);
         });
 
         // Insert this play in the opening
@@ -550,30 +551,7 @@ public:
 
         // Draft delegate
         DraftDelegate* draftDelegate = new DraftDelegate(this);
-        connect(draftDelegate, &DraftDelegate::Drafted, [=](const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model) {
-
-            // Player row
-            uint32_t row = index.row();
-
-            // Update status
-            model->setData(index, uint32_t(Player::Status::Drafted));
-
-            // Update owner
-            uint32_t ownerColumn = PlayerTableModel::COLUMN_OWNER;
-            QModelIndex ownerIndex = model->index(row, ownerColumn);
-            model->setData(ownerIndex, results.ownerId);
-
-            // Update paid amount
-            uint32_t paidColumn = PlayerTableModel::COLUMN_PAID;
-            QModelIndex paidIndex = model->index(row, paidColumn);
-            model->setData(paidIndex, results.cost);
-
-            // Update position 
-            uint32_t draftPositionColumn = PlayerTableModel::COLUMN_DRAFT_POSITION;
-            QModelIndex draftPositionIndex = model->index(row, draftPositionColumn);
-            model->setData(draftPositionIndex, results.position);
-        });
-
+        
         // Player table model
         PlayerTableModel* playerTableModel = new PlayerTableModel(this);
         playerTableModel->LoadHittingProjections("2015_hitters.csv", appearances);

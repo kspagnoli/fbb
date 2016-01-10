@@ -47,7 +47,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
     case PlayerTableModel::COLUMN_R:
     case PlayerTableModel::COLUMN_RBI:
     case PlayerTableModel::COLUMN_SB:
-        return m_catergory == Player::Hitter;
+        return m_catergory == Player::Catergory::Hitter;
 
     // Pitching
     case PlayerTableModel::COLUMN_IP:
@@ -56,7 +56,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
     case PlayerTableModel::COLUMN_WHIP:
     case PlayerTableModel::COLUMN_W:
     case PlayerTableModel::COLUMN_SV:
-        return m_catergory == Player::Pitcher;
+        return m_catergory == Player::Catergory::Pitcher;
 
     default:
         return false;
@@ -100,43 +100,43 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
         const QModelIndex& posIndex = sourceModel()->index(sourceRow, PlayerTableModel::COLUMN_POSITION, sourceParent);
         const uint32_t& pos = sourceModel()->data(posIndex, PlayerTableModel::RawDataRole).toInt();
 
-        if (pos == Player::Position::None) {
+        if (pos == uint32_t(PlayerPosition::None)) {
             return true;
         }
 
-        if (m_acceptC && (pos & Player::Catcher)) {
+        if (m_acceptC && (pos & (1 << uint32_t(PlayerPosition::Catcher)))) {
             return true;
         }
 
-        if (m_accept1B && (pos & Player::First)) {
+        if (m_accept1B && (pos & (1 << uint32_t(PlayerPosition::First)))) {
             return true;
         }
 
-        if (m_accept2B && (pos & Player::Second)) {
+        if (m_accept2B && (pos & (1 << uint32_t(PlayerPosition::Second)))) {
             return true;
         }
 
-        if (m_acceptSS && (pos & Player::SS)) {
+        if (m_acceptSS && (pos & (1 << uint32_t(PlayerPosition::SS)))) {
             return true;
         }
 
-        if (m_accept3B && (pos & Player::Third)) {
+        if (m_accept3B && (pos & (1 << uint32_t(PlayerPosition::Third)))) {
             return true;
         }
 
-        if (m_acceptOF && (pos & Player::Outfield)) {
+        if (m_acceptOF && (pos & (1 << uint32_t(PlayerPosition::Outfield)))) {
             return true;
         }
 
-        if (m_acceptDH && (pos & Player::DH)) {
+        if (m_acceptDH && (pos & (1 << uint32_t(PlayerPosition::DH)))) {
             return true;
         }
 
-        if (m_acceptSP && (pos & Player::Starter)) {
+        if (m_acceptSP && (pos & (1 << uint32_t(PlayerPosition::Starter)))) {
             return true;
         }
 
-        if (m_acceptRP && (pos & Player::Relief)) {
+        if (m_acceptRP && (pos & (1 << uint32_t(PlayerPosition::Relief)))) {
             return true;
         }
 

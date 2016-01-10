@@ -9,9 +9,10 @@
 class PlayerApperances;
 
 // Helpers
-QStringList PositionToStringList(const Player::PositionMask& positions);
-QString PositionToString(const Player::PositionMask& positions);
-Player::PositionMask StringToPosition(const QString& positions);
+QString PositionToString(const PlayerPosition& position);
+QStringList PositionMaskToStringList(const PlayerPositionMask& positionBitField);
+
+PlayerPosition StringToPosition(const QString& position);
 
 class PlayerTableModel : public QAbstractTableModel
 {
@@ -93,4 +94,7 @@ private:
     float m_sumValue = 0;
     float m_sumCost = 0;
     double m_inflationFactor = 1.0;
+
+    // Position scarcity factors
+    std::array<int32_t, size_t(PlayerPosition::COUNT)> m_mapPosAvailable = {0};
 };

@@ -3,33 +3,33 @@
 #include <QString>
 
 //------------------------------------------------------------------------------
+// PlayerPosition 
+//------------------------------------------------------------------------------
+enum class PlayerPosition
+{
+    None,
+    Catcher,
+    First,
+    Second,
+    SS,
+    Third,
+    MiddleInfield,
+    CornerInfield,
+    Outfield,
+    Utility,
+    DH,
+    Starter,
+    Relief,
+    COUNT,
+};
+
+using PlayerPositionMask = uint32_t;
+
+//------------------------------------------------------------------------------
 // Player 
 //------------------------------------------------------------------------------
 struct Player
 {
-    // Possible positions
-    enum Position
-    {
-        // Unknown (or not set)
-        None     = 0,
-
-        // Hitters
-        Catcher  = 1 << 1,
-        First    = 1 << 2,
-        Second   = 1 << 3,
-        SS       = 1 << 4,
-        Third    = 1 << 5,
-        Outfield = 1 << 6,
-        DH       = 1 << 7,
-
-        // Pitchers
-        Starter  = 1 << 20,
-        Relief   = 1 << 21,
-    };
-
-    // Position mask
-    using PositionMask = uint32_t;
-
     enum Catergory
     {
         Hitter  = 1 << 1,
@@ -44,7 +44,7 @@ struct Player
     QString name;
     QString team;                               // TODO: change to ID
     CatergoryMask catergory;
-    PositionMask eligiblePositions = Position::None;
+    PlayerPositionMask eligiblePositionBitfield = uint32_t(0);
 
     // Player Status
     enum Status
@@ -61,7 +61,7 @@ struct Player
     // Fantasy
     int32_t ownerId = 0;
     float paid = 0;
-    QString draftPosition;
+    PlayerPosition draftPosition = PlayerPosition::None;
 
     // Cost estimate
     float zScore = 0;

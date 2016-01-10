@@ -43,38 +43,62 @@ static QString GetOwnerName(uint32_t ownerId)
     }
 }
 
+
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
 //------------------------------------------------------------------------------
-QStringList PositionToStringList(const Player::PositionMask& positions)
+QString PositionToString(const PlayerPosition& position)
+{
+    switch (position)
+    {
+    case PlayerPosition::None: return "--";
+    case PlayerPosition::Catcher: return "C";
+    case PlayerPosition::First: return "1B";
+    case PlayerPosition::Second: return "2B";
+    case PlayerPosition::SS: return "SS";
+    case PlayerPosition::Third: return "3B";
+    case PlayerPosition::MiddleInfield: return "MI";
+    case PlayerPosition::CornerInfield: return "CI";
+    case PlayerPosition::Outfield: return "OF";
+    case PlayerPosition::Utility: return "U";
+    case PlayerPosition::DH: return "DH";
+    case PlayerPosition::Starter: return "SP";
+    case PlayerPosition::Relief: return "RP";
+    default:
+        return "!";
+        break;
+    }
+}
+
+//------------------------------------------------------------------------------
+// PositionMaskToStringList (static helper)
+//------------------------------------------------------------------------------
+QStringList PositionMaskToStringList(const PlayerPositionMask& positionBitField)
 {
     QStringList vecPos;
-    if (positions & Player::Catcher) { vecPos.push_back("C"); }
-    if (positions & Player::First) { vecPos.push_back("1B"); }
-    if (positions & Player::Second) { vecPos.push_back("2B"); }
-    if (positions & Player::SS) { vecPos.push_back("SS"); }
-    if (positions & Player::Third) { vecPos.push_back("3B"); }
-    if (positions & Player::Outfield) { vecPos.push_back("OF"); }
-    if (positions & Player::DH) { vecPos.push_back("DH"); }
-    if (positions & Player::Starter) { vecPos.push_back("SP"); }
-    if (positions & Player::Relief) { vecPos.push_back("RP"); }
-    if (vecPos.empty()) { vecPos.push_back("??"); }
-
+    for (auto i = 0; i < uint32_t(PlayerPosition::COUNT); i++) {
+        if (positionBitField & (1 << i)) {
+            vecPos.push_back(PositionToString(PlayerPosition(i)));
+        }
+    }
     return vecPos;
 }
 
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
 //------------------------------------------------------------------------------
-QString PositionToString(const Player::PositionMask& positions)
+PlayerPosition StringToPosition(const QString& position)
 {
-    // Quick return for unknown
-    if (positions == uint32_t(Player::None)) {
-        return "--";
-    }
-
-    // Build up list
-    return PositionToStringList(positions).join(", ");
+    if (position == "C")  { return PlayerPosition::Catcher; }
+    if (position == "1B") { return PlayerPosition::First; }
+    if (position == "2B") { return PlayerPosition::Second; }
+    if (position == "SS") { return PlayerPosition::SS; }
+    if (position == "3B") { return PlayerPosition::Third; }
+    if (position == "OF") { return PlayerPosition::Outfield; }
+    if (position == "DH") { return PlayerPosition::DH; }
+    if (position == "SP") { return PlayerPosition::Starter; }
+    if (position == "RP") { return PlayerPosition::Relief; }
+    return PlayerPosition::None;
 }
 
 //------------------------------------------------------------------------------
@@ -159,19 +183,19 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
             // Lookup appearances 
             try {
                 const auto& appearances = playerApperances.Lookup(player.name.toStdString());
-                if (appearances.atC > 0) { player.eligiblePositions |=  Player::Catcher; }
-                if (appearances.at1B > 0) { player.eligiblePositions |= Player::First; }
-                if (appearances.at2B > 0) { player.eligiblePositions |= Player::Second; }
-                if (appearances.atSS > 0) { player.eligiblePositions |= Player::SS; }
-                if (appearances.at3B > 0) { player.eligiblePositions |= Player::Third; }
-                if (appearances.atOF > 0) { player.eligiblePositions |= Player::Outfield; }
-                if (appearances.atDH > 0) { player.eligiblePositions |= Player::DH; }
+                if (appearances.atC > 0)  { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::Catcher)); }
+                if (appearances.at1B > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::First)); }
+                if (appearances.at2B > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::Second)); }
+                if (appearances.atSS > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::SS)); }
+                if (appearances.at3B > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::Third)); }
+                if (appearances.atOF > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::Outfield)); }
+                if (appearances.atDH > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::DH)); }
             } catch (std::runtime_error& e) {
                 std::cerr << "[Hitter] " << e.what() << std::endl;
             }
 
             // Set catergory
-            player.catergory = Player::Hitter;
+            player.catergory = Player::Catergory::Hitter;
 
             // XXX: NL-only!
             if (LookupTeamGroup(player.team.toStdString()).leauge != Leauge::NL) {
@@ -220,7 +244,6 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     // Sum zScores
     for (Player& player : vecHitters) {
         player.zScore = (player.hitting.zAVG + player.hitting.zHR + player.hitting.zR + player.hitting.zRBI + player.hitting.zSB);
-        // player.zScore = (player.hitting.spgAVG + player.hitting.spgHR + player.hitting.spgR + player.hitting.spgRBI + player.hitting.SB);
     }
 
     /*
@@ -276,9 +299,15 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
     std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& hitter) {
-        auto temp = hitter.zScore - zReplacement;
-        if (temp > 0) {
-            sumPositiveZScores += temp;
+        auto zDiff = hitter.zScore - zReplacement;
+        if (zDiff > 0) {
+            sumPositiveZScores += zDiff;
+
+            for (uint8_t i = 0; i < uint32_t(PlayerPosition::COUNT); ++i) {
+                if (hitter.eligiblePositionBitfield & (1 << i)) {
+                    m_mapPosAvailable[i]++;
+                }
+            }
         }
     });
 
@@ -367,9 +396,9 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
             // Lookup appearances 
             const auto& appearances = playerApperances.Lookup(player.name.toStdString());
             if (float(appearances.G) * 0.7f < float(appearances.GS)) {
-                player.eligiblePositions |= int32_t(Player::Starter);
+                player.eligiblePositionBitfield |= int32_t(1 << uint32_t(PlayerPosition::Starter));
             } else {
-                player.eligiblePositions|= int32_t(Player::Relief);
+                player.eligiblePositionBitfield |= int32_t(1 << uint32_t(PlayerPosition::Relief));
             }
 
             // XXX: NL-only!
@@ -378,7 +407,7 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
             }
 
             // Set catergory
-            player.catergory = Player::Pitcher;
+            player.catergory = Player::Catergory::Pitcher;
             
             // Add to pitchers
             vecPitchers.emplace_back(player);
@@ -431,7 +460,7 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
         player.pitching.zWHIP = ((1466 + player.pitching.H + player.pitching.BB) / (1192 + player.pitching.IP) - 1.23) / -0.015;
     }
 
-    // Sum zscore
+    // Sum z-score
     for (Player& player : vecPitchers) {
         player.zScore = (player.pitching.zSO + player.pitching.zW + player.pitching.zSV + player.pitching.zERA + player.pitching.zWHIP);
     }
@@ -447,9 +476,9 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
     std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
-        auto temp = pitcher.zScore - zReplacement;
-        if (temp > 0) {
-            sumPositiveZScores += temp;
+        auto zDiff = pitcher.zScore - zReplacement;
+        if (zDiff > 0) {
+            sumPositiveZScores += zDiff;
         }
     });
 
@@ -509,7 +538,11 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
                 return player.paid != 0 ? QString("$%1").arg(player.paid) : QString("--");
             }
         case COLUMN_DRAFT_POSITION:
-            return player.draftPosition;
+            if (role == RawDataRole) {
+                return uint32_t(player.draftPosition);
+            } else {
+                return PositionToString(player.draftPosition);
+            }
         case COLUMN_NAME:
             return player.name;
         case COLUMN_TEAM:
@@ -518,9 +551,9 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             return player.catergory;
         case COLUMN_POSITION:
             if (role == RawDataRole) {
-                return player.eligiblePositions;
+                return player.eligiblePositionBitfield;
             } else {
-                return PositionToString(player.eligiblePositions);
+                return PositionMaskToStringList(player.eligiblePositionBitfield).join(", ");
             }
         case COLUMN_AB:
             return player.hitting.AB;
@@ -612,7 +645,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
         {
             case COLUMN_Z:
             {
-                if (player.catergory == Player::Hitter) {
+                if (player.catergory == Player::Catergory::Hitter) {
                     return QString(
                         "zAVG: %1\n"
                         "zR:   %2\n"
@@ -626,7 +659,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
                         .arg(player.hitting.zSB);
                 }
 
-                if (player.catergory == Player::Pitcher) {
+                if (player.catergory == Player::Catergory::Pitcher) {
                     return QString(
                         "zERA:  %1\n"
                         "zSO:   %2\n"
@@ -791,28 +824,7 @@ Qt::ItemFlags PlayerTableModel::flags(const QModelIndex &index) const
 //------------------------------------------------------------------------------
 bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, int role)
 {
-    Player& player = m_vecPlayers.at(index.row());
-
-    switch (index.column())
-    {
-    case COLUMN_DRAFT_BUTTON:
-        player.status = Player::Status(value.toInt());
-        break;
-    case COLUMN_PAID:
-        player.paid = value.toInt();
-        break;
-    case COLUMN_OWNER:
-        player.ownerId = value.toInt();
-        break;
-    case COLUMN_DRAFT_POSITION:
-        player.draftPosition = value.toString();
-        break;
-    default:
-        return false;
-    }
-
     emit dataChanged(index, index);
-
     return QAbstractItemModel::setData(index, value, role);
 }
 
@@ -821,10 +833,26 @@ bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, 
 //------------------------------------------------------------------------------
 void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
 {
-    float value = model->data(model->index(index.row(), PlayerTableModel::COLUMN_ESTIMATE), PlayerTableModel::RawDataRole).toFloat();
+    // Get player
+    Player& player = m_vecPlayers[index.row()];
+
+    // Update status
+    player.status = Player::Status::Drafted;
+    player.ownerId = results.ownerId;
+    player.paid = results.cost;
+    player.draftPosition = results.position;
+
+    // Update inflation
     m_sumCost -= results.cost;
-    m_sumValue -= value;
+    m_sumValue -= player.cost;
     m_inflationFactor = (m_sumCost > 0) ? (m_sumCost / m_sumValue) : 1.0;
+
+    // Update player counts
+    for (auto i = 0; i < uint32_t(PlayerPosition::COUNT); i++) {
+        if (player.eligiblePositionBitfield & (1 << i)) {
+            m_mapPosAvailable[i]--;
+        }
+    }
 
     emit dataChanged(index, index);
 }

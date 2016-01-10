@@ -3,6 +3,8 @@
 #include <QDialog>
 #include <QString>
 
+#include "Player.h"
+
 class QAbstractItemModel;
 class QModelIndex;
 
@@ -14,7 +16,7 @@ public:
     {
         uint32_t ownerId = 0;
         uint32_t cost = 0;
-        QString position = 0;
+        PlayerPosition position = PlayerPosition::None;
     };
 
     DraftDialog(QAbstractItemModel* model, const QModelIndex& index);
