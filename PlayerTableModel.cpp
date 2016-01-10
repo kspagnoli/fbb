@@ -30,19 +30,8 @@ static const size_t TOTAL_PITCHER_MONEY = (NUM_OWNERS * BUDGET * (100 - HITTER_R
 //------------------------------------------------------------------------------
 static QString GetOwnerName(uint32_t ownerId)
 {
-    switch (ownerId)
-    {
-    case 0:
-        return "--";
-    case 1:
-        return "Team A";
-    case 2:
-        return "Team B";
-    default:
-        return "???";
-    }
+    return ownerId ? QString("Team %1").arg(ownerId) : "--";
 }
-
 
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
@@ -246,52 +235,15 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
         player.zScore = (player.hitting.zAVG + player.hitting.zHR + player.hitting.zR + player.hitting.zRBI + player.hitting.zSB);
     }
 
-    /*
-    std::vector<double> temp;
-    for (Player& player : vecHitters) {
-        temp.push_back(player.zScore);
-    }
-
-    for (size_t i = 0; i < temp.size(); i++)
-    {
-        double sum = 0;
-        double cSum = 0;
-
-        // Savitzky-Golay filters
-        // std::vector<int32_t> C ={ 179, 135, 30, -55, 15 };
-        // std::vector<int32_t> C = { 7, 6, 3, -2 };
-        std::vector<int32_t> C = { 59, 54, 39, 14, -21 };
-
-        for (size_t j = 0; j < C.size(); j++) {
-
-            auto InBounds = [&](int32_t i) -> bool {
-                return i >= 0 && i < int32_t(temp.size());
-            };
-
-            int32_t idx = i + j;
-            if (InBounds(idx)) {
-                sum += temp[idx] * C[j];
-                cSum += C[j];
-            }
-
-            if (j != 0) {
-                int32_t idx = i - j;
-                if (InBounds(idx)) {
-                    sum += temp[idx] * C[j];
-                    cSum += C[j];
-                }
-            }
-        }
-
-        auto smooth = sum / cSum;
-        vecHitters[i].zScore = smooth;
-    }
-    */
-
     // Re-rank based on z-score
     std::sort(std::begin(vecHitters), std::end(vecHitters), [](const auto& lhs, const auto& rhs) {
         return lhs.zScore > rhs.zScore;
     });
+
+    // Set catergory rank
+    for (uint32_t i = 0; i < vecHitters.size(); i++) {
+        vecHitters[i].categoryRank = i + 1;
+    }
     
     // Get the "replacement player"
     auto zReplacement = vecHitters[TOTAL_HITTERS].zScore;
@@ -302,12 +254,6 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
         auto zDiff = hitter.zScore - zReplacement;
         if (zDiff > 0) {
             sumPositiveZScores += zDiff;
-
-            for (uint8_t i = 0; i < uint32_t(PlayerPosition::COUNT); ++i) {
-                if (hitter.eligiblePositionBitfield & (1 << i)) {
-                    m_mapPosAvailable[i]++;
-                }
-            }
         }
     });
 
@@ -315,6 +261,18 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     static const float costPerZ = float(TOTAL_HITTER_MONEY) / sumPositiveZScores;
     std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& player) {
         player.cost = (player.zScore - zReplacement) * costPerZ;
+    });
+
+    // Count players available
+    std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& hitter) {
+        for (uint8_t i = 0; i < uint32_t(PlayerPosition::COUNT); ++i) {
+            if (hitter.eligiblePositionBitfield & (1 << i)) {
+                m_mapPosAvailableAll[i]++;
+                if (hitter.cost > 0) {
+                    m_mapPosAvailablePosZ[i]++;
+                }
+            }
+        }
     });
 
     // Add to main storage
@@ -470,6 +428,11 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
         return lhs.zScore > rhs.zScore;
     });
 
+    // Set catergory rank
+    for (uint32_t i = 0; i < vecPitchers.size(); i++) {
+        vecPitchers[i].categoryRank = i + 1;
+    }
+
     // Get the "replacement player"
     auto zReplacement = vecPitchers[TOTAL_PITCHERS].zScore;
 
@@ -486,6 +449,18 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     static const float costPerZ = float(TOTAL_PITCHER_MONEY) / sumPositiveZScores;
     std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
         pitcher.cost = pitcher.zScore * costPerZ;
+    });
+
+    // Count players available
+    std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
+        for (uint8_t i = 0; i < uint32_t(PlayerPosition::COUNT); ++i) {
+            if (pitcher.eligiblePositionBitfield & (1 << i)) {
+                m_mapPosAvailableAll[i]++;
+                if (pitcher.cost > 0) {
+                    m_mapPosAvailablePosZ[i]++;
+                }
+            }
+        }
     });
 
     // Add to main storage
@@ -521,8 +496,8 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
 
         switch (index.column())
         {
-        case COLUMN_INDEX:
-            return index.row();
+        case COLUMN_RANK:
+            return player.categoryRank;
         case COLUMN_DRAFT_BUTTON:
             return uint32_t(player.status);
         case COLUMN_OWNER:
@@ -678,7 +653,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             {
                 const float baseCost = player.cost;
                 const float inflatedCost = m_inflationFactor * baseCost;
-                const float diff =  baseCost - inflatedCost;
+                const float diff = inflatedCost - baseCost;
                 return QString(
                     "Inflated: $%1\n"
                     "Base:     $%2\n"
@@ -708,7 +683,7 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
 
             switch (section) 
             {
-            case COLUMN_INDEX:
+            case COLUMN_RANK:
                 return "#";
             case COLUMN_DRAFT_BUTTON:
                 return "Status";
@@ -781,7 +756,7 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
             case COLUMN_Z:
                 return "%0.3f";
 
-            case COLUMN_INDEX:
+            case COLUMN_RANK:
             case COLUMN_AB:
             case COLUMN_HR:
             case COLUMN_R:
@@ -850,7 +825,10 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     // Update player counts
     for (auto i = 0; i < uint32_t(PlayerPosition::COUNT); i++) {
         if (player.eligiblePositionBitfield & (1 << i)) {
-            m_mapPosAvailable[i]--;
+            m_mapPosAvailableAll[i]--;
+            if (player.cost >= 0) {
+                m_mapPosAvailablePosZ[i]--;
+            }
         }
     }
 

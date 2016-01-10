@@ -63,7 +63,8 @@ struct Player
     float paid = 0;
     PlayerPosition draftPosition = PlayerPosition::None;
 
-    // Cost estimate
+    // Cost estimate category 
+    uint32_t categoryRank = 0;
     float zScore = 0;
     float cost = 0;
 

@@ -892,7 +892,7 @@ public:
 
         // Create menu bar
         QMenuBar* menuBar = new QMenuBar();
-        menuBar->addAction("MENU BAR");
+        menuBar->addAction("Settings");
         QMainWindow::setMenuBar(menuBar);
 
         // show me

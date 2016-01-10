@@ -23,7 +23,7 @@ public:
     enum COLUMN
     {
         // General
-        COLUMN_INDEX,
+        COLUMN_RANK,
         COLUMN_DRAFT_BUTTON,
         COLUMN_OWNER,
         COLUMN_DRAFT_POSITION,
@@ -96,5 +96,6 @@ private:
     double m_inflationFactor = 1.0;
 
     // Position scarcity factors
-    std::array<int32_t, size_t(PlayerPosition::COUNT)> m_mapPosAvailable = {0};
+    std::array<int32_t, size_t(PlayerPosition::COUNT)> m_mapPosAvailablePosZ = { 0 };
+    std::array<int32_t, size_t(PlayerPosition::COUNT)> m_mapPosAvailableAll = { 0 };
 };

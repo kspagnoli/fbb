@@ -29,6 +29,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
     switch (sourceColumn)
     {
     // Both
+    case PlayerTableModel::COLUMN_RANK:
     case PlayerTableModel::COLUMN_DRAFT_BUTTON:
     case PlayerTableModel::COLUMN_OWNER:
     case PlayerTableModel::COLUMN_PAID:
