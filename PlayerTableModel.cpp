@@ -2,6 +2,7 @@
 #include "ZScore.h"
 #include "Teams.h"
 #include "Player.h"
+#include "DraftSettings.h"
 
 #include <vector>
 #include <fstream>
@@ -12,6 +13,8 @@
 
 #include <iostream>
 #include <QAbstractItemDelegate>
+#include <QFile>
+#include <QTextStream>
 
 // [XXX] make me settings
 static const size_t HITTER_RATIO = 66;
@@ -23,15 +26,6 @@ static const size_t TOTAL_HITTERS = NUM_HITTERS_PER_OWNER * NUM_OWNERS;
 static const size_t TOTAL_HITTER_MONEY = (NUM_OWNERS * BUDGET * HITTER_RATIO) / size_t(100);
 static const size_t TOTAL_PITCHERS = NUM_PITCHERS_PER_OWNER * NUM_OWNERS;
 static const size_t TOTAL_PITCHER_MONEY = (NUM_OWNERS * BUDGET * (100 - HITTER_RATIO)) / size_t(100);
-
-//------------------------------------------------------------------------------
-// GetOwnerName
-// [XXX] Temp!
-//------------------------------------------------------------------------------
-static QString GetOwnerName(uint32_t ownerId)
-{
-    return ownerId ? QString("Team %1").arg(ownerId) : "--";
-}
 
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
@@ -53,8 +47,9 @@ QString PositionToString(const PlayerPosition& position)
     case PlayerPosition::DH: return "DH";
     case PlayerPosition::Starter: return "SP";
     case PlayerPosition::Relief: return "RP";
+    case PlayerPosition::Pitcher: return "P";
     default:
-        return "!";
+        return "??";
         break;
     }
 }
@@ -62,7 +57,7 @@ QString PositionToString(const PlayerPosition& position)
 //------------------------------------------------------------------------------
 // PositionMaskToStringList (static helper)
 //------------------------------------------------------------------------------
-QStringList PositionMaskToStringList(const PlayerPositionMask& positionBitField)
+QStringList PositionMaskToStringList(const PlayerPositionBitfield& positionBitField)
 {
     QStringList vecPos;
     for (auto i = 0; i < uint32_t(PlayerPosition::COUNT); i++) {
@@ -85,8 +80,12 @@ PlayerPosition StringToPosition(const QString& position)
     if (position == "3B") { return PlayerPosition::Third; }
     if (position == "OF") { return PlayerPosition::Outfield; }
     if (position == "DH") { return PlayerPosition::DH; }
+    if (position == "MI") { return PlayerPosition::MiddleInfield; }
+    if (position == "CI") { return PlayerPosition::CornerInfield; }
+    if (position == "U")  { return PlayerPosition::Utility; }
     if (position == "SP") { return PlayerPosition::Starter; }
     if (position == "RP") { return PlayerPosition::Relief; }
+    if (position == "P")  { return PlayerPosition::Pitcher; }
     return PlayerPosition::None;
 }
 
@@ -120,6 +119,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     // Stats to find
     std::unordered_map<std::string, uint32_t> LUT =
     {
+        { "playerid", 0 },
         { "Name",0 },
         { "Team",0 },
         { "PA",0 },
@@ -153,6 +153,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 
             // Parse into player data
             Player player;
+            player.id = boost::lexical_cast<uint32_t>(parsed[LUT["playerid"]]);
             player.name = QString::fromStdString(parsed[LUT["Name"]]);
             player.team = QString::fromStdString(parsed[LUT["Team"]]);
             player.hitting.PA = boost::lexical_cast<uint32_t>(parsed[LUT["PA"]]);
@@ -172,13 +173,16 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
             // Lookup appearances 
             try {
                 const auto& appearances = playerApperances.Lookup(player.name.toStdString());
-                if (appearances.atC > 0)  { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::Catcher)); }
-                if (appearances.at1B > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::First)); }
-                if (appearances.at2B > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::Second)); }
-                if (appearances.atSS > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::SS)); }
-                if (appearances.at3B > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::Third)); }
-                if (appearances.atOF > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::Outfield)); }
-                if (appearances.atDH > 0) { player.eligiblePositionBitfield |= (1 << uint32_t(PlayerPosition::DH)); }
+                if (appearances.atC > 0 ) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::Catcher, PlayerPosition::Utility}); }
+                if (appearances.at1B > 0) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::First, PlayerPosition::Utility, PlayerPosition::CornerInfield}); }
+                if (appearances.at2B > 0) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::Second, PlayerPosition::Utility, PlayerPosition::MiddleInfield}); }
+                if (appearances.atSS > 0) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::SS, PlayerPosition::Utility, PlayerPosition::MiddleInfield}); }
+                if (appearances.at3B > 0) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::Third, PlayerPosition::Utility, PlayerPosition::CornerInfield}); }
+                if (appearances.atOF > 0) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::Outfield, PlayerPosition::Utility}); }
+
+                // XXX: Don't care about DL
+                // if (appearances.atDH > 0) { player.eligiblePositionBitfield |= ToBitfield(PlayerPosition::DH); }
+
             } catch (std::runtime_error& e) {
                 std::cerr << "[Hitter] " << e.what() << std::endl;
             }
@@ -186,7 +190,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
             // Set catergory
             player.catergory = Player::Catergory::Hitter;
 
-            // XXX: NL-only!
+            // XXX: NL-only
             if (LookupTeamGroup(player.team.toStdString()).leauge != Leauge::NL) {
                 continue;
             }
@@ -222,13 +226,13 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     // SBSGP  =[@SB] / 9.4
     // AVGSGP =(([@H] + 1768) / ([@AB] + 6617) - 0.267) / 0.0024
     
-    for (Player& player : vecHitters) {
-        player.hitting.zR   = player.hitting.R / 24.6f;
-        player.hitting.zHR  = player.hitting.HR / 10.4f;
-        player.hitting.zRBI = player.hitting.RBI / 24.6f;
-        player.hitting.zSB  = player.hitting.SB / 9.4f;
-        player.hitting.zAVG = ((player.hitting.H + 1768.0f) / (player.hitting.AB + 6617.0f) - 0.267f) / 0.0024f;
-    }
+    // for (Player& player : vecHitters) {
+    //     player.hitting.zR   = player.hitting.R / 30.983f;
+    //     player.hitting.zHR  = player.hitting.HR / 9.1958f;
+    //     player.hitting.zRBI = player.hitting.RBI / 30.105f;
+    //     player.hitting.zSB  = player.hitting.SB / 7.818f;
+    //     player.hitting.zAVG = ((player.hitting.H + 1446.095f) / (player.hitting.AB + 5536.386f) - 0.261184f) / 0.002863636f;
+    // }
 
     // Sum zScores
     for (Player& player : vecHitters) {
@@ -300,6 +304,7 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
 
     std::unordered_map<std::string, uint32_t> LUT =
     {
+        { "playerid", 0 },
         { "Name",0 },
         { "Team",0 },
         { "IP",0 },
@@ -335,6 +340,7 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
             std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
 
             Player player;
+            player.id = boost::lexical_cast<uint32_t>(parsed[LUT["playerid"]]);
             player.name = QString::fromStdString(parsed[LUT["Name"]]);
             player.team = QString::fromStdString(parsed[LUT["Team"]]);
             player.pitching.IP = boost::lexical_cast<decltype(player.pitching.IP)>(parsed[LUT["IP"]]);
@@ -351,13 +357,17 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
                 continue;
             }
 
+            // Always a pitcher
+            player.eligiblePositionBitfield |= ToBitfield(PlayerPosition::Pitcher);
+
+            // XXX: Don't care about SP/RP
             // Lookup appearances 
-            const auto& appearances = playerApperances.Lookup(player.name.toStdString());
-            if (float(appearances.G) * 0.7f < float(appearances.GS)) {
-                player.eligiblePositionBitfield |= int32_t(1 << uint32_t(PlayerPosition::Starter));
-            } else {
-                player.eligiblePositionBitfield |= int32_t(1 << uint32_t(PlayerPosition::Relief));
-            }
+            // const auto& appearances = playerApperances.Lookup(player.name.toStdString());
+            // if (float(appearances.G) * 0.7f < float(appearances.GS)) {
+            //     player.eligiblePositionBitfield |= ToBitfield(PlayerPosition::Starter);
+            // } else {
+            //     player.eligiblePositionBitfield |= ToBitfield(PlayerPosition::Relief);
+            // }
 
             // XXX: NL-only!
             if (LookupTeamGroup(player.team.toStdString()).leauge != Leauge::NL) {
@@ -410,13 +420,13 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     // ERASGP  =((475 + [@ER]) * 9 / (1192 + [@IP]) - 3.59) / -0.076
     // WHIPSGP =((1466 + [@H] + [@BB]) / (1192 + [@IP]) - 1.23) / -0.015
 
-    for (Player& player : vecPitchers) {
-        player.pitching.zW    = player.pitching.W / 3.03;
-        player.pitching.zSV   = player.pitching.SV / 9.95;
-        player.pitching.zSO   = player.pitching.SO / 39.3;
-        player.pitching.zERA  = ((475 + player.pitching.ER) * 9 / (1192 + player.pitching.IP) - 3.59) / -0.076;
-        player.pitching.zWHIP = ((1466 + player.pitching.H + player.pitching.BB) / (1192 + player.pitching.IP) - 1.23) / -0.015;
-    }
+    // for (Player& player : vecPitchers) {
+    //     player.pitching.zW    = player.pitching.W / 3.03;
+    //     player.pitching.zSV   = player.pitching.SV / 9.95;
+    //     player.pitching.zSO   = player.pitching.SO / 39.3;
+    //     player.pitching.zERA  = ((475 + player.pitching.ER) * 9 / (1192 + player.pitching.IP) - 3.59) / -0.076;
+    //     player.pitching.zWHIP = ((1466 + player.pitching.H + player.pitching.BB) / (1192 + player.pitching.IP) - 1.23) / -0.015;
+    // }
 
     // Sum z-score
     for (Player& player : vecPitchers) {
@@ -469,6 +479,96 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     }
 }
 
+
+//------------------------------------------------------------------------------
+// SaveStatus
+//------------------------------------------------------------------------------
+bool PlayerTableModel::SaveDraftStatus(const QString& filename) const
+{
+    // Open file
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+
+    // Output steam
+    QTextStream stream(&file);
+
+    // Header information
+    stream << "\"playerid\"" << "," ;
+    stream << "\"ownerid\"" << ",";
+    stream << "\"draftposition\"" << ",";
+    stream << "\"paid\"" << endl;
+
+    // Per-drafted player
+    for (const auto& player : m_vecPlayers) {
+        if (player.ownerId) {
+            stream << player.id << ",";
+            stream << player.ownerId << ",";
+            stream << uint32_t(player.draftPosition) << ",";
+            stream << player.paid << endl;
+        }
+    }
+
+    return true;
+}
+
+//------------------------------------------------------------------------------
+// ReadDraftStatus
+//------------------------------------------------------------------------------
+bool PlayerTableModel::LoadDraftStatus(const QString& filename)
+{
+    // Open file
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    // Parse header
+    QByteArray line = file.readLine();
+    QList<QByteArray> wordList = line.split(',');
+    
+    // TODO: assert header format
+
+    // Parse each line
+    while (!file.atEnd()) {
+
+        // Get data
+        QByteArray line = file.readLine();
+        QList<QByteArray> wordList = line.split(',');
+
+        // parse data
+        auto playerId = QString::fromUtf8(wordList.at(0)).toUInt();
+        auto ownerId = QString::fromUtf8(wordList.at(1)).toUInt();
+        auto draftPosition = QString::fromUtf8(wordList.at(2)).toUInt();
+        auto paid = QString::fromUtf8(wordList.at(3)).toUInt();
+
+        // Find this player
+        auto itr = std::find_if(m_vecPlayers.begin(), m_vecPlayers.end(), [=](const Player& player) {
+            return player.id == playerId;
+        });
+
+        // Make sure we find via id
+        if (itr == m_vecPlayers.end()) {
+            continue;
+        }
+
+        // Get row
+        auto row = std::distance(m_vecPlayers.begin(), itr);
+
+        // Format results
+        DraftDialog::Results results;
+        results.ownerId = ownerId;
+        results.cost = paid;
+        results.position = PlayerPosition(draftPosition);
+
+        // Broadcast
+        OnDrafted(results, index(row, 0), this);
+    }
+
+    return true;
+}
+
 //------------------------------------------------------------------------------
 // rowCount (override)
 //------------------------------------------------------------------------------
@@ -504,7 +604,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             if (role == RawDataRole) {
                 return player.ownerId;
             } else {
-                return GetOwnerName(player.ownerId);
+                return DraftSettings::OwnerAbbreviation(player.ownerId);
             }
         case COLUMN_PAID:
             if (role == RawDataRole) {
@@ -518,6 +618,8 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             } else {
                 return PositionToString(player.draftPosition);
             }
+        case COLUMN_ID:
+            return player.id;
         case COLUMN_NAME:
             return player.name;
         case COLUMN_TEAM:
@@ -528,7 +630,9 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             if (role == RawDataRole) {
                 return player.eligiblePositionBitfield;
             } else {
-                return PositionMaskToStringList(player.eligiblePositionBitfield).join(", ");
+                auto positionsToHide = { PlayerPosition::MiddleInfield, PlayerPosition::CornerInfield, PlayerPosition::Utility };
+                auto trimPositions = player.eligiblePositionBitfield & ~ToBitfield(positionsToHide);
+                return PositionMaskToStringList(trimPositions).join(", ");
             }
         case COLUMN_AB:
             return player.hitting.AB;
@@ -657,7 +761,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
                 return QString(
                     "Inflated: $%1\n"
                     "Base:     $%2\n"
-                    "Diff:     $%3\n")
+                    "Diff:     $%3")
                     .arg(QString::number(inflatedCost, 'f', 2))
                     .arg(QString::number(baseCost, 'f', 2))
                     .arg(QString::number(diff, 'f', 2));
@@ -693,6 +797,8 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
                 return "Paid";
             case COLUMN_DRAFT_POSITION:
                 return "Pos.";
+            case COLUMN_ID:
+                return "Id.";
             case COLUMN_NAME:
                 return "Name";
             case COLUMN_TEAM:
@@ -832,5 +938,11 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
         }
     }
 
+    // Forward results
+    emit Drafted(results, index, model);
+
+    // Update table view
     emit dataChanged(index, index);
 }
+
+#include "PlayerTableModel.moc"

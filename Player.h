@@ -20,10 +20,25 @@ enum class PlayerPosition
     DH,
     Starter,
     Relief,
+    Pitcher,
     COUNT,
 };
 
-using PlayerPositionMask = uint32_t;
+using PlayerPositionBitfield = uint32_t;
+
+inline PlayerPositionBitfield ToBitfield(const PlayerPosition& position)
+{
+    return 1 << PlayerPositionBitfield(position);
+}
+
+inline PlayerPositionBitfield ToBitfield(const std::initializer_list<PlayerPosition>& positions)
+{
+    PlayerPositionBitfield bitfield = 0;
+    for (auto& position : positions) {
+        bitfield |= (1 << PlayerPositionBitfield(position));
+    }
+    return bitfield;
+}
 
 //------------------------------------------------------------------------------
 // Player 
@@ -41,10 +56,11 @@ struct Player
 
     // Player data
     uint32_t index;
+    uint32_t id;                                // player id
     QString name;
     QString team;                               // TODO: change to ID
     CatergoryMask catergory;
-    PlayerPositionMask eligiblePositionBitfield = uint32_t(0);
+    PlayerPositionBitfield eligiblePositionBitfield = uint32_t(0);
 
     // Player Status
     enum Status

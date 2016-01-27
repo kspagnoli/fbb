@@ -26,6 +26,7 @@
 #include <QDataStream>
 #include <QBuffer>
 #include <QToolTip>
+#include <QFileDialog>
 
 #include <memory>
 #include <string>
@@ -33,6 +34,7 @@
 #include <iostream>
 
 #include "DraftDialog.h"
+#include "DraftSettings.h"
 #include "PlayerTableModel.h"
 #include "PlayerSortFilterProxyModel.h"
 #include "SelectedPlayer.h"
@@ -40,9 +42,6 @@
 #include "DraftDelegate.h"
 #include "OwnerSortFilterProxyModel.h"
 #include "PlayerScatterPlotChart.h"
-
-// TODO: move to settings
-static const uint32_t NUM_OWNERS = 9;
 
 static QString TableStyle()
 {
@@ -124,7 +123,7 @@ public:
         switch (index.column()) 
         {
         case RankRows::TEAM:
-            return index.row();
+            return DraftSettings::OwnerAbbreviation(index.row() + 1);
         case RankRows::BA:
             return QString("%1 (%2)").arg(player.AB == 0 ? "--" : QString::number(player.AVG, 'f', 3)).arg(player.rankAVG);
         case RankRows::R:
@@ -210,6 +209,10 @@ public slots:
 
     void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
     {
+        if (results.ownerId == 0) {
+            return;
+        }
+
         auto GetValue = [=](uint32_t column)
         {
             QModelIndex indexHR = model->index(index.row(), column);
@@ -218,14 +221,14 @@ public slots:
 
         auto DoGetRankingValue = [=](const auto& fnGet, const auto& fnSet)
         {
-            std::vector<uint32_t> ranks(NUM_OWNERS);
+            std::vector<uint32_t> ranks(DraftSettings::OwnerCount());
             std::size_t n(0);
             std::generate(std::begin(ranks), std::end(ranks), [&] { return n++; });
             std::sort(std::begin(ranks), std::end(ranks), [&](uint32_t iLHS, uint32_t iRHS) {
                 return fnGet(iLHS) < fnGet(iRHS);
             });
 
-            for (uint32_t i = 0; i < NUM_OWNERS; i++) {
+            for (uint32_t i = 0; i < DraftSettings::OwnerCount(); i++) {
                 fnSet(ranks[i], i + 1);
             }
         };
@@ -236,7 +239,7 @@ public slots:
                 [&](uint32_t i, uint32_t rank) { return m_vecOwnerPoints[i].rank##STAT = rank; });
 
         // This owner
-        SummaryTableModel::OwnerPoints& owner = m_vecOwnerPoints[results.ownerId];
+        SummaryTableModel::OwnerPoints& owner = m_vecOwnerPoints[results.ownerId - 1];
 
         // Update values (hitting)
         owner.AB  += GetValue(PlayerTableModel::COLUMN_AB);
@@ -453,7 +456,7 @@ public:
         case COLUMN_DRAFT_POSITION:
             return position;
         case COLUMN_PAID:
-            return spPlayer ? QString("$1").arg(spPlayer->cost) : QVariant("--");
+            return spPlayer ? QString("$%1").arg(spPlayer->cost) : QVariant("--");
         case COLUMN_NAME:
             return spPlayer ? QVariant(spPlayer->name) : QVariant("--");
         default:
@@ -461,7 +464,6 @@ public:
         }
 
         return QVariant();
-
     }
 
     virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const override
@@ -501,7 +503,7 @@ public slots:
             return (pp.first == pos && !pp.second);
         });
 
-        // Insert this play in the opening
+        // Insert this player in the opening
         if (itr != m_draftedPlayers.end()) {
             itr->second = std::make_shared<OwnedPlayer>(name, results.cost);
             return;
@@ -549,13 +551,13 @@ public:
         // Appearance LUT
         PlayerApperances appearances("2015_appearances.csv");
 
-        // Draft delegate
-        DraftDelegate* draftDelegate = new DraftDelegate(this);
-        
         // Player table model
         PlayerTableModel* playerTableModel = new PlayerTableModel(this);
         playerTableModel->LoadHittingProjections("2015_hitters.csv", appearances);
         playerTableModel->LoadPitchingProjections("2015_pitchers.csv", appearances);
+
+        // Draft delegate
+        DraftDelegate* draftDelegate = new DraftDelegate(playerTableModel);
 
         // Hitter sort-model
         PlayerSortFilterProxyModel* hitterSortFilterProxyModel = new PlayerSortFilterProxyModel(Player::Hitter);
@@ -684,7 +686,10 @@ public:
         QAction* filterSS = MakeHitterFilter("SS", "Filter SS",                 &PlayerSortFilterProxyModel::OnFilterSS);
         QAction* filter3B = MakeHitterFilter("3B", "Filter 3B",                 &PlayerSortFilterProxyModel::OnFilter3B);
         QAction* filterOF = MakeHitterFilter("OF", "Filter Outfielders",        &PlayerSortFilterProxyModel::OnFilterOF);
+        QAction* filterCI = MakeHitterFilter("CI", "Filter Corner Infielders",  &PlayerSortFilterProxyModel::OnFilterCI);
+        QAction* filterMI = MakeHitterFilter("MI", "Filter Middle Infielders",  &PlayerSortFilterProxyModel::OnFilterMI);
         QAction* filterDH = MakeHitterFilter("DH", "Filter Designated Hitters", &PlayerSortFilterProxyModel::OnFilterDH);
+        QAction* filterU  = MakeHitterFilter("U",  "Filter Utility",            &PlayerSortFilterProxyModel::OnFilterU);
 
         // Menu spacer
         QWidget* spacer = new QWidget(this);
@@ -741,7 +746,7 @@ public:
         toolbar->addSeparator();
         toolbar->addWidget(new QLabel(" Positions: ", this));
         toolbar->addActions(QList<QAction*>{filterStarter, filterRelief});
-        toolbar->addActions(QList<QAction*>{filterC, filter1B, filter2B, filterSS, filter3B, filterOF, filterDH});
+        toolbar->addActions(QList<QAction*>{filterC, filter1B, filter2B, filterSS, filter3B, filterOF, filterCI, filterMI, filterDH, filterU});
         toolbar->addWidget(spacer);
         toolbar->addWidget(new QLabel("Player Search: ", this));
         toolbar->addWidget(playerSearch);
@@ -778,17 +783,17 @@ public:
         QHBoxLayout* ownersLayout = new QHBoxLayout(this);
 
         // Loop owners
-        for (int ownerId = 1; ownerId <= NUM_OWNERS; ownerId++) {
+        for (uint32_t ownerId = 1; ownerId <= DraftSettings::OwnerCount(); ownerId++) {
 
             // V-Layout per owner
             QVBoxLayout* perOwnerLayout = new QVBoxLayout(this);
 
             // Item model for this owner
             OwnerItemModel* ownerItemModel = new OwnerItemModel(ownerId, this);
-            connect(draftDelegate, &DraftDelegate::Drafted, ownerItemModel, &OwnerItemModel::OnDrafted);
+            connect(playerTableModel, &PlayerTableModel::Drafted, ownerItemModel, &OwnerItemModel::OnDrafted);
 
             // Owner name label
-            QLabel* ownerLabel = new QLabel(QString("Owner #%1").arg(ownerId), this);
+            QLabel* ownerLabel = new QLabel(DraftSettings::OwnerName(ownerId), this);
             ownerLabel->setAlignment(Qt::AlignCenter);
             perOwnerLayout->addWidget(ownerLabel);
 
@@ -831,7 +836,7 @@ public:
         connect(playerTableModel, &QAbstractItemModel::dataChanged, chartView, &PlayerScatterPlotChart::Update);
 
         // Summary model
-        SummaryTableModel* summaryModel = new SummaryTableModel(NUM_OWNERS, this);
+        SummaryTableModel* summaryModel = new SummaryTableModel(DraftSettings::OwnerCount(), this);
 
         // Summary view
         SummaryWidget* summary = new SummaryWidget(summaryModel, this);
@@ -851,9 +856,6 @@ public:
         //----------------------------------------------------------------------
         // Connections
         //----------------------------------------------------------------------
-
-        // Connect draft to player model
-        connect(draftDelegate, &DraftDelegate::Drafted, playerTableModel, &PlayerTableModel::OnDrafted);
 
         // Connect tab filters
         connect(hitterPitcherTabs, &QTabWidget::currentChanged, this, [=](int index) {
@@ -881,7 +883,7 @@ public:
         });
         
         // Connect summary model
-        connect(draftDelegate, &DraftDelegate::Drafted, summaryModel, &SummaryTableModel::OnDrafted);
+        connect(playerTableModel, &PlayerTableModel::Drafted, summaryModel, &SummaryTableModel::OnDrafted);
 
         //----------------------------------------------------------------------
         // Main
@@ -890,10 +892,66 @@ public:
         // Set as main window
         QMainWindow::setCentralWidget(topBottomSplitter);
 
-        // Create menu bar
-        QMenuBar* menuBar = new QMenuBar();
-        menuBar->addAction("Settings");
-        QMainWindow::setMenuBar(menuBar);
+        // Create main menu bar
+        QMenuBar* mainMenuBar = new QMenuBar();
+        QMainWindow::setMenuBar(mainMenuBar);
+        
+        // Main Menu > File menu
+        QMenu* fileMenu = mainMenuBar->addMenu("&File");
+
+        // File dialog helper
+        auto GetFileDialog = [&](QFileDialog::AcceptMode mode) -> QFileDialog*
+        {
+            QFileDialog* dialog = new QFileDialog(this);
+            dialog->setWindowModality(Qt::WindowModal);
+            dialog->setAcceptMode(mode);
+            dialog->setNameFilter("CSV files (*.csv)");
+            return dialog;
+        };
+
+        // Main Menu > File menu > Save action
+        QAction* saveResultsAction = new QAction("&Save Results...", this);
+        connect(saveResultsAction, &QAction::triggered, [=](bool checked) {
+
+            auto dialog = GetFileDialog(QFileDialog::AcceptSave);
+
+            QStringList files;
+            if (dialog->exec()) {
+                files = dialog->selectedFiles();
+            } else {
+                return false;
+            }
+
+            return playerTableModel->SaveDraftStatus(files.at(0));
+        });
+        fileMenu->addAction(saveResultsAction);
+        
+        // Main Menu > File menu > Load action
+        QAction* loadResultsAction = new QAction("&Load Results...", this);
+        connect(loadResultsAction, &QAction::triggered, [=](bool checked) {
+
+            auto dialog = GetFileDialog(QFileDialog::AcceptOpen);
+
+            QStringList files;
+            if (dialog->exec()) {
+                files = dialog->selectedFiles();
+            } else {
+                return false;
+            }
+
+            return playerTableModel->LoadDraftStatus(files.at(0));
+        });
+        fileMenu->addAction(loadResultsAction);
+
+        // Main Menu > File menu
+        QMenu* settingsMenu = mainMenuBar->addMenu("&Settings");
+
+        // Main Menu > Settings menu > Options action
+        QAction* optionsAction = new QAction("&Options...", this);
+        connect(optionsAction, &QAction::triggered, [=](bool checked) {
+            // TODO: Some settings would be nice...
+        });
+        settingsMenu->addAction(optionsAction);
 
         // show me
         QMainWindow::show();

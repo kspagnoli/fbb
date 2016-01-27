@@ -21,6 +21,7 @@ find_package(Qt5Charts REQUIRED)
 set(SOURCE
     DraftDelegate.cpp
     DraftDialog.cpp
+    DraftSettings.cpp
     PlayerSortFilterProxyModel.cpp
     PlayerTableModel.cpp
     HittingStats.cpp

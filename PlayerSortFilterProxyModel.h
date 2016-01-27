@@ -26,8 +26,12 @@ public slots:
     void OnFilterSS(bool checked);
     void OnFilter3B(bool checked);
     void OnFilterOF(bool checked);
+    void OnFilterCI(bool checked);
+    void OnFilterMI(bool checked);
     void OnFilterDH(bool checked);
+    void OnFilterU(bool checked);
 
+    void OnFilterP(bool checked);
     void OnFilterSP(bool checked);
     void OnFilterRP(bool checked);
     
@@ -48,9 +52,13 @@ private:
     bool m_acceptSS = true;
     bool m_accept3B = true;
     bool m_acceptOF = true;
+    bool m_acceptMI = true;
+    bool m_acceptCI = true;
     bool m_acceptDH = true;
+    bool m_acceptU  = true;
 
     // Pitching filters
+    bool m_acceptP  = true;
     bool m_acceptSP = true;
     bool m_acceptRP = true;
 };

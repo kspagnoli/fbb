@@ -1,11 +1,13 @@
 #include "DraftDelegate.h"
 #include "Player.h"
+#include "PlayerTableModel.h"
 
 #include <QApplication>
 #include <QSortFilterProxyModel>
 
-DraftDelegate::DraftDelegate(QWidget* parent)
-    : QAbstractItemDelegate(parent)
+DraftDelegate::DraftDelegate(PlayerTableModel* playerTableModel)
+    : QAbstractItemDelegate(playerTableModel)
+    , m_playerTableModel(playerTableModel)
 {
 }
 
@@ -56,7 +58,7 @@ bool DraftDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const 
         // On successful draft, signal results
         connect(draftDialog, &QDialog::accepted, [=]() -> void {
             const DraftDialog::Results& results = draftDialog->GetDraftResults();
-            emit Drafted(results, srcIndex, srcModel);
+            m_playerTableModel->OnDrafted(results, srcIndex, srcModel);
         });
 
         return true;
@@ -64,5 +66,3 @@ bool DraftDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const 
 
     return false;
 }
-
-#include "DraftDelegate.moc"

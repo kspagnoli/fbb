@@ -10,12 +10,14 @@ class PlayerApperances;
 
 // Helpers
 QString PositionToString(const PlayerPosition& position);
-QStringList PositionMaskToStringList(const PlayerPositionMask& positionBitField);
+QStringList PositionMaskToStringList(const PlayerPositionBitfield& positionBitField);
 
 PlayerPosition StringToPosition(const QString& position);
 
 class PlayerTableModel : public QAbstractTableModel
 {
+
+    Q_OBJECT
 
 public:
 
@@ -28,6 +30,7 @@ public:
         COLUMN_OWNER,
         COLUMN_DRAFT_POSITION,
         COLUMN_PAID,
+        COLUMN_ID,
         COLUMN_NAME,
         COLUMN_TEAM,
         COLUMN_CATERGORY,
@@ -68,6 +71,10 @@ public:
     void LoadHittingProjections(const std::string& filename, const PlayerApperances& playerApperances);
     void LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances);
 
+    // Save status
+    bool SaveDraftStatus(const QString& filename) const;
+    bool LoadDraftStatus(const QString& filename);
+
     // QAbstractTableModel interfaces
     virtual int rowCount(const QModelIndex &) const override;
     virtual int columnCount(const QModelIndex &) const override;
@@ -80,12 +87,15 @@ public:
     static const int RawDataRole = Qt::UserRole + 1;
     static const int ChartFormatRole = Qt::UserRole + 2;
 
-public slots:
+signals:
 
-    //
-    void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model);
+    void Drafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model);
 
 private:
+
+    // Update model
+    friend class DraftDelegate;
+    void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model);
 
     // Hitter data model
     std::vector<Player> m_vecPlayers;

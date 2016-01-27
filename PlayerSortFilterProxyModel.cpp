@@ -33,6 +33,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
     case PlayerTableModel::COLUMN_DRAFT_BUTTON:
     case PlayerTableModel::COLUMN_OWNER:
     case PlayerTableModel::COLUMN_PAID:
+    case PlayerTableModel::COLUMN_ID:
     case PlayerTableModel::COLUMN_NAME:
     case PlayerTableModel::COLUMN_TEAM:
     case PlayerTableModel::COLUMN_POSITION:
@@ -101,43 +102,61 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
         const QModelIndex& posIndex = sourceModel()->index(sourceRow, PlayerTableModel::COLUMN_POSITION, sourceParent);
         const uint32_t& pos = sourceModel()->data(posIndex, PlayerTableModel::RawDataRole).toInt();
 
+        // XXX: this would be better with a simple bitfield compare
+
         if (pos == uint32_t(PlayerPosition::None)) {
             return true;
         }
 
-        if (m_acceptC && (pos & (1 << uint32_t(PlayerPosition::Catcher)))) {
+        if (m_acceptC && (pos & ToBitfield(PlayerPosition::Catcher))) {
             return true;
         }
 
-        if (m_accept1B && (pos & (1 << uint32_t(PlayerPosition::First)))) {
+        if (m_accept1B && (pos & ToBitfield(PlayerPosition::First))) {
             return true;
         }
 
-        if (m_accept2B && (pos & (1 << uint32_t(PlayerPosition::Second)))) {
+        if (m_accept2B && (pos & ToBitfield(PlayerPosition::Second))) {
             return true;
         }
 
-        if (m_acceptSS && (pos & (1 << uint32_t(PlayerPosition::SS)))) {
+        if (m_acceptSS && (pos & ToBitfield(PlayerPosition::SS))) {
             return true;
         }
 
-        if (m_accept3B && (pos & (1 << uint32_t(PlayerPosition::Third)))) {
+        if (m_accept3B && (pos & ToBitfield(PlayerPosition::Third))) {
             return true;
         }
 
-        if (m_acceptOF && (pos & (1 << uint32_t(PlayerPosition::Outfield)))) {
+        if (m_acceptOF && (pos & ToBitfield(PlayerPosition::Outfield))) {
             return true;
         }
 
-        if (m_acceptDH && (pos & (1 << uint32_t(PlayerPosition::DH)))) {
+        if (m_acceptMI && (pos & ToBitfield(PlayerPosition::MiddleInfield))) {
             return true;
         }
 
-        if (m_acceptSP && (pos & (1 << uint32_t(PlayerPosition::Starter)))) {
+        if (m_acceptCI && (pos & ToBitfield(PlayerPosition::CornerInfield))) {
             return true;
         }
 
-        if (m_acceptRP && (pos & (1 << uint32_t(PlayerPosition::Relief)))) {
+        if (m_acceptDH && (pos & ToBitfield(PlayerPosition::DH))) {
+            return true;
+        }
+
+        if (m_acceptU && (pos & ToBitfield(PlayerPosition::Utility))) {
+            return true;
+        }
+
+        if (m_acceptP && (pos & ToBitfield(PlayerPosition::Pitcher))) {
+            return true;
+        }
+
+        if (m_acceptSP && (pos & ToBitfield(PlayerPosition::Starter))) {
+            return true;
+        }
+
+        if (m_acceptRP && (pos & ToBitfield(PlayerPosition::Relief))) {
             return true;
         }
 
@@ -229,11 +248,47 @@ void PlayerSortFilterProxyModel::OnFilterOF(bool checked)
 }
 
 //------------------------------------------------------------------------------
+// OnFilterCI
+//------------------------------------------------------------------------------
+void PlayerSortFilterProxyModel::OnFilterCI(bool checked)
+{
+    m_acceptCI = checked;
+    QSortFilterProxyModel::invalidate();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterMI
+//------------------------------------------------------------------------------
+void PlayerSortFilterProxyModel::OnFilterMI(bool checked)
+{
+    m_acceptMI = checked;
+    QSortFilterProxyModel::invalidate();
+}
+
+//------------------------------------------------------------------------------
 // OnFilterDH
 //------------------------------------------------------------------------------
 void PlayerSortFilterProxyModel::OnFilterDH(bool checked)
 {
     m_acceptDH = checked;
+    QSortFilterProxyModel::invalidate();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterU
+//------------------------------------------------------------------------------
+void PlayerSortFilterProxyModel::OnFilterU(bool checked)
+{
+    m_acceptU = checked;
+    QSortFilterProxyModel::invalidate();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterP
+//------------------------------------------------------------------------------
+void PlayerSortFilterProxyModel::OnFilterP(bool checked)
+{
+    m_acceptP = checked;
     QSortFilterProxyModel::invalidate();
 }
 
