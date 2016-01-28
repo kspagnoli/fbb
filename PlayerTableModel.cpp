@@ -598,8 +598,6 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
         {
         case COLUMN_RANK:
             return player.categoryRank;
-        case COLUMN_DRAFT_BUTTON:
-            return uint32_t(player.status);
         case COLUMN_OWNER:
             if (role == RawDataRole) {
                 return player.ownerId;
@@ -917,26 +915,46 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     // Get player
     Player& player = m_vecPlayers[index.row()];
 
-    // Update status
-    player.status = Player::Status::Drafted;
-    player.ownerId = results.ownerId;
-    player.paid = results.cost;
-    player.draftPosition = results.position;
+    // If drafting..
+    if (results.ownerId) {
 
-    // Update inflation
-    m_sumCost -= results.cost;
-    m_sumValue -= player.cost;
-    m_inflationFactor = (m_sumCost > 0) ? (m_sumCost / m_sumValue) : 1.0;
+        // Update inflation for player leaving the pool
+        m_sumCost -= results.cost;
+        m_sumValue -= player.cost;
+        m_inflationFactor = (m_sumCost > 0) ? (m_sumCost / m_sumValue) : 1.0;
 
-    // Update player counts
-    for (auto i = 0; i < uint32_t(PlayerPosition::COUNT); i++) {
-        if (player.eligiblePositionBitfield & (1 << i)) {
-            m_mapPosAvailableAll[i]--;
-            if (player.cost >= 0) {
-                m_mapPosAvailablePosZ[i]--;
+        // Update player counts
+        for (auto i = 0; i < uint32_t(PlayerPosition::COUNT); i++) {
+            if (player.eligiblePositionBitfield & (1 << i)) {
+                m_mapPosAvailableAll[i]--;
+                if (player.cost >= 0) {
+                    m_mapPosAvailablePosZ[i]--;
+                }
+            }
+        }
+
+    } else {
+
+        // Update inflation for player entering the pool
+        m_sumCost += player.paid;
+        m_sumValue += player.cost;
+        m_inflationFactor = (m_sumCost > 0) ? (m_sumCost / m_sumValue) : 1.0;
+
+        // Update player counts
+        for (auto i = 0; i < uint32_t(PlayerPosition::COUNT); i++) {
+            if (player.eligiblePositionBitfield & (1 << i)) {
+                m_mapPosAvailableAll[i]++;
+                if (player.cost >= 0) {
+                    m_mapPosAvailablePosZ[i]++;
+                }
             }
         }
     }
+
+    // Update status
+    player.ownerId = results.ownerId;
+    player.paid = results.cost;
+    player.draftPosition = results.position;
 
     // Forward results
     emit Drafted(results, index, model);

@@ -65,6 +65,7 @@ struct Player
     // Player Status
     enum Status
     {
+        Unknown,
         Majors,
         Minors,
         Injured,
@@ -72,7 +73,7 @@ struct Player
     };
 
     // Status
-    Status status = Status::Majors;
+    // Status status = Status::Unknown;
 
     // Fantasy
     int32_t ownerId = 0;

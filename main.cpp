@@ -490,13 +490,33 @@ public slots:
     void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
     {
         // Ignore other owners
-        if (results.ownerId != m_ownerId) {
+        if (results.ownerId != 0 && (results.ownerId != m_ownerId)) {
             return;
         }
 
-        // Find owner name
-        QString name = model->data(model->index(index.row(), PlayerTableModel::COLUMN_NAME), Qt::DisplayRole).toString();
+        // Find player id
+        uint32_t playerId = model->data(model->index(index.row(), PlayerTableModel::COLUMN_ID), Qt::DisplayRole).toUInt();
 
+        // If removinga a player
+        if (results.ownerId == 0) {
+
+            // Find the first opening in this position
+            auto itr = std::find_if(m_draftedPlayers.begin(), m_draftedPlayers.end(), [&](const PlayerPair& pp) {
+                return pp.second && (pp.second->id == playerId);
+            });
+
+            // Remove this player
+            // XXX: this might leave an empty row..
+            if (itr != m_draftedPlayers.end()) {
+                m_draftedPlayers.erase(itr);
+            }
+
+            return;
+        }
+
+        // Get player name
+        QString name = model->data(model->index(index.row(), PlayerTableModel::COLUMN_NAME), Qt::DisplayRole).toString();
+        
         // Find the first opening in this position
         auto itr = std::find_if(m_draftedPlayers.begin(), m_draftedPlayers.end(), [&](const PlayerPair& pp) {
             QString pos = PositionToString(results.position);
@@ -505,13 +525,13 @@ public slots:
 
         // Insert this player in the opening
         if (itr != m_draftedPlayers.end()) {
-            itr->second = std::make_shared<OwnedPlayer>(name, results.cost);
+            itr->second = std::make_shared<OwnedPlayer>(name, results.cost, playerId);
             return;
         }
 
         // No opening at this position so create a new row; we can edit it later
         beginInsertRows(QModelIndex(), m_draftedPlayers.size(), m_draftedPlayers.size());
-        m_draftedPlayers.push_back(std::make_pair("??", std::make_shared<OwnedPlayer>(name, results.cost)));
+        m_draftedPlayers.push_back(std::make_pair("??", std::make_shared<OwnedPlayer>(name, results.cost, playerId)));
         endInsertRows();
     }
 
@@ -519,13 +539,15 @@ private:
 
     struct OwnedPlayer
     {
-        OwnedPlayer(QString name, uint32_t cost)
+        OwnedPlayer(QString name, uint32_t cost, uint32_t id)
             : name(name)
             , cost(cost)
+            , id(id)
         {}
 
         QString name;
         uint32_t cost;
+        uint32_t id;
     };
 
     uint32_t m_ownerId;

@@ -3,6 +3,7 @@
 #include "PlayerTableModel.h"
 
 #include <QApplication>
+#include <QMessageBox>
 #include <QSortFilterProxyModel>
 
 DraftDelegate::DraftDelegate(PlayerTableModel* playerTableModel)
@@ -13,20 +14,17 @@ DraftDelegate::DraftDelegate(PlayerTableModel* playerTableModel)
 
 void DraftDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
-    Player::Status status = Player::Status(index.data().toInt());
+    // Get Player::ownerId
+    auto proxyModel = dynamic_cast<const QSortFilterProxyModel*>(index.model());
+    auto srcIdx = proxyModel->mapToSource(index);
+    auto ownerIdx = m_playerTableModel->index(srcIdx.row(), PlayerTableModel::COLUMN_OWNER);
+    auto ownerId = m_playerTableModel->data(ownerIdx, PlayerTableModel::RawDataRole);
 
-    option.state;
+    QStyleOptionButton pushButtonOption;
+    pushButtonOption.rect = option.rect;
+    pushButtonOption.text = (ownerId == 0) ? "Draft" : "Return";
 
-    // Player is available
-    if (status != Player::Status::Drafted) {
-
-        QStyleOptionButton pushButtonOption;
-        pushButtonOption.rect = option.rect;
-        pushButtonOption.text = "Draft";
-        pushButtonOption.state = option.state != QStyle::State_Selected ? QStyle::State_Raised : QStyle::State_Sunken; // [XXX] does nothing!
-
-        QApplication::style()->drawControl(QStyle::CE_PushButton, &pushButtonOption, painter);
-    }
+    QApplication::style()->drawControl(QStyle::CE_PushButton, &pushButtonOption, painter);
 }
 
 QSize DraftDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
@@ -36,32 +34,47 @@ QSize DraftDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIn
 
 bool DraftDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index)
 {
-    // Skip if already drafted
-    if (Player::Status(index.data().toInt()) == Player::Status::Drafted) {
-        return false;
-    }
-
-    // Otherwise create a draft dialog
+    // On mouse release...
     if (event->type() == QEvent::MouseButtonRelease) {
 
         // This was probably from a proxy model
-        QSortFilterProxyModel* proxyModel = dynamic_cast<QSortFilterProxyModel*>(model);
+        // XXX: kill me!
+        auto proxyModel = dynamic_cast<const QSortFilterProxyModel*>(index.model());
         QAbstractItemModel* srcModel = proxyModel ? proxyModel->sourceModel() : model;
         QModelIndex srcIndex = proxyModel ? proxyModel->mapToSource(index) : index;
 
-        // Popup
-        DraftDialog* draftDialog = new DraftDialog(srcModel, srcIndex);
-        draftDialog->show();
-        draftDialog->raise();
-        draftDialog->activateWindow();
+        // Get Player::ownerId
+        auto srcIdx = proxyModel->mapToSource(index);
+        auto ownerIdx = m_playerTableModel->index(srcIdx.row(), PlayerTableModel::COLUMN_OWNER);
+        auto ownerId = m_playerTableModel->data(ownerIdx, PlayerTableModel::RawDataRole);
 
-        // On successful draft, signal results
-        connect(draftDialog, &QDialog::accepted, [=]() -> void {
-            const DraftDialog::Results& results = draftDialog->GetDraftResults();
-            m_playerTableModel->OnDrafted(results, srcIndex, srcModel);
-        });
+        // If already owned...
+        if (ownerId != 0) {
 
-        return true;
+            // Get Player::ownerId
+            auto playerNameIdx = m_playerTableModel->index(srcIdx.row(), PlayerTableModel::COLUMN_NAME);
+            auto playerName = m_playerTableModel->data(playerNameIdx, PlayerTableModel::RawDataRole).toString();
+
+            // Create a warning popup 
+            QMessageBox warning;
+            warning.setText(QString("Do you want to return %1 to the available player pool?").arg(playerName));
+            warning.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+            warning.setDefaultButton(QMessageBox::No);
+            if (warning.exec() == QMessageBox::Yes) {
+                m_playerTableModel->OnDrafted(DraftDialog::Results(), srcIndex, srcModel);
+                return true;
+            }
+
+        } else {
+
+            // Create a draft diaglog popup
+            DraftDialog* draftDialog = new DraftDialog(srcModel, srcIndex);
+            if (draftDialog->exec() == QDialog::Accepted) {
+                const DraftDialog::Results& results = draftDialog->GetDraftResults();
+                m_playerTableModel->OnDrafted(results, srcIndex, srcModel);
+                return true;
+            }
+        }
     }
 
     return false;
