@@ -89,7 +89,9 @@ public:
 
 signals:
 
+    void DraftedBegin();
     void Drafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model);
+    void DraftedEnd();
 
 private:
 

@@ -956,8 +956,10 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     player.paid = results.cost;
     player.draftPosition = results.position;
 
-    // Forward results
+    // Broadcast results
+    emit DraftedBegin();
     emit Drafted(results, index, model);
+    emit DraftedEnd();
 
     // Update table view
     emit dataChanged(index, index);

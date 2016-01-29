@@ -145,7 +145,7 @@ public:
         case RankRows::S:
             return QString("%1 (%2)").arg(player.S).arg(player.rankS);
         case RankRows::SUM:
-            return QString("%1 (%2)").arg(player.SUM).arg("!");
+            return QString("%1 (%2)").arg(player.SUM).arg(player.rankSUM);
         }
 
         return QVariant();
@@ -195,7 +195,7 @@ public:
             case RankRows::S:
             case RankRows::RANK_S:
                 return "S";
-            case RankRows::SUM:         // TODO: sigma sign
+            case RankRows::SUM:
                 return "SUM";
             default:
                 break;
@@ -209,16 +209,50 @@ public slots:
 
     void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
     {
-        if (results.ownerId == 0) {
-            return;
-        }
-
         auto GetValue = [=](uint32_t column)
         {
             QModelIndex indexHR = model->index(index.row(), column);
             return model->data(indexHR, PlayerTableModel::RawDataRole).toUInt();
         };
 
+        auto UpdateOwner = [=](uint32_t ownerId, float scale)
+        {
+            if (ownerId == 0) {
+                return;
+            }
+            
+            // This owner
+            SummaryTableModel::OwnerPoints& owner = m_vecOwnerPoints[ownerId - 1];
+
+            // Update values (hitting)
+            owner.AB  += scale*GetValue(PlayerTableModel::COLUMN_AB);
+            owner.H   += scale*GetValue(PlayerTableModel::COLUMN_H);
+            owner.R   += scale*GetValue(PlayerTableModel::COLUMN_R);
+            owner.HR  += scale*GetValue(PlayerTableModel::COLUMN_HR);
+            owner.RBI += scale*GetValue(PlayerTableModel::COLUMN_RBI);
+            owner.SB  += scale*GetValue(PlayerTableModel::COLUMN_SB);
+            owner.AVG = owner.AB > 0 ? (owner.H / float(owner.AB)) : 0;
+
+            // Update values (pitching)
+            owner.IP  += scale*GetValue(PlayerTableModel::COLUMN_IP);
+            owner.HA  += scale*GetValue(PlayerTableModel::COLUMN_HA);
+            owner.BB  += scale*GetValue(PlayerTableModel::COLUMN_BB);
+            owner.ER  += scale*GetValue(PlayerTableModel::COLUMN_ER);
+            owner.W   += scale*GetValue(PlayerTableModel::COLUMN_W);
+            owner.K   += scale*GetValue(PlayerTableModel::COLUMN_SO);
+            owner.S   += scale*GetValue(PlayerTableModel::COLUMN_SV);
+            owner.ERA = owner.IP > 0 ? ((9.f*owner.ER) / owner.IP) : 0;
+            owner.WHIP = owner.IP > 0 ? ((owner.HA + owner.BB) / owner.IP) : 0;
+
+
+        };
+
+        UpdateOwner(results.previousOwnerId, -1.f);
+        UpdateOwner(results.ownerId, 1.f);
+    }
+
+    void OnDraftedEnd()
+    {
         auto DoGetRankingValue = [=](const auto& fnGet, const auto& fnSet)
         {
             std::vector<uint32_t> ranks(DraftSettings::OwnerCount());
@@ -238,46 +272,32 @@ public slots:
                 [&](uint32_t i) { return m_vecOwnerPoints[i].STAT; },                               \
                 [&](uint32_t i, uint32_t rank) { return m_vecOwnerPoints[i].rank##STAT = rank; });
 
-        // This owner
-        SummaryTableModel::OwnerPoints& owner = m_vecOwnerPoints[results.ownerId - 1];
+        // Loop owners
+        for (auto& owner : m_vecOwnerPoints) {
 
-        // Update values (hitting)
-        owner.AB  += GetValue(PlayerTableModel::COLUMN_AB);
-        owner.H   += GetValue(PlayerTableModel::COLUMN_H);
-        owner.R   += GetValue(PlayerTableModel::COLUMN_R);
-        owner.HR  += GetValue(PlayerTableModel::COLUMN_HR);
-        owner.RBI += GetValue(PlayerTableModel::COLUMN_RBI);
-        owner.SB  += GetValue(PlayerTableModel::COLUMN_SB);
-        owner.AVG = owner.AB > 0 ? (owner.H / float(owner.AB)) : 0;
+            // Update rankings (hitting)
+            GetRankingValue(AVG);
+            GetRankingValue(R);
+            GetRankingValue(HR);
+            GetRankingValue(RBI);
+            GetRankingValue(SB);
 
-        // Update values (pitching)
-        owner.IP  += GetValue(PlayerTableModel::COLUMN_IP);
-        owner.HA  += GetValue(PlayerTableModel::COLUMN_HA);
-        owner.BB  += GetValue(PlayerTableModel::COLUMN_BB);
-        owner.ER  += GetValue(PlayerTableModel::COLUMN_ER);
-        owner.W   += GetValue(PlayerTableModel::COLUMN_W);
-        owner.K   += GetValue(PlayerTableModel::COLUMN_SO);
-        owner.S   += GetValue(PlayerTableModel::COLUMN_SV);
-        owner.ERA = owner.IP > 0 ? ((9.f*owner.ER) / owner.IP) : 0;
-        owner.WHIP = owner.IP > 0 ? ((owner.HA + owner.BB) / owner.IP) : 0;
+            // Update rankings (pitching)
+            GetRankingValue(W);
+            GetRankingValue(K);
+            GetRankingValue(S);
+            GetRankingValue(ERA);
+            GetRankingValue(WHIP);
 
-        // Update rankings (hitting)
-        GetRankingValue(AVG);
-        GetRankingValue(R);
-        GetRankingValue(HR);
-        GetRankingValue(RBI);
-        GetRankingValue(SB);
+            // Update "lower is better" ranks
+            owner.rankERA = (m_vecOwnerPoints.size() - owner.rankERA) + 1;
+            owner.rankWHIP = (m_vecOwnerPoints.size() - owner.rankWHIP) + 1;
 
-        // Update rankings (pitching)
-        GetRankingValue(W);
-        GetRankingValue(K);
-        GetRankingValue(S);
-        GetRankingValue(ERA);
-        GetRankingValue(WHIP);
-
-        // Update sum
-        owner.SUM = owner.rankAVG + owner.rankR + owner.rankHR + owner.rankRBI + owner.rankSB +
-            owner.rankW + owner.rankK + owner.rankS + owner.rankERA + owner.rankWHIP;
+            // Update sum
+            owner.SUM = owner.rankAVG + owner.rankR + owner.rankHR + owner.rankRBI + owner.rankSB
+                + owner.rankW + owner.rankK + owner.rankS + owner.rankERA + owner.rankWHIP;
+            GetRankingValue(SUM);
+        }
     }
 
 private:
@@ -319,7 +339,8 @@ private:
         uint32_t rankS = 0;
 
         // Summary
-        uint32_t SUM;
+        uint32_t SUM = 0;
+        uint32_t rankSUM = 0;
     };
 
     std::vector<OwnerPoints> m_vecOwnerPoints;
@@ -350,6 +371,8 @@ public:
         m_sumTableView->setAlternatingRowColors(true);
         m_sumTableView->verticalHeader()->setDefaultSectionSize(15);
         m_sumTableView->setCornerButtonEnabled(true);
+        m_sumTableView->setSortingEnabled(true);
+        m_sumTableView->sortByColumn(SummaryTableModel::TEAM);
         
         // 100% width
         for (int i = 0; i < m_sumTableView->horizontalHeader()->count(); ++i) {
@@ -490,49 +513,54 @@ public slots:
     void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
     {
         // Ignore other owners
-        if (results.ownerId != 0 && (results.ownerId != m_ownerId)) {
+        if ((results.ownerId != m_ownerId) && (results.previousOwnerId != m_ownerId)) {
             return;
         }
 
-        // Find player id
+        // Find player id & name
         uint32_t playerId = model->data(model->index(index.row(), PlayerTableModel::COLUMN_ID), Qt::DisplayRole).toUInt();
+        QString name = model->data(model->index(index.row(), PlayerTableModel::COLUMN_NAME), Qt::DisplayRole).toString();
+        
+        // If removing a player...
+        if (results.previousOwnerId) {
 
-        // If removinga a player
-        if (results.ownerId == 0) {
-
-            // Find the first opening in this position
+            // Find this player id
             auto itr = std::find_if(m_draftedPlayers.begin(), m_draftedPlayers.end(), [&](const PlayerPair& pp) {
                 return pp.second && (pp.second->id == playerId);
             });
 
             // Remove this player
-            // XXX: this might leave an empty row..
             if (itr != m_draftedPlayers.end()) {
-                m_draftedPlayers.erase(itr);
+                auto pos = itr->first;
+                itr->second.reset();
+                if (pos == "??") {
+                    beginRemoveRows(QModelIndex(), m_draftedPlayers.size() - 1, m_draftedPlayers.size() - 1);
+                    m_draftedPlayers.erase(itr);
+                    endRemoveRows();
+                }
+            }
+        }
+
+        // If adding a player...
+        if (results.ownerId) {
+
+            // Find the first opening in this position
+            auto itr = std::find_if(m_draftedPlayers.begin(), m_draftedPlayers.end(), [&](const PlayerPair& pp) {
+                QString pos = PositionToString(results.position);
+                return (pp.first == pos && !pp.second);
+            });
+
+            // Insert this player in the opening
+            if (itr != m_draftedPlayers.end()) {
+                itr->second = std::make_shared<OwnedPlayer>(name, results.cost, playerId);
+                return;
             }
 
-            return;
+            // No opening at this position so create a new row; we can edit it later
+            beginInsertRows(QModelIndex(), m_draftedPlayers.size(), m_draftedPlayers.size());
+            m_draftedPlayers.push_back(std::make_pair("??", std::make_shared<OwnedPlayer>(name, results.cost, playerId)));
+            endInsertRows();
         }
-
-        // Get player name
-        QString name = model->data(model->index(index.row(), PlayerTableModel::COLUMN_NAME), Qt::DisplayRole).toString();
-        
-        // Find the first opening in this position
-        auto itr = std::find_if(m_draftedPlayers.begin(), m_draftedPlayers.end(), [&](const PlayerPair& pp) {
-            QString pos = PositionToString(results.position);
-            return (pp.first == pos && !pp.second);
-        });
-
-        // Insert this player in the opening
-        if (itr != m_draftedPlayers.end()) {
-            itr->second = std::make_shared<OwnedPlayer>(name, results.cost, playerId);
-            return;
-        }
-
-        // No opening at this position so create a new row; we can edit it later
-        beginInsertRows(QModelIndex(), m_draftedPlayers.size(), m_draftedPlayers.size());
-        m_draftedPlayers.push_back(std::make_pair("??", std::make_shared<OwnedPlayer>(name, results.cost, playerId)));
-        endInsertRows();
     }
 
 private:
@@ -725,23 +753,25 @@ public:
         completer->setCaseSensitivity(Qt::CaseInsensitive);
 
         // Select
-        auto HighlightPlayerInTable = [=](const QModelIndex& index)
+        auto HighlightPlayerInTable = [=](const QModelIndex& srcIdx)
         {
             // Lookup catergory
-            auto catergoryIndex = playerTableModel->index(index.row(), PlayerTableModel::COLUMN_CATERGORY);
-            auto catergory = playerTableModel->data(catergoryIndex, PlayerTableModel::RawDataRole).toUInt();
+            auto catergoryIdx = srcIdx.model()->index(srcIdx.row(), PlayerTableModel::COLUMN_CATERGORY);
+            auto catergory = srcIdx.model()->data(catergoryIdx).toUInt();
 
             // Change to tab
             hitterPitcherTabs->setCurrentIndex(CaterogyToTab(catergory));
 
             // Select row
             if (catergory == Player::Catergory::Hitter) {
-                auto row = hitterSortFilterProxyModel->mapFromSource(index).row();
-                hitterTableView->selectRow(row);
+                auto proxyModel = dynamic_cast<QSortFilterProxyModel*>(hitterTableView->model());
+                auto proxyIdx = proxyModel->mapFromSource(srcIdx);
+                hitterTableView->selectRow(proxyIdx.row());
                 hitterTableView->setFocus();
             } else if (catergory == Player::Catergory::Pitcher) {
-                auto row = pitcherSortFilterProxyModel->mapFromSource(index).row();
-                pitcherTableView->selectRow(row);
+                auto proxyModel = dynamic_cast<QSortFilterProxyModel*>(pitcherTableView->model());
+                auto proxyIdx = proxyModel->mapFromSource(srcIdx);
+                pitcherTableView->selectRow(proxyIdx.row());
                 pitcherTableView->setFocus();
             }
         };
@@ -750,11 +780,11 @@ public:
         connect(completer, static_cast<void (QCompleter::*)(const QModelIndex&)>(&QCompleter::activated), [=](const QModelIndex& index) {
 
             // Get player index
-            int key = completer->completionModel()->index(index.row(), 0).data().toInt();
-            QModelIndex sourceIdx = playerTableModel->index(key, 1);
-
+            QAbstractProxyModel* proxyModel = dynamic_cast<QAbstractProxyModel*>(completer->completionModel());
+            auto srcIdx = proxyModel->mapToSource(index);
+            
             // Highlight this player
-            HighlightPlayerInTable(sourceIdx);
+            HighlightPlayerInTable(srcIdx);
         });
 
         // Search widget
@@ -906,6 +936,7 @@ public:
         
         // Connect summary model
         connect(playerTableModel, &PlayerTableModel::Drafted, summaryModel, &SummaryTableModel::OnDrafted);
+        connect(playerTableModel, &PlayerTableModel::DraftedEnd, summaryModel, &SummaryTableModel::OnDraftedEnd);
 
         //----------------------------------------------------------------------
         // Main

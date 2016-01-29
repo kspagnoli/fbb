@@ -46,7 +46,7 @@ bool DraftDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const 
         // Get Player::ownerId
         auto srcIdx = proxyModel->mapToSource(index);
         auto ownerIdx = m_playerTableModel->index(srcIdx.row(), PlayerTableModel::COLUMN_OWNER);
-        auto ownerId = m_playerTableModel->data(ownerIdx, PlayerTableModel::RawDataRole);
+        auto ownerId = m_playerTableModel->data(ownerIdx, PlayerTableModel::RawDataRole).toUInt();
 
         // If already owned...
         if (ownerId != 0) {
@@ -61,7 +61,9 @@ bool DraftDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const 
             warning.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
             warning.setDefaultButton(QMessageBox::No);
             if (warning.exec() == QMessageBox::Yes) {
-                m_playerTableModel->OnDrafted(DraftDialog::Results(), srcIndex, srcModel);
+                DraftDialog::Results results;
+                results.previousOwnerId = ownerId;
+                m_playerTableModel->OnDrafted(results, srcIndex, srcModel);
                 return true;
             }
 

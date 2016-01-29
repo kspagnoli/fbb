@@ -15,6 +15,7 @@ public:
     struct Results
     {
         uint32_t ownerId = 0;
+        uint32_t previousOwnerId = 0;
         uint32_t cost = 0;
         PlayerPosition position = PlayerPosition::None;
     };
