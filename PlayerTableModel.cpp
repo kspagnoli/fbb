@@ -254,10 +254,22 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
+    float sumPositiveZScores_R = 0;
+    float sumPositiveZScores_HR = 0;
+    float sumPositiveZScores_RBI = 0;
+    float sumPositiveZScores_SB = 0;
+    float sumPositiveZScores_H = 0;
+    float sumPositiveZScores_AB = 0;
     std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& hitter) {
         auto zDiff = hitter.zScore - zReplacement;
         if (zDiff > 0) {
             sumPositiveZScores += zDiff;
+            sumPositiveZScores_R   += hitter.hitting.R;
+            sumPositiveZScores_HR  += hitter.hitting.HR;
+            sumPositiveZScores_RBI += hitter.hitting.RBI;
+            sumPositiveZScores_SB  += hitter.hitting.SB;
+            sumPositiveZScores_H   += hitter.hitting.H;
+            sumPositiveZScores_AB  += hitter.hitting.AB;
         }
     });
 
@@ -448,10 +460,24 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
+    float sumPositiveZScores_W = 0;
+    float sumPositiveZScores_SV = 0;
+    float sumPositiveZScores_SO = 0;
+    float sumPositiveZScores_H = 0;
+    float sumPositiveZScores_BB = 0;
+    float sumPositiveZScores_IP = 0;
+    float sumPositiveZScores_ER = 0;
     std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
         auto zDiff = pitcher.zScore - zReplacement;
         if (zDiff > 0) {
             sumPositiveZScores += zDiff;
+            sumPositiveZScores_W  += pitcher.pitching.W;
+            sumPositiveZScores_SV += pitcher.pitching.SV;
+            sumPositiveZScores_SO += pitcher.pitching.SO;
+            sumPositiveZScores_H  += pitcher.pitching.H;
+            sumPositiveZScores_BB += pitcher.pitching.BB;
+            sumPositiveZScores_IP += pitcher.pitching.IP;
+            sumPositiveZScores_ER += pitcher.pitching.ER;
         }
     });
 
@@ -697,7 +723,14 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
         case COLUMN_COMMENT:
             return player.comment;
         }
-    } 
+    }
+
+    // Gray out taken players
+    if (role == Qt::TextColorRole) {
+        if (player.ownerId != 0) {
+            return QColor(Qt::darkGray);
+        }
+    }
     
     if (role == Qt::TextAlignmentRole) {
 

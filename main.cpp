@@ -54,6 +54,128 @@ static QString TableStyle()
 }
 
 //------------------------------------------------------------------------------
+// OwnerSummaryTableModel
+//------------------------------------------------------------------------------
+class OwnerSummaryTableModel : public QAbstractTableModel
+{
+public:
+
+    enum class Columns
+    {
+        Key,
+        Value,
+        COUNT
+    };
+
+    enum class Rows
+    {
+        Budget,
+        NumHitters,
+        NumPitchers,
+        MaxBid,
+        COUNT
+    };
+
+    OwnerSummaryTableModel(OwnerSortFilterProxyModel* ownerModel, QWidget* parent)
+        : QAbstractTableModel(parent)
+        , m_ownerModel(ownerModel)
+    {
+
+    }
+
+    virtual int rowCount(const QModelIndex &) const override
+    {
+        return int(Rows::COUNT);
+    }
+
+    virtual int columnCount(const QModelIndex &) const override
+    {
+        return int(Columns::COUNT);
+    }
+
+    virtual QVariant data(const QModelIndex& index, int role) const override
+    {
+        Rows row = Rows(index.row());
+        Columns column = Columns(index.column());
+
+        if (role == Qt::FontRole && index.column() == 0) {
+            QFont boldFont;
+            boldFont.setBold(true);
+            return boldFont;
+        }
+
+        if (role == Qt::DisplayRole) {
+
+            switch (column)
+            {
+            case Columns::Key:
+            {
+                switch (row)
+                {
+                case Rows::Budget:
+                    return "Budget:";
+                case Rows::NumHitters:
+                    return "# Hitters:";
+                case Rows::NumPitchers:
+                    return "# Pitchers:";
+                case Rows::MaxBid:
+                    return "Max Bid:";
+                default:
+                    break;
+                }
+            }
+
+            case Columns::Value:
+            {
+                switch (row)
+                {
+                case Rows::Budget:
+                    return QString("$%1").arg(GetRemainingBudget());
+                case Rows::NumHitters:
+                    return QString("%1 / %2").arg(m_ownerModel->Count(Player::Hitter)).arg(DraftSettings::HitterCount());
+                case Rows::NumPitchers:
+                    return QString("%1 / %2").arg(m_ownerModel->Count(Player::Pitcher)).arg(DraftSettings::PitcherCount());
+                case Rows::MaxBid:
+                    return QString("$%1").arg(GetMaxBid());
+                default:
+                    break;
+                }
+            }
+
+            default:
+                break;
+            }
+        }
+
+        return QVariant();
+    }
+
+private:
+
+    int32_t GetRemainingBudget() const
+    {
+        return DraftSettings::Budget() - m_ownerModel->Sum(PlayerTableModel::COLUMN_PAID);
+    }
+
+    int32_t GetRosterSize() const
+    {
+        return m_ownerModel->Count(Player::CatergoryMask(Player::Hitter | Player::Pitcher));
+    }
+
+    int32_t RosterSpotsToFill() const
+    {
+        return DraftSettings::RosterSize() - GetRosterSize();
+    }
+
+    int32_t GetMaxBid() const
+    {
+        return GetRemainingBudget() - RosterSpotsToFill() + 1;
+    }
+
+    OwnerSortFilterProxyModel* m_ownerModel;
+};
+
+//------------------------------------------------------------------------------
 // SummaryItemModel
 //------------------------------------------------------------------------------
 
@@ -243,8 +365,6 @@ public slots:
             owner.S   += scale*GetValue(PlayerTableModel::COLUMN_SV);
             owner.ERA = owner.IP > 0 ? ((9.f*owner.ER) / owner.IP) : 0;
             owner.WHIP = owner.IP > 0 ? ((owner.HA + owner.BB) / owner.IP) : 0;
-
-
         };
 
         UpdateOwner(results.previousOwnerId, -1.f);
@@ -272,22 +392,22 @@ public slots:
                 [&](uint32_t i) { return m_vecOwnerPoints[i].STAT; },                               \
                 [&](uint32_t i, uint32_t rank) { return m_vecOwnerPoints[i].rank##STAT = rank; });
 
+        // Update rankings (hitting)
+        GetRankingValue(AVG);
+        GetRankingValue(R);
+        GetRankingValue(HR);
+        GetRankingValue(RBI);
+        GetRankingValue(SB);
+
+        // Update rankings (pitching)
+        GetRankingValue(W);
+        GetRankingValue(K);
+        GetRankingValue(S);
+        GetRankingValue(ERA);
+        GetRankingValue(WHIP);
+
         // Loop owners
         for (auto& owner : m_vecOwnerPoints) {
-
-            // Update rankings (hitting)
-            GetRankingValue(AVG);
-            GetRankingValue(R);
-            GetRankingValue(HR);
-            GetRankingValue(RBI);
-            GetRankingValue(SB);
-
-            // Update rankings (pitching)
-            GetRankingValue(W);
-            GetRankingValue(K);
-            GetRankingValue(S);
-            GetRankingValue(ERA);
-            GetRankingValue(WHIP);
 
             // Update "lower is better" ranks
             owner.rankERA = (m_vecOwnerPoints.size() - owner.rankERA) + 1;
@@ -296,8 +416,9 @@ public slots:
             // Update sum
             owner.SUM = owner.rankAVG + owner.rankR + owner.rankHR + owner.rankRBI + owner.rankSB
                 + owner.rankW + owner.rankK + owner.rankS + owner.rankERA + owner.rankWHIP;
-            GetRankingValue(SUM);
         }
+
+        GetRankingValue(SUM);
     }
 
 private:
@@ -839,25 +960,36 @@ public:
 
             // V-Layout per owner
             QVBoxLayout* perOwnerLayout = new QVBoxLayout(this);
+            
+            // Proxy model for this owner
+            OwnerSortFilterProxyModel* ownerSortFilterProxyModel = new OwnerSortFilterProxyModel(ownerId, playerTableModel, this);
+            connect(playerTableModel, &PlayerTableModel::Drafted, ownerSortFilterProxyModel, &OwnerSortFilterProxyModel::OnDrafted);
 
-            // Item model for this owner
-            OwnerItemModel* ownerItemModel = new OwnerItemModel(ownerId, this);
-            connect(playerTableModel, &PlayerTableModel::Drafted, ownerItemModel, &OwnerItemModel::OnDrafted);
 
             // Owner name label
             QLabel* ownerLabel = new QLabel(DraftSettings::OwnerName(ownerId), this);
             ownerLabel->setAlignment(Qt::AlignCenter);
             perOwnerLayout->addWidget(ownerLabel);
 
-            // Table view
-            QTableView* ownerTableView = MakeTableView(ownerItemModel, false);
-            ownerTableView->setFixedWidth(225);
-            perOwnerLayout->addWidget(ownerTableView);
+            // Main oable view
+            QTableView* ownerRosterTableView = MakeTableView(ownerSortFilterProxyModel, true, 0);
+            ownerRosterTableView->setFixedWidth(225);
+            perOwnerLayout->addWidget(ownerRosterTableView);
 
-            // Summary labels
-            QLabel* summary = new QLabel( "Total: $0", this);
-            perOwnerLayout->addWidget(summary);
-            
+            OwnerSummaryTableModel* ownerSummaryTableModel = new OwnerSummaryTableModel(ownerSortFilterProxyModel, this);
+            QTableView* __ownerTableView = new QTableView();
+            __ownerTableView->setModel(ownerSummaryTableModel);
+            __ownerTableView->verticalHeader()->hide();
+            __ownerTableView->horizontalHeader()->hide();
+            __ownerTableView->setStyleSheet(TableStyle());
+            __ownerTableView->resizeColumnsToContents();
+            __ownerTableView->setFixedWidth(225);
+            __ownerTableView->verticalHeader()->setDefaultSectionSize(15);
+            __ownerTableView->setShowGrid(false);
+            __ownerTableView->setFixedHeight(60);
+            __ownerTableView->setFrameStyle(QFrame::NoFrame);
+            perOwnerLayout->addWidget(__ownerTableView);
+
             // Add to layouts
             ownersLayout->addLayout(perOwnerLayout);
         }

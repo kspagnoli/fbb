@@ -22,23 +22,16 @@ enum class StatCategory
 
 using StatTuple = std::tuple<float, float, float>;
 
-class DraftSettings
+namespace DraftSettings
 {
-public:
+    const uint32_t Budget();
+    const uint32_t HitterCount();
+    const uint32_t PitcherCount();
+    const uint32_t RosterSize();
 
-    static const uint32_t OwnerCount();
-    static const QString& OwnerName(uint32_t i);
-    static const QStringList& OwnerNames();
-    static const QString& OwnerAbbreviation(uint32_t i);
-    static const StatTuple& StatHistoryCategory(const StatCategory& category);
-
-private:
-
-    DraftSettings();
-    static DraftSettings& Get();
-
-    uint32_t m_ownerCount;
-    QStringList m_ownerNames;
-    QStringList m_ownerAbbreviations;
-    std::array<StatTuple, size_t(StatCategory::COUNT)> m_statHistory;
+    const uint32_t OwnerCount();
+    const QString& OwnerName(uint32_t i);
+    const QStringList& OwnerNames();
+    const QString& OwnerAbbreviation(uint32_t i);
+    const StatTuple& StatHistoryCategory(const StatCategory& category);
 };
