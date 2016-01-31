@@ -954,64 +954,65 @@ public:
 
         // Owner widget
         QHBoxLayout* ownersLayout = new QHBoxLayout(this);
+        ownersLayout->setSizeConstraint(QLayout::SetNoConstraint);
 
         // Loop owners
         for (uint32_t ownerId = 1; ownerId <= DraftSettings::OwnerCount(); ownerId++) {
 
             // V-Layout per owner
             QVBoxLayout* perOwnerLayout = new QVBoxLayout(this);
-            
+            ownersLayout->addLayout(perOwnerLayout);
+            perOwnerLayout->setSizeConstraint(QLayout::SetNoConstraint);
+
             // Proxy model for this owner
             OwnerSortFilterProxyModel* ownerSortFilterProxyModel = new OwnerSortFilterProxyModel(ownerId, playerTableModel, this);
             connect(playerTableModel, &PlayerTableModel::Drafted, ownerSortFilterProxyModel, &OwnerSortFilterProxyModel::OnDrafted);
-
 
             // Owner name label
             QLabel* ownerLabel = new QLabel(DraftSettings::OwnerName(ownerId), this);
             ownerLabel->setAlignment(Qt::AlignCenter);
             perOwnerLayout->addWidget(ownerLabel);
 
-            // Main oable view
+            // Per-owner roster table view
             QTableView* ownerRosterTableView = MakeTableView(ownerSortFilterProxyModel, true, 0);
-            ownerRosterTableView->setFixedWidth(225);
+            ownerRosterTableView->setMinimumSize(200, 65);
+            ownerRosterTableView->setMaximumSize(200, 4096);
+            ownerRosterTableView->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
             perOwnerLayout->addWidget(ownerRosterTableView);
 
+            connect(topBottomSplitter, &QSplitter::splitterMoved, [=] {
+                ownerRosterTableView->adjustSize();
+            });
+            
+            // Per-owner summary view
             OwnerSummaryTableModel* ownerSummaryTableModel = new OwnerSummaryTableModel(ownerSortFilterProxyModel, this);
-            QTableView* __ownerTableView = new QTableView();
+            QTableView* __ownerTableView = new QTableView(this);
             __ownerTableView->setModel(ownerSummaryTableModel);
             __ownerTableView->verticalHeader()->hide();
             __ownerTableView->horizontalHeader()->hide();
             __ownerTableView->setStyleSheet(TableStyle());
             __ownerTableView->resizeColumnsToContents();
-            __ownerTableView->setFixedWidth(225);
+            __ownerTableView->setMinimumSize(200, 65);
+            __ownerTableView->setMaximumSize(200, 65);
             __ownerTableView->verticalHeader()->setDefaultSectionSize(15);
             __ownerTableView->setShowGrid(false);
-            __ownerTableView->setFixedHeight(60);
             __ownerTableView->setFrameStyle(QFrame::NoFrame);
+            __ownerTableView->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
             perOwnerLayout->addWidget(__ownerTableView);
-
-            // Add to layouts
-            ownersLayout->addLayout(perOwnerLayout);
         }
 
         // Owner widget
-        QWidget* ownerWidget = new QWidget(this);
-        ownerWidget->setLayout(ownersLayout);
-
-        // OwnerScrollArea sizeHint helper
-        class OwnerScrollArea : public QScrollArea {
-        public:
-            OwnerScrollArea(QWidget* parent) : QScrollArea(parent) {
-                setFrameShape(QFrame::NoFrame);
-            }
-            virtual QSize sizeHint() const override { return QSize(220, 500); }
-        };
+        QWidget* scrollAreaWidgetContents = new QWidget(this);
+        scrollAreaWidgetContents->setLayout(ownersLayout);
+        scrollAreaWidgetContents->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
         // Owner scroll area
-        OwnerScrollArea* ownerScrollArea = new OwnerScrollArea(this);
-        ownerScrollArea->setWidget(ownerWidget);
-        ownerScrollArea->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+        QScrollArea* ownerScrollArea = new QScrollArea(this);
+        ownerScrollArea->setWidget(scrollAreaWidgetContents);
+        ownerScrollArea->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
         ownerScrollArea->setBackgroundRole(QPalette::Light);
+        ownerScrollArea->setFrameShape(QFrame::NoFrame);
+        ownerScrollArea->setWidgetResizable(true);
 
         // Player scatter plot
         PlayerScatterPlotChart* chartView = new PlayerScatterPlotChart(playerTableModel, hitterSortFilterProxyModel, this);
@@ -1026,12 +1027,12 @@ public:
         SummaryWidget* summary = new SummaryWidget(summaryModel, this);
 
         // Bottom tabs
-        enum BottomSectionTabs { Rosters, SummaryWidget, ChartVie, TEST };
+        enum BottomSectionTabs { Rosters, SummaryWidget, ChartView };
         QTabWidget* bottomTabs = new QTabWidget(this);
+        topBottomSplitter->addWidget(bottomTabs);
         bottomTabs->insertTab(BottomSectionTabs::Rosters, ownerScrollArea, "Rosters");
         bottomTabs->insertTab(BottomSectionTabs::SummaryWidget, summary, "Summary");
-        bottomTabs->insertTab(BottomSectionTabs::ChartVie, chartView, "Scatter Chart");
-        topBottomSplitter->addWidget(bottomTabs);
+        bottomTabs->insertTab(BottomSectionTabs::ChartView, chartView, "Scatter Chart");
 
         // Make top section 3x the size of the bottom
         topBottomSplitter->setStretchFactor(0, 3);
@@ -1239,6 +1240,10 @@ int main(int argc, char *argv[])
     */
 
     app.setStyleSheet(R"""(
+        QLabel {
+            font-family: "Consolas";
+            font-size: 11px;
+        }
         QToolTip { 
             color: #ffffff; 
             background-color: #2a82da; 

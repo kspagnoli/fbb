@@ -71,7 +71,7 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
 
     // Cost line edit
     {
-        const uint32_t MAX_BID = 250;
+        const uint32_t MAX_BID = DraftSettings::Budget();
         QLineEdit* costLineEdit = new QLineEdit;
         costLineEdit->setValidator(new QIntValidator(0, MAX_BID, this));
         infoGridLayout->addWidget(new QLabel("Cost:"), CostRow, LabelColumn);
