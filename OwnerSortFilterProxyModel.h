@@ -84,6 +84,48 @@ public:
         return count;
     }
 
+    float AVG() const
+    {
+        auto H = Sum(PlayerTableModel::COLUMN_H);
+        auto AB = Sum(PlayerTableModel::COLUMN_AB);
+        return AB == 0 ? 0 : H / AB;
+    }
+
+    float ERA() const
+    {
+        auto ER = Sum(PlayerTableModel::COLUMN_ER);
+        auto IP = Sum(PlayerTableModel::COLUMN_IP);
+        return IP == 0 ? 0 : ER*9 / IP;
+    }
+
+    float WHIP() const
+    {
+        auto HA = Sum(PlayerTableModel::COLUMN_HA);
+        auto BB = Sum(PlayerTableModel::COLUMN_BB);
+        auto IP = Sum(PlayerTableModel::COLUMN_IP);
+        return IP == 0 ? 0 : (HA+BB) / IP;
+    }
+
+    int32_t GetRemainingBudget() const
+    {
+        return DraftSettings::Budget() - Sum(PlayerTableModel::COLUMN_PAID);
+    }
+
+    int32_t GetRosterSlotsFilled() const
+    {
+        return Count(Player::CatergoryMask(Player::Hitter | Player::Pitcher));
+    }
+
+    int32_t GetRosterSpotsToFill() const
+    {
+        return DraftSettings::RosterSize() - GetRosterSlotsFilled();
+    }
+
+    int32_t GetMaxBid() const
+    {
+        return GetRemainingBudget() - GetRosterSpotsToFill() + 1;
+    }
+
 public slots:
 
     void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)

@@ -54,128 +54,6 @@ static QString TableStyle()
 }
 
 //------------------------------------------------------------------------------
-// OwnerSummaryTableModel
-//------------------------------------------------------------------------------
-class OwnerSummaryTableModel : public QAbstractTableModel
-{
-public:
-
-    enum class Columns
-    {
-        Key,
-        Value,
-        COUNT
-    };
-
-    enum class Rows
-    {
-        Budget,
-        NumHitters,
-        NumPitchers,
-        MaxBid,
-        COUNT
-    };
-
-    OwnerSummaryTableModel(OwnerSortFilterProxyModel* ownerModel, QWidget* parent)
-        : QAbstractTableModel(parent)
-        , m_ownerModel(ownerModel)
-    {
-
-    }
-
-    virtual int rowCount(const QModelIndex &) const override
-    {
-        return int(Rows::COUNT);
-    }
-
-    virtual int columnCount(const QModelIndex &) const override
-    {
-        return int(Columns::COUNT);
-    }
-
-    virtual QVariant data(const QModelIndex& index, int role) const override
-    {
-        Rows row = Rows(index.row());
-        Columns column = Columns(index.column());
-
-        if (role == Qt::FontRole && index.column() == 0) {
-            QFont boldFont;
-            boldFont.setBold(true);
-            return boldFont;
-        }
-
-        if (role == Qt::DisplayRole) {
-
-            switch (column)
-            {
-            case Columns::Key:
-            {
-                switch (row)
-                {
-                case Rows::Budget:
-                    return "Budget:";
-                case Rows::NumHitters:
-                    return "# Hitters:";
-                case Rows::NumPitchers:
-                    return "# Pitchers:";
-                case Rows::MaxBid:
-                    return "Max Bid:";
-                default:
-                    break;
-                }
-            }
-
-            case Columns::Value:
-            {
-                switch (row)
-                {
-                case Rows::Budget:
-                    return QString("$%1").arg(GetRemainingBudget());
-                case Rows::NumHitters:
-                    return QString("%1 / %2").arg(m_ownerModel->Count(Player::Hitter)).arg(DraftSettings::HitterCount());
-                case Rows::NumPitchers:
-                    return QString("%1 / %2").arg(m_ownerModel->Count(Player::Pitcher)).arg(DraftSettings::PitcherCount());
-                case Rows::MaxBid:
-                    return QString("$%1").arg(GetMaxBid());
-                default:
-                    break;
-                }
-            }
-
-            default:
-                break;
-            }
-        }
-
-        return QVariant();
-    }
-
-private:
-
-    int32_t GetRemainingBudget() const
-    {
-        return DraftSettings::Budget() - m_ownerModel->Sum(PlayerTableModel::COLUMN_PAID);
-    }
-
-    int32_t GetRosterSize() const
-    {
-        return m_ownerModel->Count(Player::CatergoryMask(Player::Hitter | Player::Pitcher));
-    }
-
-    int32_t RosterSpotsToFill() const
-    {
-        return DraftSettings::RosterSize() - GetRosterSize();
-    }
-
-    int32_t GetMaxBid() const
-    {
-        return GetRemainingBudget() - RosterSpotsToFill() + 1;
-    }
-
-    OwnerSortFilterProxyModel* m_ownerModel;
-};
-
-//------------------------------------------------------------------------------
 // SummaryItemModel
 //------------------------------------------------------------------------------
 
@@ -184,9 +62,10 @@ class SummaryTableModel : public QAbstractTableModel
 
 public:
 
-    SummaryTableModel(uint32_t numOwners, QWidget* parent)
+    SummaryTableModel(const std::vector<OwnerSortFilterProxyModel*>& vecOwnerSortFilterProxyModel, QWidget* parent)
         : QAbstractTableModel(parent)
-        , m_vecOwnerPoints(numOwners)
+        , m_vecOwnerSortFilterProxyModels(vecOwnerSortFilterProxyModel)
+        , m_vecOwnerPoints(vecOwnerSortFilterProxyModel.size())
     {
     }
 
@@ -200,24 +79,11 @@ public:
         RBI,
         SB,
 
-        RANK_BA,
-        RANK_R,
-        RANK_HR,
-        RANK_RBI,
-        RANK_SB,
-
         ERA,
         WHIP,
         W,
         K,
         S,
-
-        RANK_ERA,
-        RANK_WHIP,
-        RANK_W,
-        RANK_K,
-        RANK_S,
-        RANK_SUM,
 
         SUM,
 
@@ -226,7 +92,7 @@ public:
 
     virtual int rowCount(const QModelIndex& index) const override
     {
-        return int(m_vecOwnerPoints.size());
+        return int(m_vecOwnerSortFilterProxyModels.size());
     }
 
     virtual int columnCount(const QModelIndex& index) const override
@@ -240,34 +106,74 @@ public:
             return QVariant();
         }
 
-        const OwnerPoints& player = m_vecOwnerPoints.at(index.row());
+        // const OwnerPoints& player = m_vecOwnerPoints.at(index.row());
 
-        switch (index.column()) 
+        auto ownerSortFilterProxyModel = m_vecOwnerSortFilterProxyModels[index.row()];
+        auto ownerPointer = m_vecOwnerPoints[index.row()];
+        
+        switch (index.column())
         {
-        case RankRows::TEAM:
-            return DraftSettings::OwnerAbbreviation(index.row() + 1);
-        case RankRows::BA:
-            return QString("%1 (%2)").arg(player.AB == 0 ? "--" : QString::number(player.AVG, 'f', 3)).arg(player.rankAVG);
-        case RankRows::R:
-            return QString("%1 (%2)").arg(player.R).arg(player.rankR);
-        case RankRows::HR:
-            return QString("%1 (%2)").arg(player.HR).arg(player.rankHR);
-        case RankRows::RBI:
-            return QString("%1 (%2)").arg(player.RBI).arg(player.rankRBI);
-        case RankRows::SB:
-            return QString("%1 (%2)").arg(player.SB).arg(player.rankSB);
-        case RankRows::ERA:
-            return QString("%1 (%2)").arg(player.IP == 0 ? "--" : QString::number(player.ERA, 'f', 3)).arg(player.rankERA);
-        case RankRows::WHIP:
-            return QString("%1 (%2)").arg(player.IP == 0 ? "--" : QString::number(player.WHIP, 'f', 3)).arg(player.rankWHIP);
-        case RankRows::W:
-            return QString("%1 (%2)").arg(player.W).arg(player.rankW);
-        case RankRows::K:
-            return QString("%1 (%2)").arg(player.K).arg(player.rankK);
-        case RankRows::S:
-            return QString("%1 (%2)").arg(player.S).arg(player.rankS);
-        case RankRows::SUM:
-            return QString("%1 (%2)").arg(player.SUM).arg(player.rankSUM);
+            case RankRows::TEAM:
+            {
+                return DraftSettings::OwnerAbbreviation(index.row() + 1);
+            }
+            case RankRows::BA:
+            {
+                auto BA = ownerSortFilterProxyModel->AVG();
+                QString strBA = (BA == 0.f ? QString("--") : QString::number(BA, 'f', 3));
+                return QString("%1 (%2)").arg(strBA).arg(ownerPointer.rankAVG);
+            }
+            case RankRows::R:
+            {
+                auto R = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_R);
+                return QString("%1 (%2)").arg(R).arg(ownerPointer.rankR);
+            }
+            case RankRows::HR:
+            {
+                auto HR = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_HR);
+                return QString("%1 (%2)").arg(HR).arg(ownerPointer.rankHR);
+            }
+            case RankRows::RBI:
+            {
+                auto RBI = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_RBI);
+                return QString("%1 (%2)").arg(RBI).arg(ownerPointer.rankRBI);
+            }
+            case RankRows::SB:
+            {
+                auto SB = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_SB);
+                return QString("%1 (%2)").arg(SB).arg(ownerPointer.rankSB);
+            }
+            case RankRows::ERA:
+            {
+                auto ERA = ownerSortFilterProxyModel->ERA();
+                QString strERA = (ERA == 0.f ? QString("--") : QString::number(ERA, 'f', 3));
+                return QString("%1 (%2)").arg(strERA).arg(ownerPointer.rankERA);
+            }
+            case RankRows::WHIP:
+            {
+                auto WHIP = ownerSortFilterProxyModel->WHIP();
+                QString strWHIP = (WHIP == 0.f ? QString("--") : QString::number(WHIP, 'f', 3));
+                return QString("%1 (%2)").arg(strWHIP).arg(ownerPointer.rankWHIP);
+            }
+            case RankRows::W:
+            {
+                auto W = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_W);
+                return QString("%1 (%2)").arg(W).arg(ownerPointer.rankW);
+            }
+            case RankRows::K:
+            {
+                auto SO = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_SO);
+                return QString("%1 (%2)").arg(SO).arg(ownerPointer.rankK);
+            }
+            case RankRows::S:
+            {
+                auto SV = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_SV);
+                return QString("%1 (%2)").arg(SV).arg(ownerPointer.rankSV);
+            }
+            case RankRows::SUM:
+            {
+                return QString("%1 (%2)").arg(ownerPointer.SUM).arg(ownerPointer.rankSUM);
+            }
         }
 
         return QVariant();
@@ -287,35 +193,24 @@ public:
             case RankRows::TEAM:
                 return "Team";
             case RankRows::BA:
-            case RankRows::RANK_BA:
                 return "AVG";
             case RankRows::R:
-            case RankRows::RANK_R:
                 return "R";
-                return "AVG";
             case RankRows::HR:
-            case RankRows::RANK_HR:
                 return "HR";
             case RankRows::RBI:
-            case RankRows::RANK_RBI:
                 return "RBI";
             case RankRows::SB:
-            case RankRows::RANK_SB:
                 return "SB";
             case RankRows::ERA:
-            case RankRows::RANK_ERA:
                 return "ERA";
             case RankRows::WHIP:
-            case RankRows::RANK_WHIP:
                 return "WHIP";
             case RankRows::W:
-            case RankRows::RANK_W:
                 return "W";
             case RankRows::K:
-            case RankRows::RANK_K:
                 return "K";
             case RankRows::S:
-            case RankRows::RANK_S:
                 return "S";
             case RankRows::SUM:
                 return "SUM";
@@ -329,111 +224,111 @@ public:
 
 public slots:
 
-    void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
-    {
-        auto GetValue = [=](uint32_t column)
-        {
-            QModelIndex indexHR = model->index(index.row(), column);
-            return model->data(indexHR, PlayerTableModel::RawDataRole).toUInt();
-        };
-
-        auto UpdateOwner = [=](uint32_t ownerId, float scale)
-        {
-            if (ownerId == 0) {
-                return;
-            }
-            
-            // This owner
-            SummaryTableModel::OwnerPoints& owner = m_vecOwnerPoints[ownerId - 1];
-
-            // Update values (hitting)
-            owner.AB  += scale*GetValue(PlayerTableModel::COLUMN_AB);
-            owner.H   += scale*GetValue(PlayerTableModel::COLUMN_H);
-            owner.R   += scale*GetValue(PlayerTableModel::COLUMN_R);
-            owner.HR  += scale*GetValue(PlayerTableModel::COLUMN_HR);
-            owner.RBI += scale*GetValue(PlayerTableModel::COLUMN_RBI);
-            owner.SB  += scale*GetValue(PlayerTableModel::COLUMN_SB);
-            owner.AVG = owner.AB > 0 ? (owner.H / float(owner.AB)) : 0;
-
-            // Update values (pitching)
-            owner.IP  += scale*GetValue(PlayerTableModel::COLUMN_IP);
-            owner.HA  += scale*GetValue(PlayerTableModel::COLUMN_HA);
-            owner.BB  += scale*GetValue(PlayerTableModel::COLUMN_BB);
-            owner.ER  += scale*GetValue(PlayerTableModel::COLUMN_ER);
-            owner.W   += scale*GetValue(PlayerTableModel::COLUMN_W);
-            owner.K   += scale*GetValue(PlayerTableModel::COLUMN_SO);
-            owner.S   += scale*GetValue(PlayerTableModel::COLUMN_SV);
-            owner.ERA = owner.IP > 0 ? ((9.f*owner.ER) / owner.IP) : 0;
-            owner.WHIP = owner.IP > 0 ? ((owner.HA + owner.BB) / owner.IP) : 0;
-        };
-
-        UpdateOwner(results.previousOwnerId, -1.f);
-        UpdateOwner(results.ownerId, 1.f);
-    }
-
     void OnDraftedEnd()
     {
-        auto DoGetRankingValue = [=](const auto& fnGet, const auto& fnSet)
+        auto RankValues = [=](auto FnGet, auto FnSet)
         {
             std::vector<uint32_t> ranks(DraftSettings::OwnerCount());
+            std::vector<float> values(DraftSettings::OwnerCount());
             std::size_t n(0);
             std::generate(std::begin(ranks), std::end(ranks), [&] { return n++; });
+
+            for (size_t i = 0; i < m_vecOwnerSortFilterProxyModels.size(); i++) {
+                values[i] = FnGet(i);
+            }
+
             std::sort(std::begin(ranks), std::end(ranks), [&](uint32_t iLHS, uint32_t iRHS) {
-                return fnGet(iLHS) < fnGet(iRHS);
+                return values[iLHS] < values[iRHS];
             });
 
-            for (uint32_t i = 0; i < DraftSettings::OwnerCount(); i++) {
-                fnSet(ranks[i], i + 1);
+            for (size_t i = 0; i < m_vecOwnerPoints.size(); i++) {
+                FnSet(ranks[i], i+1);
             }
         };
 
-        #define GetRankingValue(STAT)                                                               \
-            DoGetRankingValue(                                                                      \
-                [&](uint32_t i) { return m_vecOwnerPoints[i].STAT; },                               \
-                [&](uint32_t i, uint32_t rank) { return m_vecOwnerPoints[i].rank##STAT = rank; });
+        // AVG
+        RankValues(
+            [=](size_t i)          { return m_vecOwnerSortFilterProxyModels[i]->AVG(); },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankAVG = x; }
+        );
 
-        // Update rankings (hitting)
-        GetRankingValue(AVG);
-        GetRankingValue(R);
-        GetRankingValue(HR);
-        GetRankingValue(RBI);
-        GetRankingValue(SB);
+        // R
+        RankValues(
+            [=](size_t i) { return m_vecOwnerSortFilterProxyModels[i]->Sum(PlayerTableModel::COLUMN_R); },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankR = x; }
+        );
 
-        // Update rankings (pitching)
-        GetRankingValue(W);
-        GetRankingValue(K);
-        GetRankingValue(S);
-        GetRankingValue(ERA);
-        GetRankingValue(WHIP);
+        // HR
+        RankValues(
+            [=](size_t i) { return m_vecOwnerSortFilterProxyModels[i]->Sum(PlayerTableModel::COLUMN_HR); },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankHR = x; }
+        );
 
-        // Loop owners
+        // RBI
+        RankValues(
+            [=](size_t i) { return m_vecOwnerSortFilterProxyModels[i]->Sum(PlayerTableModel::COLUMN_RBI); },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankRBI = x; }
+        );
+
+        // SB
+        RankValues(
+            [=](size_t i) { return m_vecOwnerSortFilterProxyModels[i]->Sum(PlayerTableModel::COLUMN_SB); },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankSB = x; }
+        );
+
+        // ERA
+        RankValues(
+            [=](size_t i) { return m_vecOwnerSortFilterProxyModels[i]->ERA(); },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankERA = x; }
+        );
+
+        // WHIP
+        RankValues(
+            [=](size_t i) { return m_vecOwnerSortFilterProxyModels[i]->WHIP(); },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankWHIP = x; }
+        );
+
+        // W
+        RankValues(
+            [=](size_t i) { return m_vecOwnerSortFilterProxyModels[i]->Sum(PlayerTableModel::COLUMN_W); },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankW = x; }
+        );
+
+        // K
+        RankValues(
+            [=](size_t i) { return m_vecOwnerSortFilterProxyModels[i]->Sum(PlayerTableModel::COLUMN_SO); },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankK = x; }
+        );
+
+        // SV
+        RankValues(
+            [=](size_t i) { return m_vecOwnerSortFilterProxyModels[i]->Sum(PlayerTableModel::COLUMN_SV); },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankSV = x; }
+        );
+
+        // Invert "lower-is-better" stats
         for (auto& owner : m_vecOwnerPoints) {
-
-            // Update "lower is better" ranks
-            owner.rankERA = (m_vecOwnerPoints.size() - owner.rankERA) + 1;
-            owner.rankWHIP = (m_vecOwnerPoints.size() - owner.rankWHIP) + 1;
-
-            // Update sum
-            owner.SUM = owner.rankAVG + owner.rankR + owner.rankHR + owner.rankRBI + owner.rankSB
-                + owner.rankW + owner.rankK + owner.rankS + owner.rankERA + owner.rankWHIP;
+            owner.rankERA = m_vecOwnerPoints.size() - owner.rankERA + 1;
+            owner.rankWHIP = m_vecOwnerPoints.size() - owner.rankWHIP + 1;
         }
 
-        GetRankingValue(SUM);
+        // Calculate sum
+        for (auto& owner : m_vecOwnerPoints) {
+            owner.SUM = owner.rankAVG + owner.rankR + owner.rankHR + owner.rankRBI + owner.rankSB + owner.rankERA + owner.rankWHIP + owner.rankW + owner.rankK + owner.rankSV;
+        }
+        
+        // SV
+        RankValues(
+            [=](size_t i) { return m_vecOwnerPoints[i].SUM; },
+            [=](size_t i, float x) { return m_vecOwnerPoints[i].rankSUM = x; }
+        );
+
     }
 
 private:
 
     struct OwnerPoints
     {
-        // Hitting (values)
-        uint32_t AB = 0;
-        uint32_t H = 0;
-        float AVG = 0;
-        uint32_t R = 0;
-        uint32_t HR = 0;
-        uint32_t RBI = 0;
-        uint32_t SB = 0;
-
         // Hitting (ranks)
         uint32_t rankAVG = 0;
         uint32_t rankR = 0;
@@ -441,29 +336,19 @@ private:
         uint32_t rankRBI = 0;
         uint32_t rankSB = 0;
 
-        // Pitching
-        float IP = 0;
-        uint32_t HA = 0;
-        uint32_t BB = 0;
-        uint32_t ER = 0;
-        float ERA = 0;
-        float WHIP = 0;
-        uint32_t W = 0;
-        uint32_t K = 0;
-        uint32_t S = 0;
-
         // Pitching (ranks)
         uint32_t rankERA = 0;
         uint32_t rankWHIP = 0;
         uint32_t rankW = 0;
         uint32_t rankK = 0;
-        uint32_t rankS = 0;
+        uint32_t rankSV = 0;
 
         // Summary
         uint32_t SUM = 0;
         uint32_t rankSUM = 0;
     };
 
+    std::vector<OwnerSortFilterProxyModel*> m_vecOwnerSortFilterProxyModels;
     std::vector<OwnerPoints> m_vecOwnerPoints;
 };
 
@@ -476,17 +361,16 @@ class SummaryWidget : public QWidget
 
 public:
 
-    SummaryWidget(SummaryTableModel* model, QWidget* parent)
+    SummaryWidget(const std::vector<OwnerSortFilterProxyModel*>& vecOwnerSortFilterProxyModel, QWidget* parent)
         : QWidget(parent)
-        , m_sumProxyModel(new SumProxyModel(parent))
         , m_sumTableView(new QTableView)
         , m_layout(new QVBoxLayout)
     {
-        // proxy models
-        m_sumProxyModel->setSourceModel(model);
+
+        m_summaryTableModel = new SummaryTableModel(vecOwnerSortFilterProxyModel, parent);
 
         // sum table view
-        m_sumTableView->setModel(m_sumProxyModel);
+        m_sumTableView->setModel(m_summaryTableModel);
         m_sumTableView->verticalHeader()->hide();
         m_sumTableView->setStyleSheet(TableStyle());
         m_sumTableView->setAlternatingRowColors(true);
@@ -504,6 +388,14 @@ public:
         setLayout(m_layout);
         m_layout->addWidget(m_sumTableView);
         m_layout->addStretch();
+    }
+
+public slots:
+
+    void OnDraftedEnd()
+    {
+        // Forward to table
+        m_summaryTableModel->OnDraftedEnd();
     }
 
 private:
@@ -538,9 +430,9 @@ private:
             }
         }
     };
-
+    
     QVBoxLayout* m_layout;
-    SumProxyModel* m_sumProxyModel;
+    SummaryTableModel* m_summaryTableModel;
     QTableView* m_sumTableView;
 };
 
@@ -956,6 +848,9 @@ public:
         QHBoxLayout* ownersLayout = new QHBoxLayout(this);
         ownersLayout->setSizeConstraint(QLayout::SetNoConstraint);
 
+        // Owner models
+        std::vector<OwnerSortFilterProxyModel*> vecOwnerSortFilterProxyModels;
+
         // Loop owners
         for (uint32_t ownerId = 1; ownerId <= DraftSettings::OwnerCount(); ownerId++) {
 
@@ -967,6 +862,7 @@ public:
             // Proxy model for this owner
             OwnerSortFilterProxyModel* ownerSortFilterProxyModel = new OwnerSortFilterProxyModel(ownerId, playerTableModel, this);
             connect(playerTableModel, &PlayerTableModel::Drafted, ownerSortFilterProxyModel, &OwnerSortFilterProxyModel::OnDrafted);
+            vecOwnerSortFilterProxyModels.push_back(ownerSortFilterProxyModel);
 
             // Owner name label
             QLabel* ownerLabel = new QLabel(DraftSettings::OwnerName(ownerId), this);
@@ -980,25 +876,50 @@ public:
             ownerRosterTableView->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
             perOwnerLayout->addWidget(ownerRosterTableView);
 
-            connect(topBottomSplitter, &QSplitter::splitterMoved, [=] {
-                ownerRosterTableView->adjustSize();
+            QGridLayout* ownerSummaryGridLayout = new QGridLayout(this);
+            ownerSummaryGridLayout->setSpacing(0);
+            ownerSummaryGridLayout->addWidget(new QLabel("Budget: "),     0, 0);
+            ownerSummaryGridLayout->addWidget(new QLabel("# Hitters: "),  1, 0);
+            ownerSummaryGridLayout->addWidget(new QLabel("# Pitchers: "), 2, 0);
+            ownerSummaryGridLayout->addWidget(new QLabel("Max Bid: "),    3, 0);
+
+            QLabel* budgetLabel = new QLabel(this);
+            QLabel* numHittersLabel = new QLabel(this);
+            QLabel* numPitchersLabel = new QLabel(this);
+            QLabel* maxBidLabel = new QLabel(this);
+
+            // Helper
+            auto UpdateLabels = [=]()
+            {
+                budgetLabel->setText(QString("$%1").arg(ownerSortFilterProxyModel->GetRemainingBudget()));
+                numHittersLabel->setText(QString("%1 / %2").arg(ownerSortFilterProxyModel->Count(Player::Hitter)).arg(DraftSettings::HitterCount()));
+                numPitchersLabel->setText(QString("%1 / %2").arg(ownerSortFilterProxyModel->Count(Player::Pitcher)).arg(DraftSettings::PitcherCount()));
+                maxBidLabel->setText(QString("$%1").arg(ownerSortFilterProxyModel->GetMaxBid()));
+            };
+
+            // Update labels when a draft event happens
+            connect(playerTableModel, &PlayerTableModel::Drafted, [=](const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model){
+                if (results.ownerId == ownerId) {
+                    UpdateLabels();
+                }
             });
-            
-            // Per-owner summary view
-            OwnerSummaryTableModel* ownerSummaryTableModel = new OwnerSummaryTableModel(ownerSortFilterProxyModel, this);
-            QTableView* __ownerTableView = new QTableView(this);
-            __ownerTableView->setModel(ownerSummaryTableModel);
-            __ownerTableView->verticalHeader()->hide();
-            __ownerTableView->horizontalHeader()->hide();
-            __ownerTableView->setStyleSheet(TableStyle());
-            __ownerTableView->resizeColumnsToContents();
-            __ownerTableView->setMinimumSize(200, 65);
-            __ownerTableView->setMaximumSize(200, 65);
-            __ownerTableView->verticalHeader()->setDefaultSectionSize(15);
-            __ownerTableView->setShowGrid(false);
-            __ownerTableView->setFrameStyle(QFrame::NoFrame);
-            __ownerTableView->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            perOwnerLayout->addWidget(__ownerTableView);
+
+            UpdateLabels();
+
+            ownerSummaryGridLayout->addWidget(budgetLabel,      0, 1);
+            ownerSummaryGridLayout->addWidget(numHittersLabel,  1, 1);
+            ownerSummaryGridLayout->addWidget(numPitchersLabel, 2, 1);
+            ownerSummaryGridLayout->addWidget(maxBidLabel,      3, 1);
+
+            QSpacerItem* spacer = new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+            ownerSummaryGridLayout->addItem(spacer, 0, 2);
+            ownerSummaryGridLayout->addItem(spacer, 1, 2);
+            ownerSummaryGridLayout->addItem(spacer, 2, 2);
+            ownerSummaryGridLayout->addItem(spacer, 3, 2);
+            perOwnerLayout->addLayout(ownerSummaryGridLayout);
+
+            perOwnerLayout->addSpacerItem(spacer);
         }
 
         // Owner widget
@@ -1020,11 +941,8 @@ public:
         connect(pitcherSortFilterProxyModel, &QSortFilterProxyModel::layoutChanged, chartView, &PlayerScatterPlotChart::Update);
         connect(playerTableModel, &QAbstractItemModel::dataChanged, chartView, &PlayerScatterPlotChart::Update);
 
-        // Summary model
-        SummaryTableModel* summaryModel = new SummaryTableModel(DraftSettings::OwnerCount(), this);
-
         // Summary view
-        SummaryWidget* summary = new SummaryWidget(summaryModel, this);
+        SummaryWidget* summary = new SummaryWidget(vecOwnerSortFilterProxyModels, this);
 
         // Bottom tabs
         enum BottomSectionTabs { Rosters, SummaryWidget, ChartView };
@@ -1068,8 +986,7 @@ public:
         });
         
         // Connect summary model
-        connect(playerTableModel, &PlayerTableModel::Drafted, summaryModel, &SummaryTableModel::OnDrafted);
-        connect(playerTableModel, &PlayerTableModel::DraftedEnd, summaryModel, &SummaryTableModel::OnDraftedEnd);
+        connect(playerTableModel, &PlayerTableModel::DraftedEnd, summary, &SummaryWidget::OnDraftedEnd);
 
         //----------------------------------------------------------------------
         // Main

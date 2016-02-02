@@ -23,6 +23,7 @@ void DraftDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
     QStyleOptionButton pushButtonOption;
     pushButtonOption.rect = option.rect;
     pushButtonOption.text = (ownerId == 0) ? "Draft" : "Return";
+    // pushButtonOption.state = 
 
     QApplication::style()->drawControl(QStyle::CE_PushButton, &pushButtonOption, painter);
 }
