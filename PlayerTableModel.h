@@ -75,6 +75,12 @@ public:
     bool SaveDraftStatus(const QString& filename) const;
     bool LoadDraftStatus(const QString& filename);
 
+    // Called after loaded projections to initialize target values
+    void InitializeTargetValues();
+
+    // Get per-stat target values (e.g. 3rd place)
+    float GetTargetValue(enum COLUMN stat) const;
+
     // QAbstractTableModel interfaces
     virtual int rowCount(const QModelIndex &) const override;
     virtual int columnCount(const QModelIndex &) const override;
@@ -106,6 +112,9 @@ private:
     float m_sumValue = 0;
     float m_sumCost = 0;
     double m_inflationFactor = 1.0;
+
+    // Per-stat target values
+    std::array<float, size_t(COLUMN_COUNT)> m_vecTargetValues;
 
     // Position scarcity factors
     std::array<int32_t, size_t(PlayerPosition::COUNT)> m_mapPosAvailablePosZ = { 0 };

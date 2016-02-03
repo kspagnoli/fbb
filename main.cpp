@@ -27,6 +27,7 @@
 #include <QBuffer>
 #include <QToolTip>
 #include <QFileDialog>
+#include <QStyledItemDelegate>
 
 #include <memory>
 #include <string>
@@ -72,6 +73,8 @@ public:
     enum RankRows
     {
         TEAM,
+        BUDGET,
+        ROSTER_SIZE,
 
         BA,
         R,
@@ -90,6 +93,13 @@ public:
         COUNT
     };
 
+    enum DataRoles
+    {
+        RawDataRole    = Qt::UserRole + 0,
+        RankRole       = Qt::UserRole + 1,
+        ToPlayerColumn = Qt::UserRole + 2,
+    };
+
     virtual int rowCount(const QModelIndex& index) const override
     {
         return int(m_vecOwnerSortFilterProxyModels.size());
@@ -102,77 +112,177 @@ public:
 
     virtual QVariant data(const QModelIndex& index, int role) const override
     {
-        if (role != Qt::DisplayRole) {
+        if (role == ToPlayerColumn) {
+            switch (index.column())
+            {
+            case BA:   return PlayerTableModel::COLUMN_AVG;
+            case R:    return PlayerTableModel::COLUMN_R;
+            case HR:   return PlayerTableModel::COLUMN_HR;
+            case RBI:  return PlayerTableModel::COLUMN_RBI;
+            case SB:   return PlayerTableModel::COLUMN_SB;
+            case ERA:  return PlayerTableModel::COLUMN_ERA;
+            case WHIP: return PlayerTableModel::COLUMN_WHIP;
+            case W:    return PlayerTableModel::COLUMN_W;
+            case K:    return PlayerTableModel::COLUMN_SO;
+            case S:    return PlayerTableModel::COLUMN_SV;
+            default:
+                break;
+            }
+        }
+
+        if ((role != Qt::DisplayRole) && (role != RawDataRole) && (role != RankRole)) {
             return QVariant();
         }
 
-        // const OwnerPoints& player = m_vecOwnerPoints.at(index.row());
-
         auto ownerSortFilterProxyModel = m_vecOwnerSortFilterProxyModels[index.row()];
-        auto ownerPointer = m_vecOwnerPoints[index.row()];
-        
+        auto ownerPoints = m_vecOwnerPoints[index.row()];
+
         switch (index.column())
         {
             case RankRows::TEAM:
             {
                 return DraftSettings::OwnerAbbreviation(index.row() + 1);
             }
+            case RankRows::BUDGET:
+            {
+                auto budget = ownerSortFilterProxyModel->GetRemainingBudget();
+                if (role == RawDataRole) { 
+                    return budget;
+                } else {
+                    return QString("$%1").arg(budget);
+                }
+            }
+            case RankRows::ROSTER_SIZE:
+            {
+                auto rosterSize = ownerSortFilterProxyModel->GetRosterSlotsFilled();
+                if (role == RawDataRole) {
+                    return rosterSize;
+                } else {
+                    return QString("%1").arg(rosterSize);
+                }
+            }
             case RankRows::BA:
             {
                 auto BA = ownerSortFilterProxyModel->AVG();
-                QString strBA = (BA == 0.f ? QString("--") : QString::number(BA, 'f', 3));
-                return QString("%1 (%2)").arg(strBA).arg(ownerPointer.rankAVG);
+                if (role == RawDataRole) {
+                    return BA;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankAVG;
+                } else {
+                    QString strBA = (BA == 0.f ? QString("--") : QString::number(BA, 'f', 3));
+                    return QString("%1 (%2)").arg(strBA).arg(ownerPoints.rankAVG);
+                }
             }
             case RankRows::R:
             {
                 auto R = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_R);
-                return QString("%1 (%2)").arg(R).arg(ownerPointer.rankR);
+                if (role == RawDataRole) {
+                    return R;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankR;
+                } else {
+                    return QString("%1 (%2)").arg(R).arg(ownerPoints.rankR);
+                }
             }
             case RankRows::HR:
             {
                 auto HR = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_HR);
-                return QString("%1 (%2)").arg(HR).arg(ownerPointer.rankHR);
+                if (role == RawDataRole) {
+                    return HR;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankHR;
+                } else {
+                    return QString("%1 (%2)").arg(HR).arg(ownerPoints.rankHR);
+                }
             }
             case RankRows::RBI:
             {
                 auto RBI = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_RBI);
-                return QString("%1 (%2)").arg(RBI).arg(ownerPointer.rankRBI);
+                if (role == RawDataRole) {
+                    return RBI;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankRBI;
+                } else {
+                    return QString("%1 (%2)").arg(RBI).arg(ownerPoints.rankRBI);
+                }
             }
             case RankRows::SB:
             {
                 auto SB = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_SB);
-                return QString("%1 (%2)").arg(SB).arg(ownerPointer.rankSB);
+                if (role == RawDataRole) {
+                    return SB;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankSB;
+                } else {
+                    return QString("%1 (%2)").arg(SB).arg(ownerPoints.rankSB);
+                }
             }
             case RankRows::ERA:
             {
                 auto ERA = ownerSortFilterProxyModel->ERA();
-                QString strERA = (ERA == 0.f ? QString("--") : QString::number(ERA, 'f', 3));
-                return QString("%1 (%2)").arg(strERA).arg(ownerPointer.rankERA);
+                if (role == RawDataRole) {
+                    return ERA;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankERA;
+                } else {
+                    QString strERA = (ERA == 0.f ? QString("--") : QString::number(ERA, 'f', 3));
+                    return QString("%1 (%2)").arg(strERA).arg(ownerPoints.rankERA);
+                }
             }
             case RankRows::WHIP:
             {
                 auto WHIP = ownerSortFilterProxyModel->WHIP();
-                QString strWHIP = (WHIP == 0.f ? QString("--") : QString::number(WHIP, 'f', 3));
-                return QString("%1 (%2)").arg(strWHIP).arg(ownerPointer.rankWHIP);
+                if (role == RawDataRole) {
+                    return WHIP;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankWHIP;
+                } else {
+                    QString strWHIP = (WHIP == 0.f ? QString("--") : QString::number(WHIP, 'f', 3));
+                    return QString("%1 (%2)").arg(strWHIP).arg(ownerPoints.rankWHIP);
+                }
             }
             case RankRows::W:
             {
                 auto W = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_W);
-                return QString("%1 (%2)").arg(W).arg(ownerPointer.rankW);
+                if (role == RawDataRole) {
+                    return W;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankW;
+                } else {
+                    return QString("%1 (%2)").arg(W).arg(ownerPoints.rankW);
+                }
             }
             case RankRows::K:
             {
                 auto SO = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_SO);
-                return QString("%1 (%2)").arg(SO).arg(ownerPointer.rankK);
+                if (role == RawDataRole) {
+                    return SO;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankK;
+                } else {
+                    return QString("%1 (%2)").arg(SO).arg(ownerPoints.rankK);
+                }
             }
             case RankRows::S:
             {
                 auto SV = ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_SV);
-                return QString("%1 (%2)").arg(SV).arg(ownerPointer.rankSV);
+                if (role == RawDataRole) {
+                    return SV;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankSV;
+                } else {
+                    return QString("%1 (%2)").arg(SV).arg(ownerPoints.rankSV);
+                }
             }
             case RankRows::SUM:
             {
-                return QString("%1 (%2)").arg(ownerPointer.SUM).arg(ownerPointer.rankSUM);
+                if (role == RawDataRole) {
+                    return ownerPoints.SUM;
+                } else if (role == RankRole) {
+                    return ownerPoints.rankSUM;
+                } else {
+                    return QString("%1 (%2)").arg(ownerPoints.SUM).arg(ownerPoints.rankSUM);
+                }
             }
         }
 
@@ -192,6 +302,10 @@ public:
             {
             case RankRows::TEAM:
                 return "Team";
+            case RankRows::BUDGET:
+                return "Budget";
+            case RankRows::ROSTER_SIZE:
+                return "# Players";
             case RankRows::BA:
                 return "AVG";
             case RankRows::R:
@@ -322,7 +436,6 @@ public slots:
             [=](size_t i) { return m_vecOwnerPoints[i].SUM; },
             [=](size_t i, float x) { return m_vecOwnerPoints[i].rankSUM = x; }
         );
-
     }
 
 private:
@@ -361,10 +474,9 @@ class SummaryWidget : public QWidget
 
 public:
 
-    SummaryWidget(const std::vector<OwnerSortFilterProxyModel*>& vecOwnerSortFilterProxyModel, QWidget* parent)
+    SummaryWidget(PlayerTableModel* playerTableModel, const  std::vector<OwnerSortFilterProxyModel*>& vecOwnerSortFilterProxyModel, QWidget* parent)
         : QWidget(parent)
         , m_sumTableView(new QTableView)
-        , m_layout(new QVBoxLayout)
     {
 
         m_summaryTableModel = new SummaryTableModel(vecOwnerSortFilterProxyModel, parent);
@@ -378,16 +490,30 @@ public:
         m_sumTableView->setCornerButtonEnabled(true);
         m_sumTableView->setSortingEnabled(true);
         m_sumTableView->sortByColumn(SummaryTableModel::TEAM);
-        
-        // 100% width
+        m_sumTableView->setMinimumSize(300, 200);
+        m_sumTableView->setMaximumSize(1000, INT_MAX);
+        m_sumTableView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+        ProgressBarDelegate* progressBarDelegate = new ProgressBarDelegate(playerTableModel, this);
+        m_sumTableView->setItemDelegateForColumn(SummaryTableModel::BA, progressBarDelegate);
+        m_sumTableView->setItemDelegateForColumn(SummaryTableModel::R, progressBarDelegate);
+        m_sumTableView->setItemDelegateForColumn(SummaryTableModel::HR, progressBarDelegate);
+        m_sumTableView->setItemDelegateForColumn(SummaryTableModel::RBI, progressBarDelegate);
+        m_sumTableView->setItemDelegateForColumn(SummaryTableModel::SB, progressBarDelegate);
+
+        // 100% width ???
         for (int i = 0; i < m_sumTableView->horizontalHeader()->count(); ++i) {
             m_sumTableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::Stretch);
         }
-
-        // main layout
-        setLayout(m_layout);
-        m_layout->addWidget(m_sumTableView);
-        m_layout->addStretch();
+        
+        QHBoxLayout* hBoxLayout = new QHBoxLayout(this);
+        QVBoxLayout* vBoxLayout = new QVBoxLayout(this);
+        hBoxLayout->addSpacing(1);
+        hBoxLayout->addLayout(vBoxLayout, 1);
+        vBoxLayout->addWidget(m_sumTableView, 1);
+        vBoxLayout->addStretch(1);
+        hBoxLayout->addSpacing(1);
+        setLayout(hBoxLayout);
     }
 
 public slots:
@@ -400,38 +526,35 @@ public slots:
 
 private:
 
-    class SumProxyModel : public QSortFilterProxyModel
+    class ProgressBarDelegate : public QStyledItemDelegate
     {
     public:
-        SumProxyModel(QWidget* parent)
-            : QSortFilterProxyModel(parent)
+        ProgressBarDelegate(PlayerTableModel* playerTableModel, QWidget* parent)
+            : QStyledItemDelegate(parent)
+            , m_playerTableModel(playerTableModel)
         {
         }
 
-        bool filterAcceptsColumn(int sourceColumn, const QModelIndex& sourceParent) const override
+        void paint(QPainter *painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
         {
-            switch (sourceColumn)
-            {
-            case SummaryTableModel::TEAM:
-            case SummaryTableModel::BA:
-            case SummaryTableModel::R:
-            case SummaryTableModel::HR:
-            case SummaryTableModel::RBI:
-            case SummaryTableModel::SB:
-            case SummaryTableModel::ERA:
-            case SummaryTableModel::WHIP:
-            case SummaryTableModel::W:
-            case SummaryTableModel::K:
-            case SummaryTableModel::S:
-            case SummaryTableModel::SUM:
-                return true;
-            default:
-                return false;
-            }
+            auto col = index.model()->data(index, SummaryTableModel::ToPlayerColumn).toInt();
+            float target = m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN(col));
+
+            int progress = index.data().toInt();
+            QStyleOptionProgressBar progressBarOption;
+            progressBarOption.rect = option.rect;
+            progressBarOption.minimum = 0;
+            progressBarOption.maximum = DraftSettings::OwnerCount();
+            progressBarOption.progress = index.model()->data(index, SummaryTableModel::RankRole).toInt();
+            progressBarOption.text = index.model()->data(index, Qt::DisplayRole).toString();
+            progressBarOption.textVisible = true;
+            QApplication::style()->drawControl(QStyle::CE_ProgressBar, &progressBarOption, painter);
         }
+
+    private:
+        PlayerTableModel* m_playerTableModel;
     };
     
-    QVBoxLayout* m_layout;
     SummaryTableModel* m_summaryTableModel;
     QTableView* m_sumTableView;
 };
@@ -618,6 +741,7 @@ public:
         PlayerTableModel* playerTableModel = new PlayerTableModel(this);
         playerTableModel->LoadHittingProjections("2015_hitters.csv", appearances);
         playerTableModel->LoadPitchingProjections("2015_pitchers.csv", appearances);
+        playerTableModel->InitializeTargetValues();
 
         // Draft delegate
         DraftDelegate* draftDelegate = new DraftDelegate(playerTableModel);
@@ -942,7 +1066,7 @@ public:
         connect(playerTableModel, &QAbstractItemModel::dataChanged, chartView, &PlayerScatterPlotChart::Update);
 
         // Summary view
-        SummaryWidget* summary = new SummaryWidget(vecOwnerSortFilterProxyModels, this);
+        SummaryWidget* summary = new SummaryWidget(playerTableModel, vecOwnerSortFilterProxyModels, this);
 
         // Bottom tabs
         enum BottomSectionTabs { Rosters, SummaryWidget, ChartView };

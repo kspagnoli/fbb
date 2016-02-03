@@ -97,6 +97,7 @@ PlayerTableModel::PlayerTableModel(QObject* parent)
 {
     m_sumCost = BUDGET * NUM_OWNERS;
     m_sumValue = BUDGET * NUM_OWNERS;
+    m_vecTargetValues.fill(0);
 }
 
 //------------------------------------------------------------------------------
@@ -254,22 +255,16 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
-    float sumPositiveZScores_R = 0;
-    float sumPositiveZScores_HR = 0;
-    float sumPositiveZScores_RBI = 0;
-    float sumPositiveZScores_SB = 0;
-    float sumPositiveZScores_H = 0;
-    float sumPositiveZScores_AB = 0;
     std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& hitter) {
         auto zDiff = hitter.zScore - zReplacement;
         if (zDiff > 0) {
             sumPositiveZScores += zDiff;
-            sumPositiveZScores_R   += hitter.hitting.R;
-            sumPositiveZScores_HR  += hitter.hitting.HR;
-            sumPositiveZScores_RBI += hitter.hitting.RBI;
-            sumPositiveZScores_SB  += hitter.hitting.SB;
-            sumPositiveZScores_H   += hitter.hitting.H;
-            sumPositiveZScores_AB  += hitter.hitting.AB;
+            m_vecTargetValues[COLUMN_R]   += hitter.hitting.R;
+            m_vecTargetValues[COLUMN_HR]  += hitter.hitting.HR;
+            m_vecTargetValues[COLUMN_RBI] += hitter.hitting.RBI;
+            m_vecTargetValues[COLUMN_SB]  += hitter.hitting.SB;
+            m_vecTargetValues[COLUMN_H]   += hitter.hitting.H;
+            m_vecTargetValues[COLUMN_AB]  += hitter.hitting.AB;
         }
     });
 
@@ -460,24 +455,17 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
-    float sumPositiveZScores_W = 0;
-    float sumPositiveZScores_SV = 0;
-    float sumPositiveZScores_SO = 0;
-    float sumPositiveZScores_H = 0;
-    float sumPositiveZScores_BB = 0;
-    float sumPositiveZScores_IP = 0;
-    float sumPositiveZScores_ER = 0;
     std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
         auto zDiff = pitcher.zScore - zReplacement;
         if (zDiff > 0) {
             sumPositiveZScores += zDiff;
-            sumPositiveZScores_W  += pitcher.pitching.W;
-            sumPositiveZScores_SV += pitcher.pitching.SV;
-            sumPositiveZScores_SO += pitcher.pitching.SO;
-            sumPositiveZScores_H  += pitcher.pitching.H;
-            sumPositiveZScores_BB += pitcher.pitching.BB;
-            sumPositiveZScores_IP += pitcher.pitching.IP;
-            sumPositiveZScores_ER += pitcher.pitching.ER;
+            m_vecTargetValues[COLUMN_W]  += pitcher.pitching.W;
+            m_vecTargetValues[COLUMN_SV] += pitcher.pitching.SV;
+            m_vecTargetValues[COLUMN_SO] += pitcher.pitching.SO;
+            m_vecTargetValues[COLUMN_H]  += pitcher.pitching.H;
+            m_vecTargetValues[COLUMN_BB] += pitcher.pitching.BB;
+            m_vecTargetValues[COLUMN_IP] += pitcher.pitching.IP;
+            m_vecTargetValues[COLUMN_ER] += pitcher.pitching.ER;
         }
     });
 
@@ -504,7 +492,6 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
         m_vecPlayers.push_back(player);
     }
 }
-
 
 //------------------------------------------------------------------------------
 // SaveStatus
@@ -593,6 +580,44 @@ bool PlayerTableModel::LoadDraftStatus(const QString& filename)
     }
 
     return true;
+}
+
+//------------------------------------------------------------------------------
+// InitializeTargetValues
+//------------------------------------------------------------------------------
+void PlayerTableModel::InitializeTargetValues()
+{
+    // How much higher is 3rd place from the avg
+    static std::unordered_map<COLUMN, float> s_statScale =
+    {
+        { COLUMN_AVG, 0.0449f },
+        { COLUMN_HR,  0.1372f },
+        { COLUMN_R,   0.1803f },
+        { COLUMN_RBI, 0.1192f },
+        { COLUMN_SB,  0.1770f },
+    };
+
+    // For each stat...
+    for (auto i = 0u; i < m_vecTargetValues.size(); i++) {
+        auto itr = s_statScale.find(COLUMN(i));
+        if (itr != s_statScale.end()) {
+            auto scale = itr->second;
+            auto sum = m_vecTargetValues[i];
+            auto avg = sum / float(DraftSettings::OwnerCount());
+            m_vecTargetValues[i] = avg + (avg * scale);
+        }
+    }
+
+    // hackery...
+    m_vecTargetValues[COLUMN_AVG] = 0.2742f;
+}
+
+//------------------------------------------------------------------------------
+// GetTargetValue
+//------------------------------------------------------------------------------
+float PlayerTableModel::GetTargetValue(enum COLUMN stat) const
+{
+    return m_vecTargetValues[stat];
 }
 
 //------------------------------------------------------------------------------
