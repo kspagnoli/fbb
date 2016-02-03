@@ -30,6 +30,8 @@ set(SOURCE
     PlayerAppearances.cpp
     PlayerScatterPlotChart.cpp
     SelectedPlayer.cpp
+    SummaryTableModel.cpp
+    OwnerSortFilterProxyModel.cpp
     main.cpp)
 
 file(GLOB HEADERS *.h)
