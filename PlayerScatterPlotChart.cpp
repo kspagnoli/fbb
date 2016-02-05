@@ -154,10 +154,12 @@ PlayerScatterPlotChart::PlayerScatterPlotChart(QAbstractItemModel* model, QSortF
     // Drafted player series
     m_undraftedSeries->setName("Undrafted");
     m_undraftedSeries->setMarkerSize(MARKER_SIZE);
+    m_undraftedSeries->setColor(QColor::fromRgb(0x2a, 0x82, 0xda));
 
     // Undrafted player series
     m_draftedSeries->setName("Drafted");
     m_draftedSeries->setMarkerSize(MARKER_SIZE);
+    m_draftedSeries->setColor(Qt::lightGray);
 
     // Setup hovering
     connect(m_undraftedSeries, &QScatterSeries::hovered, this, &PlayerScatterPlotChart::HoverTooltip);

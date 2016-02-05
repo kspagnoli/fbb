@@ -89,6 +89,9 @@ public:
     virtual Qt::ItemFlags flags(const QModelIndex& index) const override;
     virtual bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
 
+    // Debug helper
+    void DraftRandom();
+
     // Data roles
     static const int RawDataRole = Qt::UserRole + 1;
     static const int ChartFormatRole = Qt::UserRole + 2;

@@ -16,17 +16,6 @@
 #include <QFile>
 #include <QTextStream>
 
-// [XXX] make me settings
-static const size_t HITTER_RATIO = 66;
-static const size_t BUDGET = 260;
-static const size_t NUM_OWNERS = 12;
-static const size_t NUM_HITTERS_PER_OWNER = 14;
-static const size_t NUM_PITCHERS_PER_OWNER = 10;
-static const size_t TOTAL_HITTERS = NUM_HITTERS_PER_OWNER * NUM_OWNERS;
-static const size_t TOTAL_HITTER_MONEY = (NUM_OWNERS * BUDGET * HITTER_RATIO) / size_t(100);
-static const size_t TOTAL_PITCHERS = NUM_PITCHERS_PER_OWNER * NUM_OWNERS;
-static const size_t TOTAL_PITCHER_MONEY = (NUM_OWNERS * BUDGET * (100 - HITTER_RATIO)) / size_t(100);
-
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
 //------------------------------------------------------------------------------
@@ -95,8 +84,8 @@ PlayerPosition StringToPosition(const QString& position)
 PlayerTableModel::PlayerTableModel(QObject* parent)
     : QAbstractTableModel(parent)
 {
-    m_sumCost = BUDGET * NUM_OWNERS;
-    m_sumValue = BUDGET * NUM_OWNERS;
+    m_sumCost = DraftSettings::Budget() * DraftSettings::OwnerCount();
+    m_sumValue = DraftSettings::Budget() * DraftSettings::OwnerCount();
     m_vecTargetValues.fill(0);
 }
 
@@ -251,7 +240,8 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     }
     
     // Get the "replacement player"
-    auto zReplacement = vecHitters[TOTAL_HITTERS].zScore;
+    auto totalHitters = DraftSettings::HitterCount() * DraftSettings::OwnerCount();
+    auto zReplacement = vecHitters[totalHitters].zScore;
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
@@ -269,7 +259,8 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     });
 
     // Apply cost ratio
-    static const float costPerZ = float(TOTAL_HITTER_MONEY) / sumPositiveZScores;
+    float totalHitterMoney =  DraftSettings::HittingSplit() * DraftSettings::Budget() * DraftSettings::OwnerCount();
+    float costPerZ = float(totalHitterMoney) / sumPositiveZScores;
     std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& player) {
         player.cost = (player.zScore - zReplacement) * costPerZ;
     });
@@ -451,7 +442,8 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     }
 
     // Get the "replacement player"
-    auto zReplacement = vecPitchers[TOTAL_PITCHERS].zScore;
+    auto totalPitcher = DraftSettings::PitcherCount() * DraftSettings::OwnerCount();
+    auto zReplacement = vecPitchers[totalPitcher].zScore;
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
@@ -470,9 +462,10 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     });
 
     // Apply cost ratio
-    static const float costPerZ = float(TOTAL_PITCHER_MONEY) / sumPositiveZScores;
+    float totalPitcherMoney = DraftSettings::PitchingSplit() * DraftSettings::Budget() * DraftSettings::OwnerCount();
+    float costPerZ = float(totalPitcherMoney) / sumPositiveZScores;
     std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
-        pitcher.cost = pitcher.zScore * costPerZ;
+        pitcher.cost = (pitcher.zScore - zReplacement) * costPerZ;
     });
 
     // Count players available
@@ -1021,6 +1014,29 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
 
     // Update table view
     emit dataChanged(index, index);
+}
+
+
+void PlayerTableModel::DraftRandom()
+{
+    static int s = 0;
+
+    for (auto i = s++; i < m_vecPlayers.size(); i += 4) {
+
+        if (m_vecPlayers[i].cost < 0) {
+            continue;
+        }
+
+        DraftDialog::Results results;
+        results.cost = std::ceil(m_vecPlayers[i].cost);
+        results.ownerId = (i % DraftSettings::OwnerCount()) + 1;
+        results.position = PlayerPosition::None;
+        unsigned long bit;
+        _BitScanForward(&bit, m_vecPlayers[i].eligiblePositionBitfield);
+        results.position = PlayerPosition(bit);
+        OnDrafted(results, index(i, 0), this);
+    }
+
 }
 
 #include "PlayerTableModel.moc"

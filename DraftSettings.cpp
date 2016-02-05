@@ -15,7 +15,7 @@ struct DraftSettingsImpl
     DraftSettingsImpl()
     {
         OwnerCount = 12;
-
+        HittingSplit = 0.68f;
         HitterCount = 14;
         PitcherCount = 10;
         Budget = 280;
@@ -60,6 +60,7 @@ struct DraftSettingsImpl
     uint32_t Budget;
     uint32_t HitterCount;
     uint32_t PitcherCount;
+    float HittingSplit;
     uint32_t OwnerCount;
     QStringList OwnerNames;
     QStringList OwnerAbbreviations;
@@ -87,6 +88,16 @@ const uint32_t DraftSettings::PitcherCount()
 const uint32_t DraftSettings::RosterSize()
 {
     return HitterCount() + PitcherCount();
+}
+
+const float DraftSettings::HittingSplit()
+{
+    return DraftSettingsImpl::Get().HittingSplit;
+}
+
+const float DraftSettings::PitchingSplit()
+{
+    return 1.f - HittingSplit();
 }
 
 const uint32_t DraftSettings::OwnerCount()

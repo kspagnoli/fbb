@@ -500,7 +500,10 @@ public:
         // Main Menu > Settings menu > Options action
         QAction* optionsAction = new QAction("&Options...", this);
         connect(optionsAction, &QAction::triggered, [=](bool checked) {
+
             // TODO: Some settings would be nice...
+            playerTableModel->DraftRandom();
+
         });
         settingsMenu->addAction(optionsAction);
 

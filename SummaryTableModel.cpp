@@ -2,8 +2,9 @@
 #include "OwnerSortFilterProxyModel.h"
 #include "DraftSettings.h"
 
-SummaryTableModel::SummaryTableModel(const std::vector<OwnerSortFilterProxyModel*>& vecOwnerSortFilterProxyModel, QWidget* parent)
+SummaryTableModel::SummaryTableModel(const std::vector<OwnerSortFilterProxyModel*>& vecOwnerSortFilterProxyModel, PlayerTableModel* playerTableModel, QWidget* parent)
     : m_vecOwnerSortFilterProxyModels(vecOwnerSortFilterProxyModel)
+    , m_playerTableModel(playerTableModel)
     , m_vecOwnerPoints(vecOwnerSortFilterProxyModel.size())
 {
 }
@@ -24,6 +25,36 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         return Qt::AlignmentFlag(int(Qt::AlignCenter | Qt::AlignVCenter));
     }
 
+    if (role == Qt::ToolTipRole) {
+        switch (index.column())
+        {
+        case BA:
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_AVG);
+        case R:
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_R);
+        case HR:
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_HR);
+        case RBI:
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_RBI);
+        case SB:
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SB);
+        case ERA:
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_ERA);
+        case WHIP:
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_WHIP);
+        case W:
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_W);
+        case K:
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SO);
+        case S:
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SO);
+        case SUM:
+            return 10 * ((DraftSettings::OwnerCount() + 1) * 0.75);
+        default:
+            break;
+        }
+    }
+
     if ((role != Qt::DisplayRole) && (role != RawDataRole) && (role != RankRole)) {
         return QVariant();
     }
@@ -33,6 +64,11 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
 
     switch (index.column())
     {
+    case RankRows::RANK:
+    {
+        // return dynamic_cast<const QSortFilterProxyModel*>(index.model())->mapToSource(index).row();
+        return 0;
+    }
     case RankRows::TEAM:
     {
         if (role == RawDataRole || role == RankRole) {
@@ -68,7 +104,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
             return ownerPoints.rankAVG;
         } else {
             QString strBA = (BA == 0.f ? QString("--") : QString::number(BA, 'f', 3));
-            return QString("%1 (%2)").arg(strBA).arg(ownerPoints.rankAVG);
+            return QString("%1").arg(strBA);
         }
     }
     case RankRows::R:
@@ -79,7 +115,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         } else if (role == RankRole) {
             return ownerPoints.rankR;
         } else {
-            return QString("%1 (%2)").arg(R).arg(ownerPoints.rankR);
+            return QString("%1").arg(R);
         }
     }
     case RankRows::HR:
@@ -90,7 +126,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         } else if (role == RankRole) {
             return ownerPoints.rankHR;
         } else {
-            return QString("%1 (%2)").arg(HR).arg(ownerPoints.rankHR);
+            return QString("%1").arg(HR);
         }
     }
     case RankRows::RBI:
@@ -101,7 +137,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         } else if (role == RankRole) {
             return ownerPoints.rankRBI;
         } else {
-            return QString("%1 (%2)").arg(RBI).arg(ownerPoints.rankRBI);
+            return QString("%1").arg(RBI);
         }
     }
     case RankRows::SB:
@@ -112,7 +148,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         } else if (role == RankRole) {
             return ownerPoints.rankSB;
         } else {
-            return QString("%1 (%2)").arg(SB).arg(ownerPoints.rankSB);
+            return QString("%1").arg(SB);
         }
     }
     case RankRows::ERA:
@@ -124,7 +160,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
             return ownerPoints.rankERA;
         } else {
             QString strERA = (ERA == 0.f ? QString("--") : QString::number(ERA, 'f', 3));
-            return QString("%1 (%2)").arg(strERA).arg(ownerPoints.rankERA);
+            return QString("%1").arg(strERA);
         }
     }
     case RankRows::WHIP:
@@ -136,7 +172,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
             return ownerPoints.rankWHIP;
         } else {
             QString strWHIP = (WHIP == 0.f ? QString("--") : QString::number(WHIP, 'f', 3));
-            return QString("%1 (%2)").arg(strWHIP).arg(ownerPoints.rankWHIP);
+            return QString("%1").arg(strWHIP);
         }
     }
     case RankRows::W:
@@ -147,7 +183,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         } else if (role == RankRole) {
             return ownerPoints.rankW;
         } else {
-            return QString("%1 (%2)").arg(W).arg(ownerPoints.rankW);
+            return QString("%1").arg(W);
         }
     }
     case RankRows::K:
@@ -158,7 +194,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         } else if (role == RankRole) {
             return ownerPoints.rankK;
         } else {
-            return QString("%1 (%2)").arg(SO).arg(ownerPoints.rankK);
+            return QString("%1").arg(SO);
         }
     }
     case RankRows::S:
@@ -169,7 +205,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         } else if (role == RankRole) {
             return ownerPoints.rankSV;
         } else {
-            return QString("%1 (%2)").arg(SV).arg(ownerPoints.rankSV);
+            return QString("%1").arg(SV);
         }
     }
     case RankRows::SUM:
@@ -179,7 +215,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         } else if (role == RankRole) {
             return ownerPoints.rankSUM;
         } else {
-            return QString("%1 (%2)").arg(ownerPoints.SUM).arg(ownerPoints.rankSUM);
+            return QString("%1").arg(ownerPoints.SUM);
         }
     }
     }
@@ -198,6 +234,8 @@ QVariant SummaryTableModel::headerData(int section, Qt::Orientation orientation,
 
         switch (section)
         {
+        case RankRows::RANK:
+            return "Rank";
         case RankRows::TEAM:
             return "Team";
         case RankRows::BUDGET:

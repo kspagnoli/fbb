@@ -3,6 +3,8 @@
 #include <QAbstractTableModel>
 #include <vector>
 
+class PlayerTableModel;
+
 //------------------------------------------------------------------------------
 // SummaryItemModel
 //------------------------------------------------------------------------------
@@ -11,10 +13,11 @@ class SummaryTableModel : public QAbstractTableModel
 
 public:
 
-    SummaryTableModel(const std::vector<class OwnerSortFilterProxyModel*>& vecOwnerSortFilterProxyModel, QWidget* parent);
+    SummaryTableModel(const std::vector<class OwnerSortFilterProxyModel*>& vecOwnerSortFilterProxyModel, PlayerTableModel* playerTableModel, QWidget* parent);
 
     enum RankRows
     {
+        RANK,
         TEAM,
         BUDGET,
         ROSTER_SIZE,
@@ -36,7 +39,6 @@ public:
     {
         RawDataRole    = Qt::UserRole + 0,
         RankRole       = Qt::UserRole + 1,
-        ToPlayerColumn = Qt::UserRole + 2,
     };
 
     virtual int rowCount(const QModelIndex& index) const override;
@@ -72,5 +74,6 @@ private:
     };
 
     std::vector<class OwnerSortFilterProxyModel*> m_vecOwnerSortFilterProxyModels;
+    PlayerTableModel* m_playerTableModel;
     std::vector<OwnerPoints> m_vecOwnerPoints;
 };

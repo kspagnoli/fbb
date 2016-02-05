@@ -95,23 +95,6 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
             m_draftResults.position = StringToPosition(position);
         });
 
-        // find first set
-        auto ffs = [](uint32_t x) -> uint32_t
-        {
-            if (x == 0) {
-                return 0;
-            }
-
-            auto t = 1;
-            auto r = 1;
-            while ((x & t) == 0) {
-                t = t << 1;
-                r = r + 1;
-            }
-
-            return r;
-        };
-
         // Set default position to first in the list
         unsigned long bit = 0;
         _BitScanForward(&bit, playerPositionBitField);

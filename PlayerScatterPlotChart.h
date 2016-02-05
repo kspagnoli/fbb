@@ -36,7 +36,7 @@ signals:
 
 private:
 
-    static const int MARKER_SIZE = 7;
+    static const int MARKER_SIZE = 8;
 
     void HoverTooltip(QPointF point, bool state);
     void OnReleased(QPointF point);

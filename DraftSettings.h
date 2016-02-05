@@ -28,6 +28,8 @@ namespace DraftSettings
     const uint32_t HitterCount();
     const uint32_t PitcherCount();
     const uint32_t RosterSize();
+    const float    HittingSplit();
+    const float    PitchingSplit();
 
     const uint32_t OwnerCount();
     const QString& OwnerName(uint32_t i);

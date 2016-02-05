@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QMessageBox>
 #include <QSortFilterProxyModel>
+#include <QPainter>
 
 DraftDelegate::DraftDelegate(PlayerTableModel* playerTableModel)
     : QAbstractItemDelegate(playerTableModel)
@@ -23,9 +24,12 @@ void DraftDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
     QStyleOptionButton pushButtonOption;
     pushButtonOption.rect = option.rect;
     pushButtonOption.text = (ownerId == 0) ? "Draft" : "Return";
-    // pushButtonOption.state = 
+    pushButtonOption.state = QStyle::State_Mini;
 
+    auto opacity = painter->opacity();
+    painter->setOpacity(ownerId == 0 ? 1.0f : 0.3f);
     QApplication::style()->drawControl(QStyle::CE_PushButton, &pushButtonOption, painter);
+    painter->setOpacity(opacity);
 }
 
 QSize DraftDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
@@ -39,7 +43,7 @@ bool DraftDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const 
     if (event->type() == QEvent::MouseButtonRelease) {
 
         // This was probably from a proxy model
-        // XXX: kill me!
+        // XXX: i think this can go away...
         auto proxyModel = dynamic_cast<const QSortFilterProxyModel*>(index.model());
         QAbstractItemModel* srcModel = proxyModel ? proxyModel->sourceModel() : model;
         QModelIndex srcIndex = proxyModel ? proxyModel->mapToSource(index) : index;

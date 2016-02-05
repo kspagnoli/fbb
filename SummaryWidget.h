@@ -18,10 +18,10 @@ public:
     {
 
         // Source and filter models
-        m_summaryTableModel = new SummaryTableModel(vecOwnerSortFilterProxyModel, parent);
+        m_summaryTableModel = new SummaryTableModel(vecOwnerSortFilterProxyModel, playerTableModel, parent);
         SummarySortFitlerProxyModel* summarySortFitlerProxyModel = new SummarySortFitlerProxyModel(m_summaryTableModel);
 
-        // sum table view
+        // Sum table view
         m_sumTableView->setModel(summarySortFitlerProxyModel);
         m_sumTableView->verticalHeader()->hide();
         m_sumTableView->setAlternatingRowColors(true);
@@ -33,8 +33,8 @@ public:
         m_sumTableView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         m_sumTableView->resizeColumnsToContents();
 
+        // Use progress bars for each of the rankable stats
         ProgressBarDelegate* progressBarDelegate = new ProgressBarDelegate(playerTableModel, this);
-        
         m_sumTableView->setItemDelegateForColumn(SummaryTableModel::BA, progressBarDelegate);
         m_sumTableView->setItemDelegateForColumn(SummaryTableModel::R, progressBarDelegate);
         m_sumTableView->setItemDelegateForColumn(SummaryTableModel::HR, progressBarDelegate);
@@ -107,9 +107,6 @@ private:
 
         void paint(QPainter *painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
         {
-            auto col = index.model()->data(index, SummaryTableModel::ToPlayerColumn).toInt();
-            float target = m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN(col));
-
             int progress = index.data().toInt();
             QStyleOptionProgressBar progressBarOption;
             progressBarOption.rect = option.rect;
