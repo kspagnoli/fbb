@@ -56,7 +56,7 @@ struct Player
 
     // Player data
     uint32_t index;
-    uint32_t id;                                // player id
+    QString id;                                // player id
     QString name;
     QString team;                               // TODO: change to ID
     CatergoryMask catergory;

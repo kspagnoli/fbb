@@ -47,7 +47,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         case K:
             return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SO);
         case S:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SO);
+            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SV);
         case SUM:
             return 10 * ((DraftSettings::OwnerCount() + 1) * 0.75);
         default:

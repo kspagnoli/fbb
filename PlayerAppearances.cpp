@@ -57,6 +57,7 @@ PlayerApperances::PlayerApperances(const std::string& filename)
 
             // Parse name
             std::string name = parsed[LUT["Name"]];
+            std::string team = parsed[LUT["Tm"]];
 
             // Parse apperances
             Appearances apperances;
@@ -71,7 +72,7 @@ PlayerApperances::PlayerApperances(const std::string& filename)
             apperances.atDH = boost::lexical_cast<uint32_t>(parsed[LUT["DH"]]);
 
             // 
-            auto key = std::make_tuple(name, "XXX");
+            auto key = std::make_tuple(name, team);
             if (m_mapAppearances.find(key) != m_mapAppearances.end()) {
                 throw 0;
             } 
@@ -88,9 +89,13 @@ PlayerApperances::PlayerApperances(const std::string& filename)
 
 const Appearances& PlayerApperances::Lookup(const std::string& name) const
 {
-    auto key = std::make_tuple(name, "XXX");
+    // auto key = std::make_tuple(name, "XXX");
 
-    auto itr = m_mapAppearances.find(key);
+    auto itr = std::find_if(std::begin(m_mapAppearances), std::end(m_mapAppearances), [=](auto& player) {
+        return std::get<0>(player.first) == name;
+    });
+
+
     if (itr == m_mapAppearances.end()) {
 
         std::stringstream ss;

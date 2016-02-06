@@ -16,6 +16,24 @@
 #include <QFile>
 #include <QTextStream>
 
+
+//------------------------------------------------------------------------------
+// PositionToString (static helper)
+//------------------------------------------------------------------------------
+template <typename T>
+static T SafeLexicalCast(const std::string& x)
+{
+    if (x == std::string(" ")) {
+        return T(0);
+    }
+
+    try {
+        return boost::lexical_cast<T>(x);
+    } catch (...) {
+        return T(0);
+    }
+}
+
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
 //------------------------------------------------------------------------------
@@ -84,8 +102,6 @@ PlayerPosition StringToPosition(const QString& position)
 PlayerTableModel::PlayerTableModel(QObject* parent)
     : QAbstractTableModel(parent)
 {
-    m_sumCost = DraftSettings::Budget() * DraftSettings::OwnerCount();
-    m_sumValue = DraftSettings::Budget() * DraftSettings::OwnerCount();
     m_vecTargetValues.fill(0);
 }
 
@@ -143,16 +159,16 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 
             // Parse into player data
             Player player;
-            player.id = boost::lexical_cast<uint32_t>(parsed[LUT["playerid"]]);
+            player.id =  QString::fromStdString(parsed[LUT["playerid"]]);
             player.name = QString::fromStdString(parsed[LUT["Name"]]);
             player.team = QString::fromStdString(parsed[LUT["Team"]]);
-            player.hitting.PA = boost::lexical_cast<uint32_t>(parsed[LUT["PA"]]);
-            player.hitting.AB = boost::lexical_cast<uint32_t>(parsed[LUT["AB"]]);
-            player.hitting.H = boost::lexical_cast<uint32_t>(parsed[LUT["H"]]);
-            player.hitting.HR = boost::lexical_cast<uint32_t>(parsed[LUT["HR"]]);
-            player.hitting.R = boost::lexical_cast<uint32_t>(parsed[LUT["R"]]);
-            player.hitting.RBI = boost::lexical_cast<uint32_t>(parsed[LUT["RBI"]]);
-            player.hitting.SB = boost::lexical_cast<uint32_t>(parsed[LUT["SB"]]);
+            player.hitting.PA = SafeLexicalCast<uint32_t>(parsed[LUT["PA"]]);
+            player.hitting.AB = SafeLexicalCast<uint32_t>(parsed[LUT["AB"]]);
+            player.hitting.H = SafeLexicalCast<uint32_t>(parsed[LUT["H"]]);
+            player.hitting.HR = SafeLexicalCast<uint32_t>(parsed[LUT["HR"]]);
+            player.hitting.R = SafeLexicalCast<uint32_t>(parsed[LUT["R"]]);
+            player.hitting.RBI = SafeLexicalCast<uint32_t>(parsed[LUT["RBI"]]);
+            player.hitting.SB = SafeLexicalCast<uint32_t>(parsed[LUT["SB"]]);
             player.hitting.AVG = float(player.hitting.H) / float(player.hitting.AB);
 
             // Skip players with little-to-no AB
@@ -265,18 +281,6 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
         player.cost = (player.zScore - zReplacement) * costPerZ;
     });
 
-    // Count players available
-    std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& hitter) {
-        for (uint8_t i = 0; i < uint32_t(PlayerPosition::COUNT); ++i) {
-            if (hitter.eligiblePositionBitfield & (1 << i)) {
-                m_mapPosAvailableAll[i]++;
-                if (hitter.cost > 0) {
-                    m_mapPosAvailablePosZ[i]++;
-                }
-            }
-        }
-    });
-
     // Add to main storage
     for (const Player& player : vecHitters) {
         m_vecPlayers.push_back(player);
@@ -338,18 +342,18 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
             std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
 
             Player player;
-            player.id = boost::lexical_cast<uint32_t>(parsed[LUT["playerid"]]);
+            player.id = QString::fromStdString(parsed[LUT["playerid"]]);
             player.name = QString::fromStdString(parsed[LUT["Name"]]);
             player.team = QString::fromStdString(parsed[LUT["Team"]]);
-            player.pitching.IP = boost::lexical_cast<decltype(player.pitching.IP)>(parsed[LUT["IP"]]);
-            player.pitching.ER = boost::lexical_cast<decltype(player.pitching.ER)>(parsed[LUT["ER"]]);
-            player.pitching.H = boost::lexical_cast<decltype(player.pitching.H)>(parsed[LUT["H"]]);
-            player.pitching.BB = boost::lexical_cast<decltype(player.pitching.BB)>(parsed[LUT["BB"]]);
-            player.pitching.ERA = boost::lexical_cast<decltype(player.pitching.ERA)>(parsed[LUT["ERA"]]);
-            player.pitching.WHIP = boost::lexical_cast<decltype(player.pitching.WHIP)>(parsed[LUT["WHIP"]]);
-            player.pitching.W = boost::lexical_cast<decltype(player.pitching.W)>(parsed[LUT["W"]]);
-            player.pitching.SO = boost::lexical_cast<decltype(player.pitching.SO)>(parsed[LUT["SO"]]);
-            player.pitching.SV = boost::lexical_cast<decltype(player.pitching.SV)>(parsed[LUT["SV"]]);
+            player.pitching.IP = SafeLexicalCast<decltype(player.pitching.IP)>(parsed[LUT["IP"]]);
+            player.pitching.ER = SafeLexicalCast<decltype(player.pitching.ER)>(parsed[LUT["ER"]]);
+            player.pitching.H = SafeLexicalCast<decltype(player.pitching.H)>(parsed[LUT["H"]]);
+            player.pitching.BB = SafeLexicalCast<decltype(player.pitching.BB)>(parsed[LUT["BB"]]);
+            player.pitching.ERA = SafeLexicalCast<decltype(player.pitching.ERA)>(parsed[LUT["ERA"]]);
+            player.pitching.WHIP = SafeLexicalCast<decltype(player.pitching.WHIP)>(parsed[LUT["WHIP"]]);
+            player.pitching.W = SafeLexicalCast<decltype(player.pitching.W)>(parsed[LUT["W"]]);
+            player.pitching.SO = SafeLexicalCast<decltype(player.pitching.SO)>(parsed[LUT["SO"]]);
+            player.pitching.SV = SafeLexicalCast<decltype(player.pitching.SV)>(parsed[LUT["SV"]]);
 
             if (player.pitching.IP < 5) {
                 continue;
@@ -454,7 +458,7 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
             m_vecTargetValues[COLUMN_W]  += pitcher.pitching.W;
             m_vecTargetValues[COLUMN_SV] += pitcher.pitching.SV;
             m_vecTargetValues[COLUMN_SO] += pitcher.pitching.SO;
-            m_vecTargetValues[COLUMN_H]  += pitcher.pitching.H;
+            m_vecTargetValues[COLUMN_HA] += pitcher.pitching.H;
             m_vecTargetValues[COLUMN_BB] += pitcher.pitching.BB;
             m_vecTargetValues[COLUMN_IP] += pitcher.pitching.IP;
             m_vecTargetValues[COLUMN_ER] += pitcher.pitching.ER;
@@ -466,18 +470,6 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     float costPerZ = float(totalPitcherMoney) / sumPositiveZScores;
     std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
         pitcher.cost = (pitcher.zScore - zReplacement) * costPerZ;
-    });
-
-    // Count players available
-    std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
-        for (uint8_t i = 0; i < uint32_t(PlayerPosition::COUNT); ++i) {
-            if (pitcher.eligiblePositionBitfield & (1 << i)) {
-                m_mapPosAvailableAll[i]++;
-                if (pitcher.cost > 0) {
-                    m_mapPosAvailablePosZ[i]++;
-                }
-            }
-        }
     });
 
     // Add to main storage
@@ -544,7 +536,7 @@ bool PlayerTableModel::LoadDraftStatus(const QString& filename)
         QList<QByteArray> wordList = line.split(',');
 
         // parse data
-        auto playerId = QString::fromUtf8(wordList.at(0)).toUInt();
+        auto playerId = QString::fromUtf8(wordList.at(0));
         auto ownerId = QString::fromUtf8(wordList.at(1)).toUInt();
         auto draftPosition = QString::fromUtf8(wordList.at(2)).toUInt();
         auto paid = QString::fromUtf8(wordList.at(3)).toUInt();
@@ -580,29 +572,17 @@ bool PlayerTableModel::LoadDraftStatus(const QString& filename)
 //------------------------------------------------------------------------------
 void PlayerTableModel::InitializeTargetValues()
 {
-    // How much higher is 3rd place from the avg
-    static std::unordered_map<COLUMN, float> s_statScale =
-    {
-        { COLUMN_AVG, 0.0449f },
-        { COLUMN_HR,  0.1372f },
-        { COLUMN_R,   0.1803f },
-        { COLUMN_RBI, 0.1192f },
-        { COLUMN_SB,  0.1770f },
-    };
-
-    // For each stat...
-    for (auto i = 0u; i < m_vecTargetValues.size(); i++) {
-        auto itr = s_statScale.find(COLUMN(i));
-        if (itr != s_statScale.end()) {
-            auto scale = itr->second;
-            auto sum = m_vecTargetValues[i];
-            auto avg = sum / float(DraftSettings::OwnerCount());
-            m_vecTargetValues[i] = avg + (avg * scale);
-        }
-    }
-
-    // hackery...
-    m_vecTargetValues[COLUMN_AVG] = 0.2742f;
+    // Calculate compound stats
+    m_vecTargetValues[COLUMN_AVG] = m_vecTargetValues[COLUMN_H] / m_vecTargetValues[COLUMN_AB];
+    m_vecTargetValues[COLUMN_HR] /= float(DraftSettings::OwnerCount());
+    m_vecTargetValues[COLUMN_RBI] /= float(DraftSettings::OwnerCount());
+    m_vecTargetValues[COLUMN_SB] /= float(DraftSettings::OwnerCount());
+    m_vecTargetValues[COLUMN_R] /= float(DraftSettings::OwnerCount());
+    m_vecTargetValues[COLUMN_SO] /= float(DraftSettings::OwnerCount());
+    m_vecTargetValues[COLUMN_W] /= float(DraftSettings::OwnerCount());
+    m_vecTargetValues[COLUMN_SV] /= float(DraftSettings::OwnerCount());
+    m_vecTargetValues[COLUMN_WHIP] = (m_vecTargetValues[COLUMN_HA] + m_vecTargetValues[COLUMN_BB]) / m_vecTargetValues[COLUMN_IP];
+    m_vecTargetValues[COLUMN_ERA] = (9.f * m_vecTargetValues[COLUMN_ER]) / m_vecTargetValues[COLUMN_IP];
 }
 
 //------------------------------------------------------------------------------
@@ -635,6 +615,12 @@ int PlayerTableModel::columnCount(const QModelIndex& index) const
 QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
 {
     const Player& player = m_vecPlayers.at(index.row());
+
+    if (role == Qt::FontRole && index.column() == COLUMN_ID) {
+        QFont font;
+        font.setUnderline(true);
+        return QVariant::fromValue(font);
+    }
 
     if (role == Qt::DisplayRole || role == Qt::EditRole || role == RawDataRole) {
 
@@ -729,8 +715,8 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             if (role == RawDataRole) {
                 return player.cost;
             } else {
-                float inflatedCost = m_inflationFactor * (player.cost);
-                return QString("$%1").arg(QString::number(inflatedCost, 'f', 2));
+                float toShow = player.ownerId != 0 ? player.cost : (m_inflationFactor * player.cost);
+                return QString("$%1").arg(QString::number(toShow, 'f', 2));
             }
         case COLUMN_Z:
             if (role == RawDataRole) {
@@ -757,6 +743,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
         case COLUMN_PAID:
         case COLUMN_OWNER:
         case COLUMN_DRAFT_POSITION:
+        case COLUMN_ID:
             return Qt::AlignmentFlag(int(Qt::AlignCenter) | int(Qt::AlignVCenter));
         case COLUMN_NAME:
         case COLUMN_TEAM:
@@ -966,46 +953,28 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     // Get player
     Player& player = m_vecPlayers[index.row()];
 
-    // If drafting..
-    if (results.ownerId) {
-
-        // Update inflation for player leaving the pool
-        m_sumCost -= results.cost;
-        m_sumValue -= player.cost;
-        m_inflationFactor = (m_sumCost > 0) ? (m_sumCost / m_sumValue) : 1.0;
-
-        // Update player counts
-        for (auto i = 0; i < uint32_t(PlayerPosition::COUNT); i++) {
-            if (player.eligiblePositionBitfield & (1 << i)) {
-                m_mapPosAvailableAll[i]--;
-                if (player.cost >= 0) {
-                    m_mapPosAvailablePosZ[i]--;
-                }
-            }
-        }
-
-    } else {
-
-        // Update inflation for player entering the pool
-        m_sumCost += player.paid;
-        m_sumValue += player.cost;
-        m_inflationFactor = (m_sumCost > 0) ? (m_sumCost / m_sumValue) : 1.0;
-
-        // Update player counts
-        for (auto i = 0; i < uint32_t(PlayerPosition::COUNT); i++) {
-            if (player.eligiblePositionBitfield & (1 << i)) {
-                m_mapPosAvailableAll[i]++;
-                if (player.cost >= 0) {
-                    m_mapPosAvailablePosZ[i]++;
-                }
-            }
-        }
-    }
-
     // Update status
     player.ownerId = results.ownerId;
     player.paid = results.cost;
     player.draftPosition = results.position;
+
+    // Update inflation
+    float sumCost = DraftSettings::OwnerCount() * DraftSettings::Budget();
+    float sumValue = DraftSettings::OwnerCount() * DraftSettings::Budget();
+    for (auto& player : m_vecPlayers)
+    {
+        if (player.ownerId != 0) {
+            sumCost -= player.paid;
+            sumValue -= player.cost;
+        }
+    }
+    m_inflationFactor = sumValue ? (sumCost / sumValue) : 1.0f;
+    m_inflationFactor = std::max(m_inflationFactor, 0.5);
+    m_inflationFactor = std::min(m_inflationFactor, 2.0);
+    
+    // All the data is changing
+    // XXX: this is overkill...
+    emit beginResetModel();
 
     // Broadcast results
     emit DraftedBegin();
@@ -1013,13 +982,13 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     emit DraftedEnd();
 
     // Update table view
-    emit dataChanged(index, index);
+    emit endResetModel();
 }
 
 
 void PlayerTableModel::DraftRandom()
 {
-    static int s = 0;
+    static size_t s = 0;
 
     for (auto i = s++; i < m_vecPlayers.size(); i += 4) {
 
@@ -1028,7 +997,7 @@ void PlayerTableModel::DraftRandom()
         }
 
         DraftDialog::Results results;
-        results.cost = std::ceil(m_vecPlayers[i].cost);
+        results.cost = std::max(std::floor(m_vecPlayers[i].cost), 1.f);
         results.ownerId = (i % DraftSettings::OwnerCount()) + 1;
         results.position = PlayerPosition::None;
         unsigned long bit;

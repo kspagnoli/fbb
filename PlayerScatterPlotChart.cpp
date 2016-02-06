@@ -161,6 +161,14 @@ PlayerScatterPlotChart::PlayerScatterPlotChart(QAbstractItemModel* model, QSortF
     m_draftedSeries->setMarkerSize(MARKER_SIZE);
     m_draftedSeries->setColor(Qt::lightGray);
 
+    // Add series
+    chart()->addSeries(m_undraftedSeries);
+    chart()->addSeries(m_draftedSeries);
+
+    // Add axis
+    chart()->addAxis(m_xAxis, Qt::AlignBottom);
+    chart()->addAxis(m_yAxis, Qt::AlignLeft);
+
     // Setup hovering
     connect(m_undraftedSeries, &QScatterSeries::hovered, this, &PlayerScatterPlotChart::HoverTooltip);
     connect(m_draftedSeries, &QScatterSeries::hovered, this, &PlayerScatterPlotChart::HoverTooltip);
@@ -241,27 +249,23 @@ void PlayerScatterPlotChart::Update()
     auto yRange = maxValue - minValue;
     auto yRangePadding = yRange * 0.07f;
 
-    // Add to chart
-    chart()->addSeries(m_undraftedSeries);
-    chart()->addSeries(m_draftedSeries);
-
     // Configure x-axis
+    // XXX: this has a Qt error but works...
     m_xAxis->setTitleText("Rank");
     m_xAxis->setTickCount(xTicks);
     m_xAxis->setLabelFormat("%i");
     m_xAxis->setRange(0, entriesToShow+1);
     m_draftedSeries->attachAxis(m_xAxis);
     m_undraftedSeries->attachAxis(m_xAxis);
-    chart()->addAxis(m_xAxis, Qt::AlignBottom);
 
     // Configure y-axis
+    // XXX: this has a Qt error but works...
     m_yAxis->setTitleText(CurrentSortName());
     m_yAxis->setTickCount(yTicks);
     m_yAxis->setLabelFormat(valueFormat);
     m_yAxis->setRange(minValue - yRangePadding, maxValue + yRangePadding);
     m_draftedSeries->attachAxis(m_yAxis);
     m_undraftedSeries->attachAxis(m_yAxis);
-    chart()->addAxis(m_yAxis, Qt::AlignLeft);
 }
 
 void PlayerScatterPlotChart::HoverTooltip(QPointF point, bool state)

@@ -28,8 +28,8 @@ public:
         m_sumTableView->verticalHeader()->setDefaultSectionSize(15);
         m_sumTableView->setSortingEnabled(true);
         m_sumTableView->sortByColumn(SummaryTableModel::TEAM);
-        m_sumTableView->setMinimumSize(300, 200);
-        m_sumTableView->setMaximumSize(1000, INT_MAX);
+        m_sumTableView->setMinimumSize(100, 100);
+        m_sumTableView->setMaximumSize(1000, 4096);
         m_sumTableView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         m_sumTableView->resizeColumnsToContents();
 
@@ -52,12 +52,7 @@ public:
         }
 
         QHBoxLayout* hBoxLayout = new QHBoxLayout(this);
-        QVBoxLayout* vBoxLayout = new QVBoxLayout(this);
-        hBoxLayout->addSpacing(1);
-        hBoxLayout->addLayout(vBoxLayout, 1);
-        vBoxLayout->addWidget(m_sumTableView, 1);
-        vBoxLayout->addStretch(1);
-        hBoxLayout->addSpacing(1);
+        hBoxLayout->addWidget(m_sumTableView, 1);
         setLayout(hBoxLayout);
     }
 

@@ -28,6 +28,7 @@
 #include <QToolTip>
 #include <QFileDialog>
 #include <QStyledItemDelegate>
+#include <QDesktopServices>
 
 #include <memory>
 #include <string>
@@ -44,6 +45,36 @@
 #include "OwnerSortFilterProxyModel.h"
 #include "PlayerScatterPlotChart.h"
 #include "SummaryWidget.h"
+
+
+class LinkDelegate : public QStyledItemDelegate
+{
+public:
+
+    LinkDelegate(QObject* parent)
+        : QStyledItemDelegate(parent)
+    {
+    }
+
+    QString displayText(const QVariant& value, const QLocale& locale) const override
+    {
+        return "link";
+    }
+
+    bool editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index) override
+    {
+        // On mouse release...
+        if (event->type() == QEvent::MouseButtonRelease) {
+
+            auto id = model->data(index, Qt::DisplayRole).toString();
+            auto link = QString("http://www.fangraphs.com/statss.aspx?playerid=%1").arg(id);
+            QDesktopServices::openUrl(link);
+        }
+
+        return false;
+    }
+
+};
 
 //------------------------------------------------------------------------------
 // MainWindow
@@ -70,6 +101,9 @@ public:
         // Draft delegate
         DraftDelegate* draftDelegate = new DraftDelegate(playerTableModel);
 
+        // Link delegate
+        LinkDelegate* linkDelegate = new LinkDelegate(this);
+
         // Hitter sort-model
         PlayerSortFilterProxyModel* hitterSortFilterProxyModel = new PlayerSortFilterProxyModel(Player::Hitter);
         hitterSortFilterProxyModel->setSourceModel(playerTableModel);
@@ -78,6 +112,7 @@ public:
         // Hitter table view
         QTableView* hitterTableView = MakeTableView(hitterSortFilterProxyModel, true, PlayerTableModel::COLUMN_Z);
         hitterTableView->setItemDelegateForColumn(FindColumn(hitterSortFilterProxyModel, PlayerTableModel::COLUMN_DRAFT_BUTTON), draftDelegate);
+        hitterTableView->setItemDelegateForColumn(FindColumn(hitterSortFilterProxyModel, PlayerTableModel::COLUMN_ID), linkDelegate);
         hitterTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
         // Pitcher sort-model
@@ -88,6 +123,7 @@ public:
         // Pitcher table view
         QTableView* pitcherTableView = MakeTableView(pitcherSortFilterProxyModel, true, PlayerTableModel::COLUMN_Z);
         pitcherTableView->setItemDelegateForColumn(FindColumn(pitcherSortFilterProxyModel, PlayerTableModel::COLUMN_DRAFT_BUTTON), draftDelegate);
+        pitcherTableView->setItemDelegateForColumn(FindColumn(pitcherSortFilterProxyModel, PlayerTableModel::COLUMN_ID), linkDelegate);
         pitcherTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
         // Top/Bottom splitter
@@ -318,9 +354,10 @@ public:
             perOwnerLayout->addWidget(ownerLabel);
 
             // Per-owner roster table view
+            const uint32_t tableWidth = 225;
             QTableView* ownerRosterTableView = MakeTableView(ownerSortFilterProxyModel, true, 0);
-            ownerRosterTableView->setMinimumSize(200, 65);
-            ownerRosterTableView->setMaximumSize(200, 4096);
+            ownerRosterTableView->setMinimumSize(tableWidth, 65);
+            ownerRosterTableView->setMaximumSize(tableWidth, 4096);
             ownerRosterTableView->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
             perOwnerLayout->addWidget(ownerRosterTableView);
 
@@ -498,7 +535,7 @@ public:
         QMenu* settingsMenu = mainMenuBar->addMenu("&Settings");
 
         // Main Menu > Settings menu > Options action
-        QAction* optionsAction = new QAction("&Options...", this);
+        QAction* optionsAction = new QAction("&DemoData...", this);
         connect(optionsAction, &QAction::triggered, [=](bool checked) {
 
             // TODO: Some settings would be nice...
@@ -612,7 +649,10 @@ int main(int argc, char *argv[])
             background-color: #2a82da; 
             border: 1px solid white; 
         }
-        QLabel, QTableView, QHeaderView, QToolTip {
+        QLabel {
+            font-size: 11px;
+        }
+        QTableView, QHeaderView, QToolTip {
             font-family: "Consolas";
             font-size: 11px;
         }

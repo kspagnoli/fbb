@@ -112,14 +112,8 @@ private:
     std::vector<Player> m_vecPlayers;
 
     // Inflation factors
-    float m_sumValue = 0;
-    float m_sumCost = 0;
     double m_inflationFactor = 1.0;
 
     // Per-stat target values
     std::array<float, size_t(COLUMN_COUNT)> m_vecTargetValues;
-
-    // Position scarcity factors
-    std::array<int32_t, size_t(PlayerPosition::COUNT)> m_mapPosAvailablePosZ = { 0 };
-    std::array<int32_t, size_t(PlayerPosition::COUNT)> m_mapPosAvailableAll = { 0 };
 };

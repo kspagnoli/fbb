@@ -15,7 +15,7 @@ struct DraftSettingsImpl
     DraftSettingsImpl()
     {
         OwnerCount = 12;
-        HittingSplit = 0.68f;
+        HittingSplit = 0.70f;
         HitterCount = 14;
         PitcherCount = 10;
         Budget = 280;
