@@ -997,7 +997,7 @@ void PlayerTableModel::DraftRandom()
         }
 
         DraftDialog::Results results;
-        results.cost = std::max(std::floor(m_vecPlayers[i].cost), 1.f);
+        results.cost = std::max(std::floor(m_vecPlayers[i].cost), 1.f) * 1.15f;
         results.ownerId = (i % DraftSettings::OwnerCount()) + 1;
         results.position = PlayerPosition::None;
         unsigned long bit;

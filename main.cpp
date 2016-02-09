@@ -46,7 +46,9 @@
 #include "PlayerScatterPlotChart.h"
 #include "SummaryWidget.h"
 
-
+//------------------------------------------------------------------------------
+// LinkDelegate
+//------------------------------------------------------------------------------
 class LinkDelegate : public QStyledItemDelegate
 {
 public:
@@ -150,6 +152,15 @@ public:
                 return PlayerTableTabs::Unknown;
             }
         };
+
+        // Drafted filter action
+        QAction* filterDrafted = new QAction(this);
+        connect(filterDrafted, &QAction::toggled, hitterSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterDrafted);
+        connect(filterDrafted, &QAction::toggled, pitcherSortFilterProxyModel, &PlayerSortFilterProxyModel::OnFilterDrafted);
+        filterDrafted->setText(tr("Drafted"));
+        filterDrafted->setToolTip("Toggle Drafted Players");
+        filterDrafted->setCheckable(true);
+        filterDrafted->toggle();
 
         // NL filter action
         QAction* filterNL = new QAction(this);
@@ -290,6 +301,9 @@ public:
 
         // Main toolbar
         QToolBar* toolbar = new QToolBar("Toolbar");
+        toolbar->addWidget(new QLabel(" Status: ", this));
+        toolbar->addActions(QList<QAction*>{filterDrafted});
+        toolbar->addSeparator();
         toolbar->addWidget(new QLabel(" Leagues: ", this));
         toolbar->addActions(QList<QAction*>{filterAL, filterNL, filterFA});
         toolbar->addSeparator();

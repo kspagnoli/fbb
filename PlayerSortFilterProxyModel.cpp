@@ -70,6 +70,16 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
 //------------------------------------------------------------------------------
 bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
 {
+    auto AcceptStatus = [&]() -> bool
+    {
+        const QModelIndex& ownerIndex = sourceModel()->index(sourceRow, PlayerTableModel::COLUMN_OWNER, sourceParent);
+        const uint32_t owner = sourceModel()->data(ownerIndex, PlayerTableModel::RawDataRole).toUInt();
+        if (owner == 0) {
+            return true;
+        }
+        return m_acceptDrafted;
+    };
+
     auto AcceptCatergoty = [&]() -> bool
     {
         const QModelIndex& catergoryIndex = sourceModel()->index(sourceRow, PlayerTableModel::COLUMN_CATERGORY, sourceParent);
@@ -163,7 +173,16 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
         return false;
     };
 
-    return AcceptCatergoty() && AcceptTeam() && AcceptPosition();
+    return AcceptStatus() && AcceptCatergoty() && AcceptTeam() && AcceptPosition();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterDrafted
+//------------------------------------------------------------------------------
+void PlayerSortFilterProxyModel::OnFilterDrafted(bool checked)
+{
+    m_acceptDrafted = checked;
+    QSortFilterProxyModel::invalidate();
 }
 
 //------------------------------------------------------------------------------

@@ -16,6 +16,8 @@ public:
 
 public slots:
 
+    void OnFilterDrafted(bool chekced);
+
     void OnFilterNL(bool checked);
     void OnFilterAL(bool checked);
     void OnFilterFA(bool checked);
@@ -41,6 +43,7 @@ private:
     Player::CatergoryMask m_catergory;
 
     // General filters
+    bool m_acceptDrafted = true;
     bool m_acceptNL = true;
     bool m_acceptAL = true;
     bool m_acceptFA = true;
