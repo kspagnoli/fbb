@@ -17,7 +17,6 @@ public:
 
     enum RankRows
     {
-        RANK,
         TEAM,
         BUDGET,
         ROSTER_SIZE,

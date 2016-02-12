@@ -75,7 +75,33 @@ public:
 
         return false;
     }
+};
 
+//------------------------------------------------------------------------------
+// LinkDelegate
+//------------------------------------------------------------------------------
+class TagDelegate : public QStyledItemDelegate
+{
+public:
+
+    TagDelegate(QObject* parent)
+        : QStyledItemDelegate(parent)
+    {
+    }
+
+    bool editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index) override
+    {
+        // On mouse release...
+        if (event->type() == QEvent::MouseButtonRelease) {
+            uint32_t i = model->data(index, PlayerTableModel::RawDataRole).toUInt();
+            if (++i >= Player::FLAG_COUNT) {
+                i = 0;
+            }
+            model->setData(index, i, PlayerTableModel::RawDataRole);
+        }
+
+        return false;
+    }
 };
 
 //------------------------------------------------------------------------------
@@ -102,9 +128,8 @@ public:
 
         // Draft delegate
         DraftDelegate* draftDelegate = new DraftDelegate(playerTableModel);
-
-        // Link delegate
         LinkDelegate* linkDelegate = new LinkDelegate(this);
+        TagDelegate* tagDelegate = new TagDelegate(this);
 
         // Hitter sort-model
         PlayerSortFilterProxyModel* hitterSortFilterProxyModel = new PlayerSortFilterProxyModel(Player::Hitter);
@@ -114,7 +139,8 @@ public:
         // Hitter table view
         QTableView* hitterTableView = MakeTableView(hitterSortFilterProxyModel, true, PlayerTableModel::COLUMN_Z);
         hitterTableView->setItemDelegateForColumn(FindColumn(hitterSortFilterProxyModel, PlayerTableModel::COLUMN_DRAFT_BUTTON), draftDelegate);
-        hitterTableView->setItemDelegateForColumn(FindColumn(hitterSortFilterProxyModel, PlayerTableModel::COLUMN_ID), linkDelegate);
+        hitterTableView->setItemDelegateForColumn(FindColumn(hitterSortFilterProxyModel, PlayerTableModel::COLUMN_ID_LINK), linkDelegate);
+        hitterTableView->setItemDelegateForColumn(FindColumn(hitterSortFilterProxyModel, PlayerTableModel::COLUMN_FLAG), tagDelegate);
         hitterTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
         // Pitcher sort-model
@@ -125,7 +151,8 @@ public:
         // Pitcher table view
         QTableView* pitcherTableView = MakeTableView(pitcherSortFilterProxyModel, true, PlayerTableModel::COLUMN_Z);
         pitcherTableView->setItemDelegateForColumn(FindColumn(pitcherSortFilterProxyModel, PlayerTableModel::COLUMN_DRAFT_BUTTON), draftDelegate);
-        pitcherTableView->setItemDelegateForColumn(FindColumn(pitcherSortFilterProxyModel, PlayerTableModel::COLUMN_ID), linkDelegate);
+        pitcherTableView->setItemDelegateForColumn(FindColumn(pitcherSortFilterProxyModel, PlayerTableModel::COLUMN_ID_LINK), linkDelegate);
+        pitcherTableView->setItemDelegateForColumn(FindColumn(pitcherSortFilterProxyModel, PlayerTableModel::COLUMN_FLAG), tagDelegate);
         pitcherTableView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 
         // Top/Bottom splitter
@@ -377,15 +404,15 @@ public:
 
             QGridLayout* ownerSummaryGridLayout = new QGridLayout(this);
             ownerSummaryGridLayout->setSpacing(0);
-            ownerSummaryGridLayout->addWidget(new QLabel("Budget: "),     0, 0);
-            ownerSummaryGridLayout->addWidget(new QLabel("# Hitters: "),  1, 0);
-            ownerSummaryGridLayout->addWidget(new QLabel("# Pitchers: "), 2, 0);
-            ownerSummaryGridLayout->addWidget(new QLabel("Max Bid: "),    3, 0);
+            ownerSummaryGridLayout->addWidget(MakeLabel("Budget: "),     0, 0);
+            ownerSummaryGridLayout->addWidget(MakeLabel("# Hitters: "),  1, 0);
+            ownerSummaryGridLayout->addWidget(MakeLabel("# Pitchers: "), 2, 0);
+            ownerSummaryGridLayout->addWidget(MakeLabel("Max Bid: "),    3, 0);
 
-            QLabel* budgetLabel = new QLabel(this);
-            QLabel* numHittersLabel = new QLabel(this);
-            QLabel* numPitchersLabel = new QLabel(this);
-            QLabel* maxBidLabel = new QLabel(this);
+            QLabel* budgetLabel = MakeLabel();
+            QLabel* numHittersLabel = MakeLabel();
+            QLabel* numPitchersLabel = MakeLabel();
+            QLabel* maxBidLabel = MakeLabel();
 
             // Helper
             auto UpdateLabels = [=]()
@@ -410,7 +437,7 @@ public:
             ownerSummaryGridLayout->addWidget(numPitchersLabel, 2, 1);
             ownerSummaryGridLayout->addWidget(maxBidLabel,      3, 1);
 
-            QSpacerItem* spacer = new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding);
+            QSpacerItem* spacer = new QSpacerItem(1, 1, QSizePolicy::Preferred, QSizePolicy::Preferred);
 
             ownerSummaryGridLayout->addItem(spacer, 0, 2);
             ownerSummaryGridLayout->addItem(spacer, 1, 2);
@@ -602,7 +629,19 @@ private:
     // Table factory
     QTableView* MakeTableView(QAbstractItemModel* model, bool sortingEnabled = true, uint32_t modelSortColumn = 0)
     {
-        QTableView* tableView = new QTableView();
+        class MyTable : public QTableView
+        {
+        public:
+            QStyleOptionViewItem viewOptions() const override
+            {
+                QStyleOptionViewItem option = QTableView::viewOptions();
+                option.decorationAlignment = Qt::AlignHCenter | Qt::AlignCenter;
+                option.decorationPosition = QStyleOptionViewItem::Top;
+                return option;
+            }
+        };
+
+        QTableView* tableView = new MyTable();
         tableView->setModel(model);
         tableView->setSortingEnabled(sortingEnabled);
         if (sortingEnabled) {
@@ -617,6 +656,23 @@ private:
         tableView->setSelectionMode(QAbstractItemView::SingleSelection);
         tableView->setFocusPolicy(Qt::StrongFocus);
         return tableView;
+    }
+
+
+    static QLabel* MakeLabel(const QString& text = QString())
+    {
+        QLabel* label = new QLabel(text);
+
+        auto r = 
+            R"""(
+            QLabel{
+                font-family: "Consolas";
+                font-size: 11px;
+            }
+            )""";
+
+        label->setStyleSheet(r);
+        return label;
     }
 
     static int32_t FindColumn(QAbstractItemModel* model, uint32_t column)

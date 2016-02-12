@@ -3,6 +3,7 @@
 #include "Teams.h"
 #include "Player.h"
 #include "DraftSettings.h"
+#include "OwnerSortFilterProxyModel.h"
 
 #include <vector>
 #include <fstream>
@@ -15,7 +16,7 @@
 #include <QAbstractItemDelegate>
 #include <QFile>
 #include <QTextStream>
-
+#include <QIcon>
 
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
@@ -172,7 +173,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
             player.hitting.AVG = float(player.hitting.H) / float(player.hitting.AB);
 
             // Skip players with little-to-no AB
-            if (player.hitting.AB < 100) {
+            if (player.hitting.AB < 30) {
                 continue;
             }
 
@@ -355,6 +356,7 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
             player.pitching.SO = SafeLexicalCast<decltype(player.pitching.SO)>(parsed[LUT["SO"]]);
             player.pitching.SV = SafeLexicalCast<decltype(player.pitching.SV)>(parsed[LUT["SV"]]);
 
+            // Ignore pitchers with no innings
             if (player.pitching.IP < 5) {
                 continue;
             }
@@ -616,7 +618,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
 {
     const Player& player = m_vecPlayers.at(index.row());
 
-    if (role == Qt::FontRole && index.column() == COLUMN_ID) {
+    if (role == Qt::FontRole && index.column() == COLUMN_ID_LINK) {
         QFont font;
         font.setUnderline(true);
         return QVariant::fromValue(font);
@@ -626,6 +628,11 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
 
         switch (index.column())
         {
+        case COLUMN_FLAG:
+            if (role == RawDataRole) {
+                return player.flag;
+            }
+            break;
         case COLUMN_RANK:
             return player.categoryRank;
         case COLUMN_OWNER:
@@ -646,7 +653,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             } else {
                 return PositionToString(player.draftPosition);
             }
-        case COLUMN_ID:
+        case COLUMN_ID_LINK:
             return player.id;
         case COLUMN_NAME:
             return player.name;
@@ -743,7 +750,8 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
         case COLUMN_PAID:
         case COLUMN_OWNER:
         case COLUMN_DRAFT_POSITION:
-        case COLUMN_ID:
+        case COLUMN_ID_LINK:
+        case COLUMN_FLAG:
             return Qt::AlignmentFlag(int(Qt::AlignCenter) | int(Qt::AlignVCenter));
         case COLUMN_NAME:
         case COLUMN_TEAM:
@@ -805,6 +813,31 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
         }
     }
 
+    if (role == Qt::DecorationRole) {
+
+        switch (index.column())
+        {
+        case COLUMN_FLAG:
+        {
+            switch (player.flag)
+            {
+            case Player::FLAG_NONE:
+                return QIcon(":/icons/none_10x10.png");
+            case Player::FLAG_STAR:
+                return QIcon(":/icons/star_10x10.png");
+            case Player::FLAG_WATCH:
+                return QIcon(":/icons/watch_10x10.png");
+            case Player::FLAG_AVOID:
+                return QIcon(":/icons/avoid_10x10.png");
+            default:
+                break;
+            }
+        }
+        default:
+            break;
+        }
+    }
+ 
     return QVariant();
 }
 
@@ -823,6 +856,8 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
 
             switch (section) 
             {
+            case COLUMN_FLAG:
+                return "-";
             case COLUMN_RANK:
                 return "#";
             case COLUMN_DRAFT_BUTTON:
@@ -833,7 +868,7 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
                 return "Paid";
             case COLUMN_DRAFT_POSITION:
                 return "Pos.";
-            case COLUMN_ID:
+            case COLUMN_ID_LINK:
                 return "Id.";
             case COLUMN_NAME:
                 return "Name";
@@ -941,6 +976,19 @@ Qt::ItemFlags PlayerTableModel::flags(const QModelIndex &index) const
 //------------------------------------------------------------------------------
 bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, int role)
 {
+    // Get player
+    Player& player = m_vecPlayers[index.row()];
+
+    // Only implemented for the flag column
+    switch (index.column())
+    {
+    case COLUMN_FLAG:
+        player.flag = value.toUInt();
+        break;
+    default:
+        break;
+    }
+
     emit dataChanged(index, index);
     return QAbstractItemModel::setData(index, value, role);
 }
@@ -985,25 +1033,52 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     emit endResetModel();
 }
 
-
+//------------------------------------------------------------------------------
+// DraftRandom (Fun!)
+//------------------------------------------------------------------------------
 void PlayerTableModel::DraftRandom()
 {
-    static size_t s = 0;
+    for (auto i = 0; i < 512; i++) {
+        
+        uint32_t r = std::floor((rand() / float(RAND_MAX)) * m_vecPlayers.size());
+        auto& player = m_vecPlayers[r];
 
-    for (auto i = s++; i < m_vecPlayers.size(); i += 4) {
+        auto j = ((r * 113) % DraftSettings::OwnerCount()) + 1;
+        
+        if (player.cost < 0) {
+            continue;
+        }
 
-        if (m_vecPlayers[i].cost < 0) {
+        OwnerSortFilterProxyModel* ownerSortFilterProxyModel = new OwnerSortFilterProxyModel(j, this, this);
+        auto count = ownerSortFilterProxyModel->Count(player.catergory);
+        auto budget = ownerSortFilterProxyModel->GetRemainingBudget();
+        switch (player.catergory)
+        {
+        case Player::Pitcher:
+            if (count > DraftSettings::PitcherCount()) {
+                continue;
+            }
+        case Player::Hitter:
+            if (count > DraftSettings::HitterCount()) {
+                continue;
+            }
+        default:
+            break;
+        }
+
+        auto paid = std::max(std::floor(player.cost), 1.f);
+        if (paid > budget) {
             continue;
         }
 
         DraftDialog::Results results;
-        results.cost = std::max(std::floor(m_vecPlayers[i].cost), 1.f) * 1.15f;
-        results.ownerId = (i % DraftSettings::OwnerCount()) + 1;
+        results.cost = paid;
+        results.ownerId = j;
         results.position = PlayerPosition::None;
-        unsigned long bit;
-        _BitScanForward(&bit, m_vecPlayers[i].eligiblePositionBitfield);
+        unsigned long bit = 0;
+        _BitScanForward(&bit, player.eligiblePositionBitfield);
         results.position = PlayerPosition(bit);
-        OnDrafted(results, index(i, 0), this);
+        OnDrafted(results, index(r, 0), this);
     }
 
 }

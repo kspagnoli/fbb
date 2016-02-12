@@ -29,11 +29,12 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
     switch (sourceColumn)
     {
     // Both
+    case PlayerTableModel::COLUMN_FLAG:
     case PlayerTableModel::COLUMN_RANK:
     case PlayerTableModel::COLUMN_DRAFT_BUTTON:
     case PlayerTableModel::COLUMN_OWNER:
     case PlayerTableModel::COLUMN_PAID:
-    case PlayerTableModel::COLUMN_ID:
+    case PlayerTableModel::COLUMN_ID_LINK:
     case PlayerTableModel::COLUMN_NAME:
     case PlayerTableModel::COLUMN_TEAM:
     case PlayerTableModel::COLUMN_POSITION:

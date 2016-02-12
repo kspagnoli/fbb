@@ -7,6 +7,7 @@
 #include <QAbstractTableModel>
 
 class PlayerApperances;
+class QIcon;
 
 // Helpers
 QString PositionToString(const PlayerPosition& position);
@@ -25,12 +26,12 @@ public:
     enum COLUMN
     {
         // General
+        COLUMN_FLAG,
         COLUMN_RANK,
         COLUMN_DRAFT_BUTTON,
         COLUMN_OWNER,
         COLUMN_DRAFT_POSITION,
         COLUMN_PAID,
-        COLUMN_ID,
         COLUMN_NAME,
         COLUMN_TEAM,
         COLUMN_CATERGORY,
@@ -59,6 +60,7 @@ public:
         // General
         COLUMN_Z,
         COLUMN_ESTIMATE,
+        COLUMN_ID_LINK,
         COLUMN_COMMENT,
 
         COLUMN_COUNT,

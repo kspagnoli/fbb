@@ -30,7 +30,7 @@ public:
         m_sumTableView->sortByColumn(SummaryTableModel::TEAM);
         m_sumTableView->setMinimumSize(100, 100);
         m_sumTableView->setMaximumSize(1000, 4096);
-        m_sumTableView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        m_sumTableView->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
         m_sumTableView->resizeColumnsToContents();
 
         // Use progress bars for each of the rankable stats

@@ -64,11 +64,6 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
 
     switch (index.column())
     {
-    case RankRows::RANK:
-    {
-        // return dynamic_cast<const QSortFilterProxyModel*>(index.model())->mapToSource(index).row();
-        return 0;
-    }
     case RankRows::TEAM:
     {
         if (role == RawDataRole || role == RankRole) {
@@ -234,8 +229,6 @@ QVariant SummaryTableModel::headerData(int section, Qt::Orientation orientation,
 
         switch (section)
         {
-        case RankRows::RANK:
-            return "Rank";
         case RankRows::TEAM:
             return "Team";
         case RankRows::BUDGET:

@@ -54,9 +54,22 @@ struct Player
     // CatergoryMask
     using CatergoryMask = uint32_t;
 
+    enum Flag
+    {
+        FLAG_NONE,
+        FLAG_STAR,
+        FLAG_WATCH,
+        FLAG_AVOID,
+
+        FLAG_COUNT,
+    };
+
+    // User flag
+    uint32_t flag = FLAG_NONE;
+
     // Player data
     uint32_t index;
-    QString id;                                // player id
+    QString id;                                 // player id
     QString name;
     QString team;                               // TODO: change to ID
     CatergoryMask catergory;

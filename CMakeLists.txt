@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.11)
 
-project(testproject)
+# Project name
+project(fbb)
 
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -16,6 +17,10 @@ include_directories(
 # Find the QtWidgets library
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5Charts REQUIRED)
+
+# QT resrouces files
+qt5_add_resources(RESOURCES 
+	Icons.qrc)
 
 # Source files
 set(SOURCE
@@ -33,12 +38,13 @@ set(SOURCE
     OwnerSortFilterProxyModel.cpp
     main.cpp)
 
+# All headers
 file(GLOB HEADERS *.h)
 
 # Tell CMake to create the helloworld executable
-add_executable(helloworld WIN32 ${SOURCE} ${HEADERS})
+add_executable(fbb WIN32 ${SOURCE} ${HEADERS} ${RESOURCES})
 
 # Use the Widgets module from Qt 5.
-target_link_libraries( helloworld Qt5::Widgets)
-target_link_libraries( helloworld Qt5::Charts)
+target_link_libraries(fbb Qt5::Widgets)
+target_link_libraries(fbb Qt5::Charts)
 
