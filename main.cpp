@@ -78,7 +78,7 @@ public:
 };
 
 //------------------------------------------------------------------------------
-// LinkDelegate
+// TagDelegate
 //------------------------------------------------------------------------------
 class TagDelegate : public QStyledItemDelegate
 {
@@ -98,6 +98,10 @@ public:
                 i = 0;
             }
             model->setData(index, i, PlayerTableModel::RawDataRole);
+        }
+
+        if (event->type() == QEvent::MouseMove) {
+
         }
 
         return false;
@@ -120,10 +124,12 @@ public:
         // Appearance LUT
         PlayerApperances appearances("2015_appearances.csv");
 
-        // Player table model
+        // Build player table model from file
         PlayerTableModel* playerTableModel = new PlayerTableModel(this);
         playerTableModel->LoadHittingProjections("2015_hitters.csv", appearances);
         playerTableModel->LoadPitchingProjections("2015_pitchers.csv", appearances);
+        playerTableModel->CalculateHittingScores();
+        playerTableModel->CalculatePitchingScores();
         playerTableModel->InitializeTargetValues();
 
         // Draft delegate
@@ -424,10 +430,8 @@ public:
             };
 
             // Update labels when a draft event happens
-            connect(playerTableModel, &PlayerTableModel::Drafted, [=](const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model){
-                if (results.ownerId == ownerId) {
-                    UpdateLabels();
-                }
+            connect(playerTableModel, &PlayerTableModel::DraftedEnd, [=]() {
+                UpdateLabels();
             });
 
             UpdateLabels();
@@ -639,6 +643,21 @@ private:
                 option.decorationPosition = QStyleOptionViewItem::Top;
                 return option;
             }
+
+            void mouseMoveEvent(QMouseEvent* event) override
+            {
+                QModelIndex index = indexAt(event->pos());
+                if (index.isValid()) {
+                    QVariant data = model()->data(index, PlayerTableModel::CursorRole);
+                    Qt::CursorShape shape = Qt::ArrowCursor;
+                    if (!data.isNull()) {
+                        shape = Qt::CursorShape(data.toInt());
+                    }
+                    setCursor(shape);
+                }
+
+                QTableView::mouseMoveEvent(event);
+            }
         };
 
         QTableView* tableView = new MyTable();
@@ -655,6 +674,13 @@ private:
         tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
         tableView->setSelectionMode(QAbstractItemView::SingleSelection);
         tableView->setFocusPolicy(Qt::StrongFocus);
+
+        // enable mouse tracking
+        tableView->setMouseTracking(true);
+        tableView->viewport()->setMouseTracking(true);
+        tableView->installEventFilter(this);
+        tableView->viewport()->installEventFilter(this);
+
         return tableView;
     }
 

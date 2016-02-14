@@ -75,19 +75,6 @@ struct Player
     CatergoryMask catergory;
     PlayerPositionBitfield eligiblePositionBitfield = uint32_t(0);
 
-    // Player Status
-    enum Status
-    {
-        Unknown,
-        Majors,
-        Minors,
-        Injured,
-        Drafted,
-    };
-
-    // Status
-    // Status status = Status::Unknown;
-
     // Fantasy
     int32_t ownerId = 0;
     float paid = 0;
@@ -98,6 +85,7 @@ struct Player
     float zScore = 0;
     float cost = 0;
 
+    // Hitting stats
     struct HittingStats
     {
         // sub-stat
@@ -131,6 +119,7 @@ struct Player
 
     } hitting;
 
+    // Pitching stats
     struct PitchingStats
     {
         // Stats

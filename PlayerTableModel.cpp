@@ -17,6 +17,9 @@
 #include <QFile>
 #include <QTextStream>
 #include <QIcon>
+#include <QDir>
+#include <QDesktopServices>
+#include <QCursor>
 
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
@@ -103,7 +106,18 @@ PlayerPosition StringToPosition(const QString& position)
 PlayerTableModel::PlayerTableModel(QObject* parent)
     : QAbstractTableModel(parent)
 {
-    m_vecTargetValues.fill(0);
+    m_arrTargetValues.fill(0);
+}
+
+//------------------------------------------------------------------------------
+// ResetData
+//------------------------------------------------------------------------------
+void PlayerTableModel::ResetData()
+{
+    m_vecHitters.clear();
+    m_vecPitchers.clear();
+    m_vecPlayers.clear();
+    m_arrTargetValues.fill(0);
 }
 
 //------------------------------------------------------------------------------
@@ -114,9 +128,6 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     // Open file
     std::fstream batters(filename);
     std::string row;
-
-    // Vector of new hitters
-    std::vector<Player> vecHitters;
 
     // Tokenize header data
     using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
@@ -160,7 +171,7 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
 
             // Parse into player data
             Player player;
-            player.id =  QString::fromStdString(parsed[LUT["playerid"]]);
+            player.id = QString::fromStdString(parsed[LUT["playerid"]]);
             player.name = QString::fromStdString(parsed[LUT["Name"]]);
             player.team = QString::fromStdString(parsed[LUT["Team"]]);
             player.hitting.PA = SafeLexicalCast<uint32_t>(parsed[LUT["PA"]]);
@@ -180,17 +191,18 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
             // Lookup appearances 
             try {
                 const auto& appearances = playerApperances.Lookup(player.name.toStdString());
-                if (appearances.atC > 0 ) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::Catcher, PlayerPosition::Utility}); }
-                if (appearances.at1B > 0) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::First, PlayerPosition::Utility, PlayerPosition::CornerInfield}); }
-                if (appearances.at2B > 0) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::Second, PlayerPosition::Utility, PlayerPosition::MiddleInfield}); }
-                if (appearances.atSS > 0) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::SS, PlayerPosition::Utility, PlayerPosition::MiddleInfield}); }
-                if (appearances.at3B > 0) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::Third, PlayerPosition::Utility, PlayerPosition::CornerInfield}); }
-                if (appearances.atOF > 0) { player.eligiblePositionBitfield |= ToBitfield({PlayerPosition::Outfield, PlayerPosition::Utility}); }
+                if (appearances.atC > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Catcher, PlayerPosition::Utility }); }
+                if (appearances.at1B > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::First, PlayerPosition::Utility, PlayerPosition::CornerInfield }); }
+                if (appearances.at2B > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Second, PlayerPosition::Utility, PlayerPosition::MiddleInfield }); }
+                if (appearances.atSS > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::SS, PlayerPosition::Utility, PlayerPosition::MiddleInfield }); }
+                if (appearances.at3B > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Third, PlayerPosition::Utility, PlayerPosition::CornerInfield }); }
+                if (appearances.atOF > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Outfield, PlayerPosition::Utility }); }
 
                 // XXX: Don't care about DL
                 // if (appearances.atDH > 0) { player.eligiblePositionBitfield |= ToBitfield(PlayerPosition::DH); }
 
-            } catch (std::runtime_error& e) {
+            }
+            catch (std::runtime_error& e) {
                 std::cerr << "[Hitter] " << e.what() << std::endl;
             }
 
@@ -203,27 +215,34 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
             }
 
             // Store in vector
-            vecHitters.emplace_back(player);
+            m_vecHitters.emplace_back(player);
 
-        } catch (...) {
+        }
+        catch (...) {
 
             // Try next if something went wrong
             continue;
         }
     }
+}
 
+//------------------------------------------------------------------------------
+// LoadHittingProjections
+//------------------------------------------------------------------------------
+void PlayerTableModel::CalculateHittingScores()
+{
     // Calculated zScores
-    GET_ZSCORE(vecHitters, vecHitters.size(), hitting.AVG, hitting.zAVG);
-    GET_ZSCORE(vecHitters, vecHitters.size(), hitting.HR, hitting.zHR);
-    GET_ZSCORE(vecHitters, vecHitters.size(), hitting.R, hitting.zR);
-    GET_ZSCORE(vecHitters, vecHitters.size(), hitting.RBI, hitting.zRBI);
-    GET_ZSCORE(vecHitters, vecHitters.size(), hitting.SB, hitting.zSB);
+    GET_ZSCORE(m_vecHitters, m_vecHitters.size(), hitting.AVG, hitting.zAVG);
+    GET_ZSCORE(m_vecHitters, m_vecHitters.size(), hitting.HR, hitting.zHR);
+    GET_ZSCORE(m_vecHitters, m_vecHitters.size(), hitting.R, hitting.zR);
+    GET_ZSCORE(m_vecHitters, m_vecHitters.size(), hitting.RBI, hitting.zRBI);
+    GET_ZSCORE(m_vecHitters, m_vecHitters.size(), hitting.SB, hitting.zSB);
 
     // Calculated weighted zScores
-    for (Player& player : vecHitters) {
+    for (Player& player : m_vecHitters) {
         player.hitting.wAVG = player.hitting.AB * player.hitting.zAVG;
     }
-    GET_ZSCORE(vecHitters, vecHitters.size(), hitting.wAVG, hitting.zAVG);
+    GET_ZSCORE(m_vecHitters, m_vecHitters.size(), hitting.wAVG, hitting.zAVG);
 
     // Some SGP formulas...
     //
@@ -242,48 +261,48 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     // }
 
     // Sum zScores
-    for (Player& player : vecHitters) {
+    for (Player& player : m_vecHitters) {
         player.zScore = (player.hitting.zAVG + player.hitting.zHR + player.hitting.zR + player.hitting.zRBI + player.hitting.zSB);
     }
 
     // Re-rank based on z-score
-    std::sort(std::begin(vecHitters), std::end(vecHitters), [](const auto& lhs, const auto& rhs) {
+    std::sort(std::begin(m_vecHitters), std::end(m_vecHitters), [](const auto& lhs, const auto& rhs) {
         return lhs.zScore > rhs.zScore;
     });
 
     // Set catergory rank
-    for (uint32_t i = 0; i < vecHitters.size(); i++) {
-        vecHitters[i].categoryRank = i + 1;
+    for (uint32_t i = 0; i < m_vecHitters.size(); i++) {
+        m_vecHitters[i].categoryRank = i + 1;
     }
     
     // Get the "replacement player"
     auto totalHitters = DraftSettings::HitterCount() * DraftSettings::OwnerCount();
-    auto zReplacement = vecHitters[totalHitters].zScore;
+    auto zReplacement = m_vecHitters[totalHitters].zScore;
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
-    std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& hitter) {
+    std::for_each(std::begin(m_vecHitters), std::end(m_vecHitters), [&](Player& hitter) {
         auto zDiff = hitter.zScore - zReplacement;
         if (zDiff > 0) {
             sumPositiveZScores += zDiff;
-            m_vecTargetValues[COLUMN_R]   += hitter.hitting.R;
-            m_vecTargetValues[COLUMN_HR]  += hitter.hitting.HR;
-            m_vecTargetValues[COLUMN_RBI] += hitter.hitting.RBI;
-            m_vecTargetValues[COLUMN_SB]  += hitter.hitting.SB;
-            m_vecTargetValues[COLUMN_H]   += hitter.hitting.H;
-            m_vecTargetValues[COLUMN_AB]  += hitter.hitting.AB;
+            m_arrTargetValues[COLUMN_R]   += hitter.hitting.R;
+            m_arrTargetValues[COLUMN_HR]  += hitter.hitting.HR;
+            m_arrTargetValues[COLUMN_RBI] += hitter.hitting.RBI;
+            m_arrTargetValues[COLUMN_SB]  += hitter.hitting.SB;
+            m_arrTargetValues[COLUMN_H]   += hitter.hitting.H;
+            m_arrTargetValues[COLUMN_AB]  += hitter.hitting.AB;
         }
     });
 
     // Apply cost ratio
     float totalHitterMoney =  DraftSettings::HittingSplit() * DraftSettings::Budget() * DraftSettings::OwnerCount();
     float costPerZ = float(totalHitterMoney) / sumPositiveZScores;
-    std::for_each(std::begin(vecHitters), std::end(vecHitters), [&](Player& player) {
+    std::for_each(std::begin(m_vecHitters), std::end(m_vecHitters), [&](Player& player) {
         player.cost = (player.zScore - zReplacement) * costPerZ;
     });
 
     // Add to main storage
-    for (const Player& player : vecHitters) {
+    for (const Player& player : m_vecHitters) {
         m_vecPlayers.push_back(player);
     }
 }
@@ -297,9 +316,6 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     std::fstream pitchers(filename);
     std::string row;
     
-    // Vector of new hitters
-    std::vector<Player> vecPitchers;
-
     // Tokenize header data
     using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
     std::getline(pitchers, row);
@@ -382,7 +398,7 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
             player.catergory = Player::Catergory::Pitcher;
             
             // Add to pitchers
-            vecPitchers.emplace_back(player);
+            m_vecPitchers.emplace_back(player);
 
         } catch (std::runtime_error& e) {
 
@@ -394,25 +410,31 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
             continue;
         }
     }
+}
 
+//------------------------------------------------------------------------------
+// CalculatePitchingScores
+//------------------------------------------------------------------------------
+void PlayerTableModel::CalculatePitchingScores()
+{
     // Calculated zScores
-    GET_ZSCORE(vecPitchers, vecPitchers.size(), pitching.SO, pitching.zSO);
-    GET_ZSCORE(vecPitchers, vecPitchers.size(), pitching.W, pitching.zW);
-    GET_ZSCORE(vecPitchers, vecPitchers.size(), pitching.SV, pitching.zSV);
-    GET_ZSCORE(vecPitchers, vecPitchers.size(), pitching.ERA, pitching.zERA);
-    GET_ZSCORE(vecPitchers, vecPitchers.size(), pitching.WHIP, pitching.zWHIP);
+    GET_ZSCORE(m_vecPitchers, m_vecPitchers.size(), pitching.SO, pitching.zSO);
+    GET_ZSCORE(m_vecPitchers, m_vecPitchers.size(), pitching.W, pitching.zW);
+    GET_ZSCORE(m_vecPitchers, m_vecPitchers.size(), pitching.SV, pitching.zSV);
+    GET_ZSCORE(m_vecPitchers, m_vecPitchers.size(), pitching.ERA, pitching.zERA);
+    GET_ZSCORE(m_vecPitchers, m_vecPitchers.size(), pitching.WHIP, pitching.zWHIP);
 
     // Calculated weighted zScores
-    for (Player& player : vecPitchers) {
+    for (Player& player : m_vecPitchers) {
         player.pitching.wERA = player.pitching.IP * player.pitching.zERA;
         player.pitching.wWHIP = player.pitching.IP * player.pitching.zWHIP;
     }
-    GET_ZSCORE(vecPitchers, vecPitchers.size(), pitching.wERA, pitching.zERA);
-    GET_ZSCORE(vecPitchers, vecPitchers.size(), pitching.wWHIP, pitching.zWHIP);
+    GET_ZSCORE(m_vecPitchers, m_vecPitchers.size(), pitching.wERA, pitching.zERA);
+    GET_ZSCORE(m_vecPitchers, m_vecPitchers.size(), pitching.wWHIP, pitching.zWHIP);
 
     // Invert ERA and WHIP... lower is better
-    for (Player& player : vecPitchers) {
-        player.pitching.zERA =  -player.pitching.zERA;
+    for (Player& player : m_vecPitchers) {
+        player.pitching.zERA = -player.pitching.zERA;
         player.pitching.zWHIP = -player.pitching.zWHIP;
     }
 
@@ -433,49 +455,49 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     // }
 
     // Sum z-score
-    for (Player& player : vecPitchers) {
+    for (Player& player : m_vecPitchers) {
         player.zScore = (player.pitching.zSO + player.pitching.zW + player.pitching.zSV + player.pitching.zERA + player.pitching.zWHIP);
     }
 
     // Re-rank based on z-score
-    std::sort(vecPitchers.begin(), vecPitchers.end(), [](const auto& lhs, const auto& rhs) {
+    std::sort(m_vecPitchers.begin(), m_vecPitchers.end(), [](const auto& lhs, const auto& rhs) {
         return lhs.zScore > rhs.zScore;
     });
 
     // Set catergory rank
-    for (uint32_t i = 0; i < vecPitchers.size(); i++) {
-        vecPitchers[i].categoryRank = i + 1;
+    for (uint32_t i = 0; i < m_vecPitchers.size(); i++) {
+        m_vecPitchers[i].categoryRank = i + 1;
     }
 
     // Get the "replacement player"
     auto totalPitcher = DraftSettings::PitcherCount() * DraftSettings::OwnerCount();
-    auto zReplacement = vecPitchers[totalPitcher].zScore;
+    auto zReplacement = m_vecPitchers[totalPitcher].zScore;
 
     // Scale all players based off the replacement player
     float sumPositiveZScores = 0;
-    std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
+    std::for_each(std::begin(m_vecPitchers), std::end(m_vecPitchers), [&](Player& pitcher) {
         auto zDiff = pitcher.zScore - zReplacement;
         if (zDiff > 0) {
             sumPositiveZScores += zDiff;
-            m_vecTargetValues[COLUMN_W]  += pitcher.pitching.W;
-            m_vecTargetValues[COLUMN_SV] += pitcher.pitching.SV;
-            m_vecTargetValues[COLUMN_SO] += pitcher.pitching.SO;
-            m_vecTargetValues[COLUMN_HA] += pitcher.pitching.H;
-            m_vecTargetValues[COLUMN_BB] += pitcher.pitching.BB;
-            m_vecTargetValues[COLUMN_IP] += pitcher.pitching.IP;
-            m_vecTargetValues[COLUMN_ER] += pitcher.pitching.ER;
+            m_arrTargetValues[COLUMN_W] += pitcher.pitching.W;
+            m_arrTargetValues[COLUMN_SV] += pitcher.pitching.SV;
+            m_arrTargetValues[COLUMN_SO] += pitcher.pitching.SO;
+            m_arrTargetValues[COLUMN_HA] += pitcher.pitching.H;
+            m_arrTargetValues[COLUMN_BB] += pitcher.pitching.BB;
+            m_arrTargetValues[COLUMN_IP] += pitcher.pitching.IP;
+            m_arrTargetValues[COLUMN_ER] += pitcher.pitching.ER;
         }
     });
 
     // Apply cost ratio
     float totalPitcherMoney = DraftSettings::PitchingSplit() * DraftSettings::Budget() * DraftSettings::OwnerCount();
     float costPerZ = float(totalPitcherMoney) / sumPositiveZScores;
-    std::for_each(std::begin(vecPitchers), std::end(vecPitchers), [&](Player& pitcher) {
+    std::for_each(std::begin(m_vecPitchers), std::end(m_vecPitchers), [&](Player& pitcher) {
         pitcher.cost = (pitcher.zScore - zReplacement) * costPerZ;
     });
 
     // Add to main storage
-    for (const Player& player : vecPitchers) {
+    for (const Player& player : m_vecPitchers) {
         m_vecPlayers.push_back(player);
     }
 }
@@ -491,23 +513,43 @@ bool PlayerTableModel::SaveDraftStatus(const QString& filename) const
         return false;
     }
 
-    // Output steam
-    QTextStream stream(&file);
+    // Create a data stream
+    QDataStream stream(&file);
+    stream.setVersion(QDataStream::Qt_5_5);
 
-    // Header information
-    stream << "\"playerid\"" << "," ;
-    stream << "\"ownerid\"" << ",";
-    stream << "\"draftposition\"" << ",";
-    stream << "\"paid\"" << endl;
+    // Size prefix
+    stream << m_vecPlayers.size();
 
     // Per-drafted player
     for (const auto& player : m_vecPlayers) {
-        if (player.ownerId) {
-            stream << player.id << ",";
-            stream << player.ownerId << ",";
-            stream << uint32_t(player.draftPosition) << ",";
-            stream << player.paid << endl;
-        }
+        stream << player.flag;
+        stream << player.index;
+        stream << player.id;
+        stream << player.name;
+        stream << player.team;
+        stream << player.catergory;
+        stream << player.eligiblePositionBitfield;
+        stream << player.ownerId;
+        stream << player.paid;
+        stream << uint32_t(player.draftPosition);
+        stream << player.hitting.PA;
+        stream << player.hitting.AB;
+        stream << player.hitting.H;
+        stream << player.hitting.AVG;
+        stream << player.hitting.R;
+        stream << player.hitting.RBI;
+        stream << player.hitting.HR;
+        stream << player.hitting.SB;
+        stream << player.pitching.IP;
+        stream << player.pitching.ER;
+        stream << player.pitching.H;
+        stream << player.pitching.BB;
+        stream << player.pitching.SO;
+        stream << player.pitching.W;
+        stream << player.pitching.SV;
+        stream << player.pitching.ERA;
+        stream << player.pitching.WHIP;
+        stream << player.comment;
     }
 
     return true;
@@ -524,47 +566,73 @@ bool PlayerTableModel::LoadDraftStatus(const QString& filename)
         return false;
     }
 
-    // Parse header
-    QByteArray line = file.readLine();
-    QList<QByteArray> wordList = line.split(',');
-    
-    // TODO: assert header format
+    // Create a data stream
+    QDataStream stream(&file);
+    stream.setVersion(QDataStream::Qt_5_5);
 
-    // Parse each line
-    while (!file.atEnd()) {
+    // All the data is changing
+    emit DraftedBegin();
+    emit beginResetModel();
 
-        // Get data
-        QByteArray line = file.readLine();
-        QList<QByteArray> wordList = line.split(',');
+    // Kill old data
+    ResetData();
 
-        // parse data
-        auto playerId = QString::fromUtf8(wordList.at(0));
-        auto ownerId = QString::fromUtf8(wordList.at(1)).toUInt();
-        auto draftPosition = QString::fromUtf8(wordList.at(2)).toUInt();
-        auto paid = QString::fromUtf8(wordList.at(3)).toUInt();
+    // Size prefix
+    size_t size;
+    stream >> size;
 
-        // Find this player
-        auto itr = std::find_if(m_vecPlayers.begin(), m_vecPlayers.end(), [=](const Player& player) {
-            return player.id == playerId;
-        });
+    // Per-drafted player
+    for (auto i = 0u; i < size; i++) {
 
-        // Make sure we find via id
-        if (itr == m_vecPlayers.end()) {
-            continue;
+        // Read from stream
+        Player player;
+        stream >> player.flag;
+        stream >> player.index;
+        stream >> player.id;
+        stream >> player.name;
+        stream >> player.team;
+        stream >> player.catergory;
+        stream >> player.eligiblePositionBitfield;
+        stream >> player.ownerId;
+        stream >> player.paid;
+        uint32_t temp;
+        stream >> temp;
+        player.draftPosition = PlayerPosition(temp);
+        stream >> player.hitting.PA;
+        stream >> player.hitting.AB;
+        stream >> player.hitting.H;
+        stream >> player.hitting.AVG;
+        stream >> player.hitting.R;
+        stream >> player.hitting.RBI;
+        stream >> player.hitting.HR;
+        stream >> player.hitting.SB;
+        stream >> player.pitching.IP;
+        stream >> player.pitching.ER;
+        stream >> player.pitching.H;
+        stream >> player.pitching.BB;
+        stream >> player.pitching.SO;
+        stream >> player.pitching.W;
+        stream >> player.pitching.SV;
+        stream >> player.pitching.ERA;
+        stream >> player.pitching.WHIP;
+        stream >> player.comment;
+
+        // put into catergory buckets
+        if (player.catergory == Player::Hitter) {
+            m_vecHitters.push_back(player);
+        } else if (player.catergory == Player::Pitcher) {
+            m_vecPitchers.push_back(player);
         }
-
-        // Get row
-        auto row = std::distance(m_vecPlayers.begin(), itr);
-
-        // Format results
-        DraftDialog::Results results;
-        results.ownerId = ownerId;
-        results.cost = paid;
-        results.position = PlayerPosition(draftPosition);
-
-        // Broadcast
-        OnDrafted(results, index(row, 0), this);
     }
+
+    // Redo calculations
+    CalculateHittingScores();
+    CalculatePitchingScores();
+    InitializeTargetValues();
+
+    // All the data is changing
+    emit endResetModel();
+    emit DraftedEnd();
 
     return true;
 }
@@ -575,16 +643,16 @@ bool PlayerTableModel::LoadDraftStatus(const QString& filename)
 void PlayerTableModel::InitializeTargetValues()
 {
     // Calculate compound stats
-    m_vecTargetValues[COLUMN_AVG] = m_vecTargetValues[COLUMN_H] / m_vecTargetValues[COLUMN_AB];
-    m_vecTargetValues[COLUMN_HR] /= float(DraftSettings::OwnerCount());
-    m_vecTargetValues[COLUMN_RBI] /= float(DraftSettings::OwnerCount());
-    m_vecTargetValues[COLUMN_SB] /= float(DraftSettings::OwnerCount());
-    m_vecTargetValues[COLUMN_R] /= float(DraftSettings::OwnerCount());
-    m_vecTargetValues[COLUMN_SO] /= float(DraftSettings::OwnerCount());
-    m_vecTargetValues[COLUMN_W] /= float(DraftSettings::OwnerCount());
-    m_vecTargetValues[COLUMN_SV] /= float(DraftSettings::OwnerCount());
-    m_vecTargetValues[COLUMN_WHIP] = (m_vecTargetValues[COLUMN_HA] + m_vecTargetValues[COLUMN_BB]) / m_vecTargetValues[COLUMN_IP];
-    m_vecTargetValues[COLUMN_ERA] = (9.f * m_vecTargetValues[COLUMN_ER]) / m_vecTargetValues[COLUMN_IP];
+    m_arrTargetValues[COLUMN_AVG] = m_arrTargetValues[COLUMN_H] / m_arrTargetValues[COLUMN_AB];
+    m_arrTargetValues[COLUMN_HR] /= float(DraftSettings::OwnerCount());
+    m_arrTargetValues[COLUMN_RBI] /= float(DraftSettings::OwnerCount());
+    m_arrTargetValues[COLUMN_SB] /= float(DraftSettings::OwnerCount());
+    m_arrTargetValues[COLUMN_R] /= float(DraftSettings::OwnerCount());
+    m_arrTargetValues[COLUMN_SO] /= float(DraftSettings::OwnerCount());
+    m_arrTargetValues[COLUMN_W] /= float(DraftSettings::OwnerCount());
+    m_arrTargetValues[COLUMN_SV] /= float(DraftSettings::OwnerCount());
+    m_arrTargetValues[COLUMN_WHIP] = (m_arrTargetValues[COLUMN_HA] + m_arrTargetValues[COLUMN_BB]) / m_arrTargetValues[COLUMN_IP];
+    m_arrTargetValues[COLUMN_ERA] = (9.f * m_arrTargetValues[COLUMN_ER]) / m_arrTargetValues[COLUMN_IP];
 }
 
 //------------------------------------------------------------------------------
@@ -592,7 +660,7 @@ void PlayerTableModel::InitializeTargetValues()
 //------------------------------------------------------------------------------
 float PlayerTableModel::GetTargetValue(enum COLUMN stat) const
 {
-    return m_vecTargetValues[stat];
+    return m_arrTargetValues[stat];
 }
 
 //------------------------------------------------------------------------------
@@ -617,6 +685,18 @@ int PlayerTableModel::columnCount(const QModelIndex& index) const
 QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
 {
     const Player& player = m_vecPlayers.at(index.row());
+
+    if (role == CursorRole) {
+        switch (index.column())
+        {
+        case COLUMN_FLAG:
+        case COLUMN_ID_LINK:
+        case COLUMN_DRAFT_BUTTON:
+            return uint32_t(Qt::PointingHandCursor);
+        default:
+            return QVariant();
+        }
+    }
 
     if (role == Qt::FontRole && index.column() == COLUMN_ID_LINK) {
         QFont font;

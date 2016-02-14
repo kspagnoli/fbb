@@ -68,10 +68,17 @@ public:
 
     // Constructor
     PlayerTableModel(QObject* parent);
+    
+    // Reset data
+    void ResetData();
 
     // Load projections
     void LoadHittingProjections(const std::string& filename, const PlayerApperances& playerApperances);
     void LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances);
+
+    // Calculations
+    void CalculateHittingScores();
+    void CalculatePitchingScores();
 
     // Save status
     bool SaveDraftStatus(const QString& filename) const;
@@ -95,8 +102,9 @@ public:
     void DraftRandom();
 
     // Data roles
-    static const int RawDataRole = Qt::UserRole + 1;
+    static const int RawDataRole =     Qt::UserRole + 1;
     static const int ChartFormatRole = Qt::UserRole + 2;
+    static const int CursorRole =      Qt::UserRole + 3;
 
 signals:
 
@@ -110,12 +118,16 @@ private:
     friend class DraftDelegate;
     void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model);
 
-    // Hitter data model
+    // Temporary loading storage
+    std::vector<Player> m_vecHitters;
+    std::vector<Player> m_vecPitchers;
+
+    // Hitter data model 
     std::vector<Player> m_vecPlayers;
 
     // Inflation factors
     double m_inflationFactor = 1.0;
 
     // Per-stat target values
-    std::array<float, size_t(COLUMN_COUNT)> m_vecTargetValues;
+    std::array<float, size_t(COLUMN_COUNT)> m_arrTargetValues;
 };
