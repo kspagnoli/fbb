@@ -267,6 +267,9 @@ QVariant SummaryTableModel::headerData(int section, Qt::Orientation orientation,
 
 void SummaryTableModel::OnDraftedEnd()
 {
+    // All the data is changing
+    emit beginResetModel();
+
     auto RankValues = [=](auto FnGet, auto FnSet)
     {
         std::vector<uint32_t> ranks(DraftSettings::OwnerCount());
@@ -363,4 +366,7 @@ void SummaryTableModel::OnDraftedEnd()
         [=](size_t i) { return m_vecOwnerPoints[i].SUM; },
         [=](size_t i, float x) { return m_vecOwnerPoints[i].rankSUM = x; }
     );
+
+    // All the data is changing
+    emit endResetModel();
 }

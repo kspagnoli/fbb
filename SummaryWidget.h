@@ -29,7 +29,7 @@ public:
         m_sumTableView->setSortingEnabled(true);
         m_sumTableView->sortByColumn(SummaryTableModel::TEAM);
         m_sumTableView->setMinimumSize(100, 100);
-        m_sumTableView->setMaximumSize(1000, 4096);
+        m_sumTableView->setMaximumSize(4096, 4096);
         m_sumTableView->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
         m_sumTableView->resizeColumnsToContents();
 
