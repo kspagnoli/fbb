@@ -1045,6 +1045,7 @@ Qt::ItemFlags PlayerTableModel::flags(const QModelIndex &index) const
     switch (index.column()) 
     {
     case COLUMN_DRAFT_BUTTON:
+    case COLUMN_COMMENT:
         return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
     default:
         return QAbstractItemModel::flags(index);
@@ -1065,6 +1066,9 @@ bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, 
     case COLUMN_FLAG:
         player.flag = value.toUInt();
         break;
+    case COLUMN_COMMENT:
+        player.comment = value.toString();
+        break;;
     default:
         break;
     }

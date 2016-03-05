@@ -542,29 +542,42 @@ public:
             return dialog;
         };
 
-        // Main Menu > File menu > Save action
-        QAction* saveResultsAction = new QAction("&Save Results...", this);
-        connect(saveResultsAction, &QAction::triggered, [=](bool checked) {
-
-            auto dialog = GetFileDialog(QFileDialog::AcceptSave);
-
+        // Ask for the save location 
+        auto SetSaveAsFile = [=]()
+        {
             QStringList files;
+            auto dialog = GetFileDialog(QFileDialog::AcceptSave);
             if (dialog->exec()) {
                 files = dialog->selectedFiles();
             } else {
                 return false;
             }
+            m_saveFile = files.at(0);
+            return true;
+        };
 
-            return playerTableModel->SaveDraftStatus(files.at(0));
+        // Main Menu > File menu > Save action
+        QAction* saveResultsAction = new QAction("&Save Results", this);
+        connect(saveResultsAction, &QAction::triggered, [=](bool checked) {
+            if (m_saveFile.isEmpty()) {
+                SetSaveAsFile();
+            }
+            return playerTableModel->SaveDraftStatus(m_saveFile);
         });
         fileMenu->addAction(saveResultsAction);
+
+        // Main Menu > File menu > Save As action
+        QAction* saveResultsAsAction = new QAction("Save Results &As...", this);
+        connect(saveResultsAsAction, &QAction::triggered, [=](bool checked) {
+            SetSaveAsFile();
+            return playerTableModel->SaveDraftStatus(m_saveFile);
+        });
+        fileMenu->addAction(saveResultsAsAction);
         
         // Main Menu > File menu > Load action
         QAction* loadResultsAction = new QAction("&Load Results...", this);
         connect(loadResultsAction, &QAction::triggered, [=](bool checked) {
-
             auto dialog = GetFileDialog(QFileDialog::AcceptOpen);
-
             QStringList files;
             if (dialog->exec()) {
                 files = dialog->selectedFiles();
@@ -582,10 +595,7 @@ public:
         // Main Menu > Settings menu > Options action
         QAction* optionsAction = new QAction("&DemoData...", this);
         connect(optionsAction, &QAction::triggered, [=](bool checked) {
-
-            // TODO: Some settings would be nice...
             playerTableModel->DraftRandom();
-
         });
         settingsMenu->addAction(optionsAction);
 
@@ -597,6 +607,9 @@ private:
 
     // Owner names
     QVector<QString> m_vecOwners;
+
+    // Last "Save As..." file
+    QString m_saveFile;
 
     static std::unique_ptr<QSettings> Settings()
     {
