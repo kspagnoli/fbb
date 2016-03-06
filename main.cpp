@@ -393,7 +393,6 @@ public:
 
             // Proxy model for this owner
             OwnerSortFilterProxyModel* ownerSortFilterProxyModel = new OwnerSortFilterProxyModel(ownerId, playerTableModel, this);
-            connect(playerTableModel, &PlayerTableModel::Drafted, ownerSortFilterProxyModel, &OwnerSortFilterProxyModel::OnDrafted);
             vecOwnerSortFilterProxyModels.push_back(ownerSortFilterProxyModel);
 
             // Owner name label

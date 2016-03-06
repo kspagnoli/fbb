@@ -1083,7 +1083,11 @@ bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, 
 //------------------------------------------------------------------------------
 void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
 {
-    // XXX: This should really be moved to a singular DraftedEnd() routine...
+    // Broadcast results
+    emit DraftedBegin();
+
+    // XXX: this is overkill
+    emit beginResetModel();
 
     // Get player
     Player& player = m_vecPlayers[index.row()];
@@ -1093,7 +1097,7 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     player.paid = results.cost;
     player.draftPosition = results.position;
 
-    // Update inflation
+    // Update inflation model
     float sumCost = DraftSettings::OwnerCount() * DraftSettings::Budget();
     float sumValue = DraftSettings::OwnerCount() * DraftSettings::Budget();
     for (auto& player : m_vecPlayers)
@@ -1108,23 +1112,26 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     m_inflationFactor = std::min(m_inflationFactor, 2.0);
 
     // Log
-    GlobalLogger::AppendMessage(
-        QString("%1 drafted by %2 for $%3")
-        .arg(player.name)
-        .arg(DraftSettings::OwnerName(player.ownerId))
-        .arg(player.paid));
-    
-    // All the data is changing
-    // XXX: this is overkill...
-    emit beginResetModel();
+    if (player.ownerId != 0) {
+        GlobalLogger::AppendMessage(QString("%1 drafted by %2 for $%3")
+            .arg(player.name)
+            .arg(DraftSettings::OwnerName(player.ownerId))
+            .arg(player.paid));
+    } else {
+        GlobalLogger::AppendMessage(QString("%1 returned to player pool").arg(player.name));
+    }
 
-    // Broadcast results
-    emit DraftedBegin();
-    emit Drafted(results, index, model);
-    emit DraftedEnd();
+    // XXX: not sure why this isn't good enough...
+    // emit dataChanged(index, index);
+    // auto first = model->index(index.row(), 0);
+    // auto last = model->index(index.row(), PlayerTableModel::COLUMN_COUNT);
+    // emit dataChanged(first, last, {Qt::DisplayRole});
+    
+    // XXX: this is overkill
+    emit endResetModel();
 
     // Update table view
-    emit endResetModel();
+    emit DraftedEnd();
 }
 
 //------------------------------------------------------------------------------

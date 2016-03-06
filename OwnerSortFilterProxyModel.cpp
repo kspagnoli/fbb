@@ -122,17 +122,3 @@ int32_t OwnerSortFilterProxyModel::GetMaxBid() const
 {
     return GetRemainingBudget() - GetRosterSpotsToFill() + 1;
 }
-
-void OwnerSortFilterProxyModel::OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
-{
-    // Ignore other owners
-    if (results.ownerId != m_ownerId) {
-        return;
-    }
-
-    // Invalidate filters
-    QSortFilterProxyModel::invalidate();
-
-    // Update table view
-    emit dataChanged(index, index);
-}

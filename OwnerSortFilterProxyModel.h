@@ -25,9 +25,6 @@ public:
     int32_t GetRosterSpotsToFill() const;
     int32_t GetMaxBid() const;
 
-public slots:
-    void OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model);
-
 private:
     uint32_t m_ownerId = 0;
 };

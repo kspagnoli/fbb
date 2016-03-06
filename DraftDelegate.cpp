@@ -74,7 +74,7 @@ bool DraftDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const 
 
         } else {
 
-            // Create a draft diaglog popup
+            // Create a draft dialog popup
             DraftDialog* draftDialog = new DraftDialog(srcModel, srcIndex);
             if (draftDialog->exec() == QDialog::Accepted) {
                 const DraftDialog::Results& results = draftDialog->GetDraftResults();
