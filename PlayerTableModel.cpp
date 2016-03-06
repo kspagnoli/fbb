@@ -4,6 +4,7 @@
 #include "Player.h"
 #include "DraftSettings.h"
 #include "OwnerSortFilterProxyModel.h"
+#include "GlobalLogger.h"
 
 #include <vector>
 #include <fstream>
@@ -1082,6 +1083,8 @@ bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, 
 //------------------------------------------------------------------------------
 void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
 {
+    // XXX: This should really be moved to a singular DraftedEnd() routine...
+
     // Get player
     Player& player = m_vecPlayers[index.row()];
 
@@ -1103,6 +1106,13 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     m_inflationFactor = sumValue ? (sumCost / sumValue) : 1.0f;
     m_inflationFactor = std::max(m_inflationFactor, 0.5);
     m_inflationFactor = std::min(m_inflationFactor, 2.0);
+
+    // Log
+    GlobalLogger::AppendMessage(
+        QString("%1 drafted by %2 for $%3")
+        .arg(player.name)
+        .arg(DraftSettings::OwnerName(player.ownerId))
+        .arg(player.paid));
     
     // All the data is changing
     // XXX: this is overkill...

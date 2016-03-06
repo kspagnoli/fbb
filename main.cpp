@@ -45,6 +45,7 @@
 #include "OwnerSortFilterProxyModel.h"
 #include "PlayerScatterPlotChart.h"
 #include "SummaryWidget.h"
+#include "GlobalLogger.h"
 
 //------------------------------------------------------------------------------
 // LinkDelegate
@@ -474,13 +475,15 @@ public:
         // Summary view
         SummaryWidget* summary = new SummaryWidget(playerTableModel, vecOwnerSortFilterProxyModels, this);
 
+
         // Bottom tabs
-        enum BottomSectionTabs { Rosters, SummaryWidget, ChartView };
+        enum BottomSectionTabs { Rosters, SummaryWidget, ChartView, Log };
         QTabWidget* bottomTabs = new QTabWidget(this);
         topBottomSplitter->addWidget(bottomTabs);
         bottomTabs->insertTab(BottomSectionTabs::Rosters, ownerScrollArea, "Rosters");
         bottomTabs->insertTab(BottomSectionTabs::SummaryWidget, summary, "Summary");
         bottomTabs->insertTab(BottomSectionTabs::ChartView, chartView, "Scatter Chart");
+        bottomTabs->insertTab(BottomSectionTabs::Log, GlobalLogger::Get(), "Log");
 
         // Make top section 3x the size of the bottom
         topBottomSplitter->setStretchFactor(0, 3);
@@ -562,6 +565,7 @@ public:
             if (m_saveFile.isEmpty()) {
                 SetSaveAsFile();
             }
+            GlobalLogger::AppendMessage(QString("Saving file: %1...").arg(m_saveFile));
             return playerTableModel->SaveDraftStatus(m_saveFile);
         });
         fileMenu->addAction(saveResultsAction);
@@ -570,6 +574,7 @@ public:
         QAction* saveResultsAsAction = new QAction("Save Results &As...", this);
         connect(saveResultsAsAction, &QAction::triggered, [=](bool checked) {
             SetSaveAsFile();
+            GlobalLogger::AppendMessage(QString("Saving file: %1...").arg(m_saveFile));
             return playerTableModel->SaveDraftStatus(m_saveFile);
         });
         fileMenu->addAction(saveResultsAsAction);
@@ -584,8 +589,9 @@ public:
             } else {
                 return false;
             }
-
-            return playerTableModel->LoadDraftStatus(files.at(0));
+            auto loadFile = files.at(0);
+            GlobalLogger::AppendMessage(QString("Loading file: %1...").arg(loadFile));
+            return playerTableModel->LoadDraftStatus(loadFile);
         });
         fileMenu->addAction(loadResultsAction);
 
@@ -761,7 +767,7 @@ int main(int argc, char *argv[])
         QLabel {
             font-size: 11px;
         }
-        QTableView, QHeaderView, QToolTip {
+        QTableView, QHeaderView, QToolTip, QPlainTextEdit {
             font-family: "Consolas";
             font-size: 11px;
         }
