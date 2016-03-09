@@ -384,7 +384,7 @@ public:
         std::vector<OwnerSortFilterProxyModel*> vecOwnerSortFilterProxyModels;
 
         // Loop owners
-        for (uint32_t ownerId = 1; ownerId <= DraftSettings::OwnerCount(); ownerId++) {
+        for (uint32_t ownerId = 1; ownerId <= DraftSettings::Get().OwnerCount; ownerId++) {
 
             // V-Layout per owner
             QVBoxLayout* perOwnerLayout = new QVBoxLayout(this);
@@ -396,7 +396,7 @@ public:
             vecOwnerSortFilterProxyModels.push_back(ownerSortFilterProxyModel);
 
             // Owner name label
-            QLabel* ownerLabel = new QLabel(DraftSettings::OwnerName(ownerId), this);
+            QLabel* ownerLabel = new QLabel(DraftSettings::Get().OwnerNames[ownerId], this);
             ownerLabel->setAlignment(Qt::AlignCenter);
             perOwnerLayout->addWidget(ownerLabel);
 
@@ -424,8 +424,8 @@ public:
             auto UpdateLabels = [=]()
             {
                 budgetLabel->setText(QString("$%1").arg(ownerSortFilterProxyModel->GetRemainingBudget()));
-                numHittersLabel->setText(QString("%1 / %2").arg(ownerSortFilterProxyModel->Count(Player::Hitter)).arg(DraftSettings::HitterCount()));
-                numPitchersLabel->setText(QString("%1 / %2").arg(ownerSortFilterProxyModel->Count(Player::Pitcher)).arg(DraftSettings::PitcherCount()));
+                numHittersLabel->setText(QString("%1 / %2").arg(ownerSortFilterProxyModel->Count(Player::Hitter)).arg(DraftSettings::Get().HitterCount));
+                numPitchersLabel->setText(QString("%1 / %2").arg(ownerSortFilterProxyModel->Count(Player::Pitcher)).arg(DraftSettings::Get().PitcherCount));
                 maxBidLabel->setText(QString("$%1").arg(ownerSortFilterProxyModel->GetMaxBid()));
             };
 
@@ -554,18 +554,27 @@ public:
             } else {
                 return false;
             }
-            m_saveFile = files.at(0);
+            m_currentFile = files.at(0);
             return true;
+        };
+
+        // Update title bar
+        auto UpdateApplicationName = [this]()
+        {
+            auto name = QString("fbb -- %1").arg(QFileInfo(m_currentFile).fileName());
+            QCoreApplication::setApplicationName(name);
+            setWindowTitle(name);
         };
 
         // Main Menu > File menu > Save action
         QAction* saveResultsAction = new QAction("&Save Results", this);
         connect(saveResultsAction, &QAction::triggered, [=](bool checked) {
-            if (m_saveFile.isEmpty()) {
+            if (m_currentFile.isEmpty()) {
                 SetSaveAsFile();
             }
-            GlobalLogger::AppendMessage(QString("Saving file: %1...").arg(m_saveFile));
-            return playerTableModel->SaveDraftStatus(m_saveFile);
+            GlobalLogger::AppendMessage(QString("Saving file: %1...").arg(m_currentFile));
+            UpdateApplicationName();
+            return playerTableModel->SaveDraftStatus(m_currentFile);
         });
         fileMenu->addAction(saveResultsAction);
 
@@ -573,8 +582,9 @@ public:
         QAction* saveResultsAsAction = new QAction("Save Results &As...", this);
         connect(saveResultsAsAction, &QAction::triggered, [=](bool checked) {
             SetSaveAsFile();
-            GlobalLogger::AppendMessage(QString("Saving file: %1...").arg(m_saveFile));
-            return playerTableModel->SaveDraftStatus(m_saveFile);
+            GlobalLogger::AppendMessage(QString("Saving file: %1...").arg(m_currentFile));
+            UpdateApplicationName();
+            return playerTableModel->SaveDraftStatus(m_currentFile);
         });
         fileMenu->addAction(saveResultsAsAction);
         
@@ -588,9 +598,10 @@ public:
             } else {
                 return false;
             }
-            auto loadFile = files.at(0);
-            GlobalLogger::AppendMessage(QString("Loading file: %1...").arg(loadFile));
-            return playerTableModel->LoadDraftStatus(loadFile);
+            m_currentFile = files.at(0);
+            GlobalLogger::AppendMessage(QString("Loading file: %1...").arg(m_currentFile));
+            UpdateApplicationName();
+            return playerTableModel->LoadDraftStatus(m_currentFile);
         });
         fileMenu->addAction(loadResultsAction);
 
@@ -598,11 +609,20 @@ public:
         QMenu* settingsMenu = mainMenuBar->addMenu("&Settings");
 
         // Main Menu > Settings menu > Options action
-        QAction* optionsAction = new QAction("&DemoData...", this);
-        connect(optionsAction, &QAction::triggered, [=](bool checked) {
+        QAction* settingsAction = new QAction("&Settings...", this);
+        connect(settingsAction, &QAction::triggered, [=](bool checked) {
+            DraftSettingsDialog draftSettingsDialog;
+            if (draftSettingsDialog.exec()) {
+            }
+        });
+        settingsMenu->addAction(settingsAction);
+
+        // Main Menu > Settings menu > Options action
+        QAction* demoDataAction = new QAction("&DemoData...", this);
+        connect(demoDataAction, &QAction::triggered, [=](bool checked) {
             playerTableModel->DraftRandom();
         });
-        settingsMenu->addAction(optionsAction);
+        settingsMenu->addAction(demoDataAction);
 
         // show me
         QMainWindow::show();
@@ -614,7 +634,7 @@ private:
     QVector<QString> m_vecOwners;
 
     // Last "Save As..." file
-    QString m_saveFile;
+    QString m_currentFile;
 
     static std::unique_ptr<QSettings> Settings()
     {

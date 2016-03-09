@@ -49,7 +49,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         case S:
             return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SV);
         case SUM:
-            return 10 * ((DraftSettings::OwnerCount() + 1) * 0.75);
+            return 10 * ((DraftSettings::Get().OwnerCount + 1) * 0.75);
         default:
             break;
         }
@@ -69,7 +69,7 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         if (role == RawDataRole || role == RankRole) {
             return index.row();
         } else {
-            return DraftSettings::OwnerAbbreviation(index.row() + 1);
+            return DraftSettings::Get().OwnerAbbreviations[index.row() + 1];
         }
     }
     case RankRows::BUDGET:
@@ -272,8 +272,8 @@ void SummaryTableModel::OnDraftedEnd()
 
     auto RankValues = [=](auto FnGet, auto FnSet)
     {
-        std::vector<uint32_t> ranks(DraftSettings::OwnerCount());
-        std::vector<float> values(DraftSettings::OwnerCount());
+        std::vector<uint32_t> ranks(DraftSettings::Get().OwnerCount);
+        std::vector<float> values(DraftSettings::Get().OwnerCount);
         std::size_t n(0);
         std::generate(std::begin(ranks), std::end(ranks), [&] { return n++; });
 

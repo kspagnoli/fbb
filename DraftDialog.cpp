@@ -58,8 +58,10 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
     // Owner combo box
     {
         QComboBox* ownerComboBox = new QComboBox;
-        QStringList list ={ "Select..." };
-        list += DraftSettings::OwnerNames();
+        QStringList list = { "Select..." };
+        for (auto i = 1u; i <= DraftSettings::Get().OwnerCount; i++) {
+            list += DraftSettings::Get().OwnerNames[i];
+        }
         ownerComboBox->addItems(list);
         infoGridLayout->addWidget(new QLabel("Owner:"), OwnerRow, LabelColumn);
         infoGridLayout->addWidget(ownerComboBox, OwnerRow, ItemColumn);
@@ -71,7 +73,7 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
 
     // Cost line edit
     {
-        const uint32_t MAX_BID = DraftSettings::Budget();
+        const uint32_t MAX_BID = DraftSettings::Get().Budget;
         QLineEdit* costLineEdit = new QLineEdit;
         costLineEdit->setValidator(new QIntValidator(0, MAX_BID, this));
         infoGridLayout->addWidget(new QLabel("Cost:"), CostRow, LabelColumn);

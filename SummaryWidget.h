@@ -106,7 +106,7 @@ private:
             QStyleOptionProgressBar progressBarOption;
             progressBarOption.rect = option.rect;
             progressBarOption.minimum = 0;
-            progressBarOption.maximum = DraftSettings::OwnerCount();
+            progressBarOption.maximum = DraftSettings::Get().OwnerCount;
             progressBarOption.progress = index.model()->data(index, SummaryTableModel::RankRole).toInt();
             progressBarOption.text = index.model()->data(index, Qt::DisplayRole).toString();
             progressBarOption.textVisible = true;

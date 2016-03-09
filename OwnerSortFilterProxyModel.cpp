@@ -105,7 +105,7 @@ float OwnerSortFilterProxyModel::WHIP() const
 
 int32_t OwnerSortFilterProxyModel::GetRemainingBudget() const
 {
-    return DraftSettings::Budget() - Sum(PlayerTableModel::COLUMN_PAID);
+    return DraftSettings::Get().Budget - Sum(PlayerTableModel::COLUMN_PAID);
 }
 
 int32_t OwnerSortFilterProxyModel::GetRosterSlotsFilled() const
@@ -115,7 +115,7 @@ int32_t OwnerSortFilterProxyModel::GetRosterSlotsFilled() const
 
 int32_t OwnerSortFilterProxyModel::GetRosterSpotsToFill() const
 {
-    return DraftSettings::RosterSize() - GetRosterSlotsFilled();
+    return DraftSettings::Get().RosterSize - GetRosterSlotsFilled();
 }
 
 int32_t OwnerSortFilterProxyModel::GetMaxBid() const

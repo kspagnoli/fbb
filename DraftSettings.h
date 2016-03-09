@@ -2,38 +2,25 @@
 
 #include <cstdint>
 #include <QStringList>
-#include <array>
-#include <tuple>
+#include <QDialog>
 
-enum class StatCategory
+struct DraftSettings
 {
-    RUNS,
-    HOME_RUNS,
-    RBIS,
-    STEALS,
-    AVERAGE,
-    WINS,
-    SAVES,
-    ERA,
-    WHIP,
-    STRIKEOUTS,
-    COUNT
+    uint32_t Budget;
+    uint32_t HitterCount;
+    uint32_t PitcherCount;
+    uint32_t RosterSize;
+    float HittingSplit;
+    float PitchingSplit;
+    uint32_t OwnerCount;
+    QStringList OwnerNames;
+    QStringList OwnerAbbreviations;
+
+    static DraftSettings& Get();
 };
 
-using StatTuple = std::tuple<float, float, float>;
-
-namespace DraftSettings
+class DraftSettingsDialog : public QDialog
 {
-    const uint32_t Budget();
-    const uint32_t HitterCount();
-    const uint32_t PitcherCount();
-    const uint32_t RosterSize();
-    const float    HittingSplit();
-    const float    PitchingSplit();
-
-    const uint32_t OwnerCount();
-    const QString& OwnerName(uint32_t i);
-    const QStringList& OwnerNames();
-    const QString& OwnerAbbreviation(uint32_t i);
-    const StatTuple& StatHistoryCategory(const StatCategory& category);
+public:
+    DraftSettingsDialog();
 };

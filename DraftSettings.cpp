@@ -1,26 +1,32 @@
-#include <assert.h>
-
 #include "DraftSettings.h"
 
-namespace Impl {
+#include <QPushButton>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QGroupBox>
+#include <QFormLayout>
+#include <QLineEdit>
+#include <QRadioButton>
+#include <QIntValidator>
+#include <QSlider>
 
-struct DraftSettingsImpl
+DraftSettings& DraftSettings::Get()
 {
-    static DraftSettingsImpl& Get()
-    {
-        static DraftSettingsImpl s_impl;
-        return s_impl;
-    }
+    static DraftSettings* s_draftSettings = nullptr;
 
-    DraftSettingsImpl()
-    {
-        OwnerCount = 12;
-        HittingSplit = 0.70f;
-        HitterCount = 14;
-        PitcherCount = 10;
-        Budget = 280;
+    if (!s_draftSettings) {
 
-        OwnerNames = QStringList{
+        s_draftSettings = new DraftSettings;
+
+        s_draftSettings->Budget = 280;
+        s_draftSettings->HitterCount = 14;
+        s_draftSettings->PitcherCount = 10;
+        s_draftSettings->RosterSize = 24;
+        s_draftSettings->HittingSplit = 0.70f;
+        s_draftSettings->PitchingSplit = 0.30f;
+        s_draftSettings->OwnerCount = 12;
+        s_draftSettings->OwnerNames = QStringList({
+            "--",
             "The 700 Level",
             "Hoi Pollois",
             "Wooden Spooners",
@@ -33,9 +39,9 @@ struct DraftSettingsImpl
             "Young Guns",
             "Master Batters",
             "Steroid Stiffs",
-        };
-
-        OwnerAbbreviations = QStringList{
+        });
+        s_draftSettings->OwnerAbbreviations = QStringList({
+            "--",
             "700",
             "HP",
             "WS",
@@ -48,86 +54,76 @@ struct DraftSettingsImpl
             "YG",
             "MB",
             "SS",
-        };
-
-        assert(OwnerNames.size() == OwnerCount);
-        assert(OwnerAbbreviations.size() == OwnerCount);
+        });
     }
 
-    QString UnknownString = "--";
-    QString ErrorString = "??";
-
-    uint32_t Budget;
-    uint32_t HitterCount;
-    uint32_t PitcherCount;
-    float HittingSplit;
-    uint32_t OwnerCount;
-    QStringList OwnerNames;
-    QStringList OwnerAbbreviations;
-};
-
-} // namespace Impl
-
-using namespace Impl;
-
-const uint32_t DraftSettings::Budget()
-{
-    return DraftSettingsImpl::Get().Budget;
+    return *s_draftSettings;
 }
 
-const uint32_t DraftSettings::HitterCount()
-{
-    return DraftSettingsImpl::Get().HitterCount;
-}
 
-const uint32_t DraftSettings::PitcherCount()
+DraftSettingsDialog::DraftSettingsDialog()
 {
-    return DraftSettingsImpl::Get().PitcherCount;
-}
+    // Cancel button
+    QPushButton* cancelButton = new QPushButton("Cancel");
+    connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
 
-const uint32_t DraftSettings::RosterSize()
-{
-    return HitterCount() + PitcherCount();
-}
+    // Draft button
+    QPushButton* draftButton = new QPushButton("Save");
+    draftButton->setDefault(true);
+    connect(draftButton, &QPushButton::clicked, this, &QDialog::accept);
 
-const float DraftSettings::HittingSplit()
-{
-    return DraftSettingsImpl::Get().HittingSplit;
-}
+    // Button layout
+    QHBoxLayout* buttonsLayout = new QHBoxLayout;
+    buttonsLayout->addWidget(cancelButton);
+    buttonsLayout->addWidget(draftButton);
 
-const float DraftSettings::PitchingSplit()
-{
-    return 1.f - HittingSplit();
-}
-
-const uint32_t DraftSettings::OwnerCount()
-{
-    return DraftSettingsImpl::Get().OwnerCount;
-}
-
-const QString& DraftSettings::OwnerName(uint32_t i)
-{
-    if (i == 0) {
-        return DraftSettingsImpl::Get().UnknownString;
-    } else if (i > DraftSettingsImpl::Get().OwnerCount) {
-        return DraftSettingsImpl::Get().ErrorString;
-    }
-    
-    return DraftSettingsImpl::Get().OwnerNames[i-1];
-}
-
-const QStringList& DraftSettings::OwnerNames()
-{
-    return DraftSettingsImpl::Get().OwnerNames;
-}
-
-const QString& DraftSettings::OwnerAbbreviation(uint32_t i)
-{
-    if (i == 0) {
-        return DraftSettingsImpl::Get().UnknownString;
-    } else if (i > DraftSettingsImpl::Get().OwnerCount) {
-        return DraftSettingsImpl::Get().ErrorString;
+    // Owner group box
+    QGroupBox* ownerGroupBox = new QGroupBox("Owners");
+    QFormLayout* ownerForumLayout = new QFormLayout(ownerGroupBox);
+    for (auto i = 1u; i <= DraftSettings::Get().OwnerCount; i++) {
+        auto* lineEditOwner = new QLineEdit(DraftSettings::Get().OwnerNames[i]);
+        ownerForumLayout->addRow(QString("Owner #%1:").arg(i), lineEditOwner);
     }
 
-    return DraftSettingsImpl::Get().OwnerAbbreviations[i-1];
+    // Budget group box
+    QGroupBox* budgetGroupBox = new QGroupBox("Budget");
+    QFormLayout* budgetForumLayout = new QFormLayout(budgetGroupBox);
+    auto* lineEditHitters = new QLineEdit("14");
+    lineEditHitters->setValidator(new QIntValidator(0, INT_MAX));
+    budgetForumLayout->addRow(tr("# Hitters:"), lineEditHitters);
+    auto* lineEditPitchers = new QLineEdit("10");
+    lineEditPitchers->setValidator(new QIntValidator(0, INT_MAX));
+    budgetForumLayout->addRow(tr("# Pitcher:"), lineEditPitchers);
+    auto* lineEditBudget = new QLineEdit("280");
+    lineEditBudget->setValidator(new QIntValidator(0, INT_MAX));
+    budgetForumLayout->addRow(tr("Budget:"), lineEditBudget);
+    auto* hittingSplit = new QLineEdit("70");
+    hittingSplit->setValidator(new QIntValidator(0, 100));
+    budgetForumLayout->addRow(tr("Hitting Split:"), hittingSplit);
+
+    // Player pool group box
+    auto* playerPoolGroupBox = new QGroupBox("Player Pool");
+    auto* playerPoolGroupLayout = new QHBoxLayout(playerPoolGroupBox);
+    auto* radioNL = new QRadioButton(tr("NL Only"));
+    playerPoolGroupLayout->addWidget(radioNL);
+    auto* radioAL = new QRadioButton(tr("AL Only"));
+    playerPoolGroupLayout->addWidget(radioAL);
+    auto* radioMixed = new QRadioButton(tr("Mixed"));
+    playerPoolGroupLayout->addWidget(radioMixed);
+    radioNL->setChecked(true);
+
+    // Main layout
+    QVBoxLayout* mainLayout = new QVBoxLayout;
+    mainLayout->addWidget(ownerGroupBox);
+    mainLayout->addWidget(budgetGroupBox);
+    mainLayout->addWidget(playerPoolGroupBox);
+    mainLayout->addSpacing(6);
+    mainLayout->addLayout(buttonsLayout);
+
+    // Configure this dialog
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    setWindowTitle(tr("Adjust Settings"));
+    setLayout(mainLayout);
+    setModal(true);
 }
+

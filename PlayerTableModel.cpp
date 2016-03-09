@@ -277,7 +277,7 @@ void PlayerTableModel::CalculateHittingScores()
     }
     
     // Get the "replacement player"
-    auto totalHitters = DraftSettings::HitterCount() * DraftSettings::OwnerCount();
+    auto totalHitters = DraftSettings::Get().HitterCount * DraftSettings::Get().OwnerCount;
     auto zReplacement = m_vecHitters[totalHitters].zScore;
 
     // Scale all players based off the replacement player
@@ -296,7 +296,7 @@ void PlayerTableModel::CalculateHittingScores()
     });
 
     // Apply cost ratio
-    float totalHitterMoney =  DraftSettings::HittingSplit() * DraftSettings::Budget() * DraftSettings::OwnerCount();
+    float totalHitterMoney =  DraftSettings::Get().HittingSplit * DraftSettings::Get().Budget * DraftSettings::Get().OwnerCount;
     float costPerZ = float(totalHitterMoney) / sumPositiveZScores;
     std::for_each(std::begin(m_vecHitters), std::end(m_vecHitters), [&](Player& player) {
         player.cost = (player.zScore - zReplacement) * costPerZ;
@@ -471,7 +471,7 @@ void PlayerTableModel::CalculatePitchingScores()
     }
 
     // Get the "replacement player"
-    auto totalPitcher = DraftSettings::PitcherCount() * DraftSettings::OwnerCount();
+    auto totalPitcher = DraftSettings::Get().PitcherCount * DraftSettings::Get().OwnerCount;
     auto zReplacement = m_vecPitchers[totalPitcher].zScore;
 
     // Scale all players based off the replacement player
@@ -491,7 +491,7 @@ void PlayerTableModel::CalculatePitchingScores()
     });
 
     // Apply cost ratio
-    float totalPitcherMoney = DraftSettings::PitchingSplit() * DraftSettings::Budget() * DraftSettings::OwnerCount();
+    float totalPitcherMoney = DraftSettings::Get().PitchingSplit * DraftSettings::Get().Budget * DraftSettings::Get().OwnerCount;
     float costPerZ = float(totalPitcherMoney) / sumPositiveZScores;
     std::for_each(std::begin(m_vecPitchers), std::end(m_vecPitchers), [&](Player& pitcher) {
         pitcher.cost = (pitcher.zScore - zReplacement) * costPerZ;
@@ -517,6 +517,17 @@ bool PlayerTableModel::SaveDraftStatus(const QString& filename) const
     // Create a data stream
     QDataStream stream(&file);
     stream.setVersion(QDataStream::Qt_5_5);
+
+    // Settings
+    stream << DraftSettings::Get().Budget;
+    stream << DraftSettings::Get().HitterCount;
+    stream << DraftSettings::Get().PitcherCount;
+    stream << DraftSettings::Get().RosterSize;
+    stream << DraftSettings::Get().HittingSplit;
+    stream << DraftSettings::Get().PitchingSplit;
+    stream << DraftSettings::Get().OwnerCount;
+    stream << DraftSettings::Get().OwnerNames;
+    stream << DraftSettings::Get().OwnerAbbreviations;
 
     // Size prefix
     stream << m_vecPlayers.size();
@@ -577,6 +588,17 @@ bool PlayerTableModel::LoadDraftStatus(const QString& filename)
 
     // Kill old data
     ResetData();
+
+    // Settings
+    stream >> DraftSettings::Get().Budget;
+    stream >> DraftSettings::Get().HitterCount;
+    stream >> DraftSettings::Get().PitcherCount;
+    stream >> DraftSettings::Get().RosterSize;
+    stream >> DraftSettings::Get().HittingSplit;
+    stream >> DraftSettings::Get().PitchingSplit;
+    stream >> DraftSettings::Get().OwnerCount;
+    stream >> DraftSettings::Get().OwnerNames;
+    stream >> DraftSettings::Get().OwnerAbbreviations;
 
     // Size prefix
     size_t size;
@@ -645,13 +667,13 @@ void PlayerTableModel::InitializeTargetValues()
 {
     // Calculate compound stats
     m_arrTargetValues[COLUMN_AVG] = m_arrTargetValues[COLUMN_H] / m_arrTargetValues[COLUMN_AB];
-    m_arrTargetValues[COLUMN_HR] /= float(DraftSettings::OwnerCount());
-    m_arrTargetValues[COLUMN_RBI] /= float(DraftSettings::OwnerCount());
-    m_arrTargetValues[COLUMN_SB] /= float(DraftSettings::OwnerCount());
-    m_arrTargetValues[COLUMN_R] /= float(DraftSettings::OwnerCount());
-    m_arrTargetValues[COLUMN_SO] /= float(DraftSettings::OwnerCount());
-    m_arrTargetValues[COLUMN_W] /= float(DraftSettings::OwnerCount());
-    m_arrTargetValues[COLUMN_SV] /= float(DraftSettings::OwnerCount());
+    m_arrTargetValues[COLUMN_HR] /= float(DraftSettings::Get().OwnerCount);
+    m_arrTargetValues[COLUMN_RBI] /= float(DraftSettings::Get().OwnerCount);
+    m_arrTargetValues[COLUMN_SB] /= float(DraftSettings::Get().OwnerCount);
+    m_arrTargetValues[COLUMN_R] /= float(DraftSettings::Get().OwnerCount);
+    m_arrTargetValues[COLUMN_SO] /= float(DraftSettings::Get().OwnerCount);
+    m_arrTargetValues[COLUMN_W] /= float(DraftSettings::Get().OwnerCount);
+    m_arrTargetValues[COLUMN_SV] /= float(DraftSettings::Get().OwnerCount);
     m_arrTargetValues[COLUMN_WHIP] = (m_arrTargetValues[COLUMN_HA] + m_arrTargetValues[COLUMN_BB]) / m_arrTargetValues[COLUMN_IP];
     m_arrTargetValues[COLUMN_ERA] = (9.f * m_arrTargetValues[COLUMN_ER]) / m_arrTargetValues[COLUMN_IP];
 }
@@ -720,7 +742,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             if (role == RawDataRole) {
                 return player.ownerId;
             } else {
-                return DraftSettings::OwnerAbbreviation(player.ownerId);
+                return DraftSettings::Get().OwnerAbbreviations[player.ownerId];
             }
         case COLUMN_PAID:
             if (role == RawDataRole) {
@@ -1098,8 +1120,8 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     player.draftPosition = results.position;
 
     // Update inflation model
-    float sumCost = DraftSettings::OwnerCount() * DraftSettings::Budget();
-    float sumValue = DraftSettings::OwnerCount() * DraftSettings::Budget();
+    float sumCost = DraftSettings::Get().OwnerCount * DraftSettings::Get().Budget;
+    float sumValue = DraftSettings::Get().OwnerCount * DraftSettings::Get().Budget;
     for (auto& player : m_vecPlayers)
     {
         if (player.ownerId != 0) {
@@ -1115,7 +1137,7 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     if (player.ownerId != 0) {
         GlobalLogger::AppendMessage(QString("%1 drafted by %2 for $%3")
             .arg(player.name)
-            .arg(DraftSettings::OwnerName(player.ownerId))
+            .arg(DraftSettings::Get().OwnerNames[player.ownerId])
             .arg(player.paid));
     } else {
         GlobalLogger::AppendMessage(QString("%1 returned to player pool").arg(player.name));
@@ -1144,7 +1166,7 @@ void PlayerTableModel::DraftRandom()
         uint32_t r = std::floor((rand() / float(RAND_MAX)) * m_vecPlayers.size());
         auto& player = m_vecPlayers[r];
 
-        auto j = ((r * 113) % DraftSettings::OwnerCount()) + 1;
+        auto j = ((r * 113) % DraftSettings::Get().OwnerCount) + 1;
         
         if (player.cost < 0) {
             continue;
@@ -1156,11 +1178,11 @@ void PlayerTableModel::DraftRandom()
         switch (player.catergory)
         {
         case Player::Pitcher:
-            if (count > DraftSettings::PitcherCount()) {
+            if (count > DraftSettings::Get().PitcherCount) {
                 continue;
             }
         case Player::Hitter:
-            if (count > DraftSettings::HitterCount()) {
+            if (count > DraftSettings::Get().HitterCount) {
                 continue;
             }
         default:
