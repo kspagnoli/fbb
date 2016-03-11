@@ -114,7 +114,6 @@ public:
 //------------------------------------------------------------------------------
 class MainWindow : public QMainWindow
 {
-
 public:
 
     MainWindow()
@@ -383,6 +382,24 @@ public:
         // Owner models
         std::vector<OwnerSortFilterProxyModel*> vecOwnerSortFilterProxyModels;
 
+        // Owner labels
+        QList<QLabel*>* pVecOwnerLabels;
+        pVecOwnerLabels = new QList<QLabel*>();
+        pVecOwnerLabels->append(new QLabel("--"));
+        for (auto i = 1; i <= DraftSettings::Get().OwnerCount; i++) {
+            pVecOwnerLabels->append(new QLabel(DraftSettings::Get().OwnerNames[i]));
+        }
+
+        // Update label helper
+        auto UpdateOwnerLabels = [=]() {
+            for (auto i = 1; i <= DraftSettings::Get().OwnerCount; i++) {
+                pVecOwnerLabels->at(i)->setText(DraftSettings::Get().OwnerNames[i]);
+            }
+        };
+
+        // Initialize
+        UpdateOwnerLabels();
+
         // Loop owners
         for (uint32_t ownerId = 1; ownerId <= DraftSettings::Get().OwnerCount; ownerId++) {
 
@@ -396,9 +413,8 @@ public:
             vecOwnerSortFilterProxyModels.push_back(ownerSortFilterProxyModel);
 
             // Owner name label
-            QLabel* ownerLabel = new QLabel(DraftSettings::Get().OwnerNames[ownerId], this);
-            ownerLabel->setAlignment(Qt::AlignCenter);
-            perOwnerLayout->addWidget(ownerLabel);
+            pVecOwnerLabels->at(ownerId)->setAlignment(Qt::AlignCenter);
+            perOwnerLayout->addWidget(pVecOwnerLabels->at(ownerId));
 
             // Per-owner roster table view
             const uint32_t tableWidth = 225;
@@ -408,6 +424,7 @@ public:
             ownerRosterTableView->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
             perOwnerLayout->addWidget(ownerRosterTableView);
 
+            // XXX: This should be a form layout...
             QGridLayout* ownerSummaryGridLayout = new QGridLayout(this);
             ownerSummaryGridLayout->setSpacing(0);
             ownerSummaryGridLayout->addWidget(MakeLabel("Budget: "),     0, 0);
@@ -473,7 +490,6 @@ public:
 
         // Summary view
         SummaryWidget* summary = new SummaryWidget(playerTableModel, vecOwnerSortFilterProxyModels, this);
-
 
         // Bottom tabs
         enum BottomSectionTabs { Rosters, SummaryWidget, ChartView, Log };
@@ -613,6 +629,7 @@ public:
         connect(settingsAction, &QAction::triggered, [=](bool checked) {
             DraftSettingsDialog draftSettingsDialog;
             if (draftSettingsDialog.exec()) {
+                UpdateOwnerLabels();
             }
         });
         settingsMenu->addAction(settingsAction);

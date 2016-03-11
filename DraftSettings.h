@@ -12,7 +12,7 @@ struct DraftSettings
     uint32_t RosterSize;
     float HittingSplit;
     float PitchingSplit;
-    uint32_t OwnerCount;
+    static const uint32_t OwnerCount = 12;
     QStringList OwnerNames;
     QStringList OwnerAbbreviations;
 

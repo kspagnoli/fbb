@@ -596,7 +596,7 @@ bool PlayerTableModel::LoadDraftStatus(const QString& filename)
     stream >> DraftSettings::Get().RosterSize;
     stream >> DraftSettings::Get().HittingSplit;
     stream >> DraftSettings::Get().PitchingSplit;
-    stream >> DraftSettings::Get().OwnerCount;
+    // stream >> DraftSettings::Get().OwnerCount;
     stream >> DraftSettings::Get().OwnerNames;
     stream >> DraftSettings::Get().OwnerAbbreviations;
 

@@ -8,7 +8,9 @@
 #include <QLineEdit>
 #include <QRadioButton>
 #include <QIntValidator>
-#include <QSlider>
+#include <QLabel>
+#include <QCheckBox>
+#include <array>
 
 DraftSettings& DraftSettings::Get()
 {
@@ -23,8 +25,8 @@ DraftSettings& DraftSettings::Get()
         s_draftSettings->PitcherCount = 10;
         s_draftSettings->RosterSize = 24;
         s_draftSettings->HittingSplit = 0.70f;
-        s_draftSettings->PitchingSplit = 0.30f;
-        s_draftSettings->OwnerCount = 12;
+        s_draftSettings->PitchingSplit = 1.f - s_draftSettings->HittingSplit;
+        // s_draftSettings->OwnerCount = 12;
         s_draftSettings->OwnerNames = QStringList({
             "--",
             "The 700 Level",
@@ -39,6 +41,10 @@ DraftSettings& DraftSettings::Get()
             "Young Guns",
             "Master Batters",
             "Steroid Stiffs",
+            "",
+            "",
+            "",
+            "",
         });
         s_draftSettings->OwnerAbbreviations = QStringList({
             "--",
@@ -54,6 +60,10 @@ DraftSettings& DraftSettings::Get()
             "YG",
             "MB",
             "SS",
+            "",
+            "",
+            "",
+            "",
         });
     }
 
@@ -65,24 +75,81 @@ DraftSettingsDialog::DraftSettingsDialog()
 {
     // Cancel button
     QPushButton* cancelButton = new QPushButton("Cancel");
-    connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
 
     // Draft button
-    QPushButton* draftButton = new QPushButton("Save");
-    draftButton->setDefault(true);
-    connect(draftButton, &QPushButton::clicked, this, &QDialog::accept);
+    QPushButton* acceptButton = new QPushButton("Save");
+    acceptButton->setDefault(true);
 
     // Button layout
     QHBoxLayout* buttonsLayout = new QHBoxLayout;
     buttonsLayout->addWidget(cancelButton);
-    buttonsLayout->addWidget(draftButton);
+    buttonsLayout->addWidget(acceptButton);
+
+    // 
+    QList<QLineEdit*> vecNames;
+    QList<QLineEdit*> vecAbbreviations;
+
+    //
+    enum OwnerGridColumn
+    {
+        OwnerGridColumn_ID,
+        OwnerGridColumn_Name,
+        OwnerGridColumn_Abbreviateion,
+        OwnerGridColumn_COUNT
+    };
+
+    // Column names
+    const char* ColumnNames[] = {
+        "ID",
+        "Owner Name",
+        "Abbreviation"
+    };
 
     // Owner group box
     QGroupBox* ownerGroupBox = new QGroupBox("Owners");
-    QFormLayout* ownerForumLayout = new QFormLayout(ownerGroupBox);
-    for (auto i = 1u; i <= DraftSettings::Get().OwnerCount; i++) {
-        auto* lineEditOwner = new QLineEdit(DraftSettings::Get().OwnerNames[i]);
-        ownerForumLayout->addRow(QString("Owner #%1:").arg(i), lineEditOwner);
+    QGridLayout* ownerGridLayout = new QGridLayout(ownerGroupBox);
+
+    // Per max owner...
+    for (auto row = 0u; row <= DraftSettings::Get().OwnerCount; row++) {
+
+        // Per column...
+        for (auto col = 0u; col < OwnerGridColumn_COUNT; col++) {
+
+            // Header
+            if (row == 0) {
+                ownerGridLayout->addWidget(new QLabel(ColumnNames[col]), row, col);
+                continue;
+            }
+
+            // Widget data
+            auto GetWidget = [&]() -> QWidget*
+            {
+                const bool valid = row <= DraftSettings::Get().OwnerCount;
+
+                switch (col)
+                {
+                case OwnerGridColumn_ID:
+                    return new QLabel(QString("#%1").arg(row));
+                case OwnerGridColumn_Name:
+                    {
+                        auto lineEdit = valid ? new QLineEdit(DraftSettings::Get().OwnerNames[row]) : new QLineEdit();
+                        vecNames.append(lineEdit);
+                        return lineEdit;
+                    }
+                case OwnerGridColumn_Abbreviateion:
+                    {
+                        auto lineEdit = valid ? new QLineEdit(DraftSettings::Get().OwnerAbbreviations[row]) : new QLineEdit();
+                        vecAbbreviations.append(lineEdit);
+                        return lineEdit;
+                    }
+                default:
+                    return nullptr;
+                    break;
+                }
+            };
+
+            ownerGridLayout->addWidget(GetWidget(), row, col);
+        }
     }
 
     // Budget group box
@@ -119,6 +186,38 @@ DraftSettingsDialog::DraftSettingsDialog()
     mainLayout->addWidget(playerPoolGroupBox);
     mainLayout->addSpacing(6);
     mainLayout->addLayout(buttonsLayout);
+
+    // Just returns
+    connect(cancelButton, &QPushButton::clicked, [=]{
+        reject();
+    });
+
+    // Save settings
+    connect(acceptButton, &QPushButton::clicked, [=] {
+
+        // Basic settings
+        DraftSettings draftSettings = {};
+        draftSettings.Budget = lineEditBudget->text().toInt();
+        draftSettings.HitterCount = lineEditHitters->text().toInt();
+        draftSettings.PitcherCount = lineEditPitchers->text().toInt();
+        draftSettings.RosterSize = draftSettings.HitterCount + draftSettings.PitcherCount;
+        draftSettings.HittingSplit = hittingSplit->text().toFloat() / 100.f;
+        draftSettings.PitchingSplit = 1.f - draftSettings.HittingSplit;
+
+        // Owner 0
+        draftSettings.OwnerNames.append(DraftSettings::Get().OwnerNames[0]);
+        draftSettings.OwnerAbbreviations.append(DraftSettings::Get().OwnerAbbreviations[0]);
+
+        // Loop owners
+        for (auto i = 0u; i < DraftSettings::Get().OwnerCount; i++) {
+            draftSettings.OwnerNames.append(vecNames[i]->text());
+            draftSettings.OwnerAbbreviations.append(vecAbbreviations[i]->text());
+        }
+
+        // Save
+        DraftSettings::Get() = draftSettings;
+        accept();
+    });
 
     // Configure this dialog
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
