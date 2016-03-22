@@ -4,6 +4,7 @@
 
 //------------------------------------------------------------------------------
 // PlayerPosition 
+// TODO: Just use a bitfield here...
 //------------------------------------------------------------------------------
 enum class PlayerPosition
 {
@@ -13,13 +14,13 @@ enum class PlayerPosition
     Second,
     SS,
     Third,
-    MiddleInfield,
-    CornerInfield,
+    // MiddleInfield,
+    // CornerInfield,
     Outfield,
-    Utility,
+    // Utility,
     DH,
-    Starter,
-    Relief,
+    // Starter,
+    // Relief,
     Pitcher,
     COUNT,
 };
@@ -69,9 +70,11 @@ struct Player
 
     // Player data
     uint32_t index;
-    QString id;                                 // player id
-    QString name;
-    QString team;                               // TODO: change to ID
+    QString id;        // player id
+    QString name;      
+    QString team;     // TODO: change to ID
+    uint32_t age = 0;
+    uint32_t experience = 0;
     CatergoryMask catergory;
     PlayerPositionBitfield eligiblePositionBitfield = uint32_t(0);
 

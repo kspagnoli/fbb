@@ -386,13 +386,13 @@ public:
         QList<QLabel*>* pVecOwnerLabels;
         pVecOwnerLabels = new QList<QLabel*>();
         pVecOwnerLabels->append(new QLabel("--"));
-        for (auto i = 1; i <= DraftSettings::Get().OwnerCount; i++) {
+        for (auto i = 1u; i <= DraftSettings::Get().OwnerCount; i++) {
             pVecOwnerLabels->append(new QLabel(DraftSettings::Get().OwnerNames[i]));
         }
 
         // Update label helper
         auto UpdateOwnerLabels = [=]() {
-            for (auto i = 1; i <= DraftSettings::Get().OwnerCount; i++) {
+            for (auto i = 1u; i <= DraftSettings::Get().OwnerCount; i++) {
                 pVecOwnerLabels->at(i)->setText(DraftSettings::Get().OwnerNames[i]);
             }
         };
@@ -682,7 +682,16 @@ private:
 
     void closeEvent(QCloseEvent* event) override
     {
-        WriteSettings();
+        event->ignore();
+
+        QMessageBox closeWarning;
+        closeWarning.setText(QString("Are you sure you want to quit?"));
+        closeWarning.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        closeWarning.setDefaultButton(QMessageBox::No);
+        if (closeWarning.exec() == QMessageBox::Yes) {
+            WriteSettings();
+            event->accept();
+        }
     }
 
     // Table factory

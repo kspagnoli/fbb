@@ -1,4 +1,5 @@
 #include "PlayerAppearances.h"
+#include "GlobalLogger.h"
 
 #include <vector>
 #include <fstream>
@@ -9,6 +10,9 @@
 
 PlayerApperances::PlayerApperances(const std::string& filename)
 {
+    // Log
+    GlobalLogger::AppendMessage(QString("Loading player appearances from %1...").arg(QString::fromStdString(filename)));
+
     // Open file
     std::fstream apperances(filename);
     std::string row;
@@ -32,7 +36,8 @@ PlayerApperances::PlayerApperances(const std::string& filename)
         { "3B",0 },
         { "SS",0 },
         { "OF",0 },
-        { "DH",0 },
+        { "Age",0 },
+        { "Yrs",0 },
     };
 
     // Parse the header data (first row)
@@ -70,8 +75,13 @@ PlayerApperances::PlayerApperances(const std::string& filename)
             apperances.atSS = boost::lexical_cast<uint32_t>(parsed[LUT["SS"]]);
             apperances.atOF = boost::lexical_cast<uint32_t>(parsed[LUT["OF"]]);
             apperances.atDH = boost::lexical_cast<uint32_t>(parsed[LUT["DH"]]);
+            apperances.age  = boost::lexical_cast<uint32_t>(parsed[LUT["Age"]]);
+            apperances.exp  = boost::lexical_cast<uint32_t>(parsed[LUT["Yrs"]]);
 
-            // 
+            // Experience is stored as last year
+            apperances.exp++;
+
+            // Storage
             auto key = std::make_tuple(name, team);
             if (m_mapAppearances.find(key) != m_mapAppearances.end()) {
                 throw 0;
@@ -82,6 +92,7 @@ PlayerApperances::PlayerApperances(const std::string& filename)
         } catch (...) {
 
             // Try next if something went wrong
+            GlobalLogger::AppendMessage(QString("Failed to parse appearance records for a player"));
             continue;
         }
     }
@@ -89,18 +100,13 @@ PlayerApperances::PlayerApperances(const std::string& filename)
 
 const Appearances& PlayerApperances::Lookup(const std::string& name) const
 {
-    // auto key = std::make_tuple(name, "XXX");
-
     auto itr = std::find_if(std::begin(m_mapAppearances), std::end(m_mapAppearances), [=](auto& player) {
         return std::get<0>(player.first) == name;
     });
 
-
     if (itr == m_mapAppearances.end()) {
-
         std::stringstream ss;
         ss << "No appearance entry for: " << name;
-
         throw std::runtime_error(ss.str());
     }
 

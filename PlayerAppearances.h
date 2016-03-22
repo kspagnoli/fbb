@@ -32,6 +32,9 @@ struct Appearances
     uint8_t atSS = 0;
     uint8_t atOF = 0;
     uint8_t atDH = 0;
+
+    uint8_t age = 0;
+    uint8_t exp = 0;
 };
 
 class PlayerApperances

@@ -26,7 +26,7 @@ DraftSettings& DraftSettings::Get()
         s_draftSettings->RosterSize = 24;
         s_draftSettings->HittingSplit = 0.70f;
         s_draftSettings->PitchingSplit = 1.f - s_draftSettings->HittingSplit;
-        // s_draftSettings->OwnerCount = 12;
+        s_draftSettings->OwnerCount = 12;
         s_draftSettings->OwnerNames = QStringList({
             "--",
             "The 700 Level",
@@ -41,10 +41,6 @@ DraftSettings& DraftSettings::Get()
             "Young Guns",
             "Master Batters",
             "Steroid Stiffs",
-            "",
-            "",
-            "",
-            "",
         });
         s_draftSettings->OwnerAbbreviations = QStringList({
             "--",
@@ -60,10 +56,6 @@ DraftSettings& DraftSettings::Get()
             "YG",
             "MB",
             "SS",
-            "",
-            "",
-            "",
-            "",
         });
     }
 

@@ -37,6 +37,8 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
     case PlayerTableModel::COLUMN_ID_LINK:
     case PlayerTableModel::COLUMN_NAME:
     case PlayerTableModel::COLUMN_TEAM:
+    case PlayerTableModel::COLUMN_AGE:
+    case PlayerTableModel::COLUMN_EXPERIENCE:
     case PlayerTableModel::COLUMN_POSITION:
     case PlayerTableModel::COLUMN_Z:
     case PlayerTableModel::COLUMN_ESTIMATE:
@@ -143,11 +145,11 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
             return true;
         }
 
-        if (m_acceptMI && (pos & ToBitfield(PlayerPosition::MiddleInfield))) {
+        if (m_acceptMI && ((pos & ToBitfield(PlayerPosition::Second) || (pos & ToBitfield(PlayerPosition::SS))))) {
             return true;
         }
 
-        if (m_acceptCI && (pos & ToBitfield(PlayerPosition::CornerInfield))) {
+        if (m_acceptCI && ((pos & ToBitfield(PlayerPosition::First) || (pos & ToBitfield(PlayerPosition::Third))))) {
             return true;
         }
 
@@ -155,7 +157,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
             return true;
         }
 
-        if (m_acceptU && (pos & ToBitfield(PlayerPosition::Utility))) {
+        if (m_acceptU) {
             return true;
         }
 
@@ -163,13 +165,13 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
             return true;
         }
 
-        if (m_acceptSP && (pos & ToBitfield(PlayerPosition::Starter))) {
-            return true;
-        }
+        // if (m_acceptSP && (pos & ToBitfield(PlayerPosition::Starter))) {
+        //     return true;
+        // }
 
-        if (m_acceptRP && (pos & ToBitfield(PlayerPosition::Relief))) {
-            return true;
-        }
+        // if (m_acceptRP && (pos & ToBitfield(PlayerPosition::Relief))) {
+        //     return true;
+        // }
 
         return false;
     };

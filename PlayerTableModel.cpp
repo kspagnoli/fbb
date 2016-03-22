@@ -52,13 +52,8 @@ QString PositionToString(const PlayerPosition& position)
     case PlayerPosition::Second: return "2B";
     case PlayerPosition::SS: return "SS";
     case PlayerPosition::Third: return "3B";
-    case PlayerPosition::MiddleInfield: return "MI";
-    case PlayerPosition::CornerInfield: return "CI";
     case PlayerPosition::Outfield: return "OF";
-    case PlayerPosition::Utility: return "U";
     case PlayerPosition::DH: return "DH";
-    case PlayerPosition::Starter: return "SP";
-    case PlayerPosition::Relief: return "RP";
     case PlayerPosition::Pitcher: return "P";
     default:
         return "??";
@@ -92,11 +87,6 @@ PlayerPosition StringToPosition(const QString& position)
     if (position == "3B") { return PlayerPosition::Third; }
     if (position == "OF") { return PlayerPosition::Outfield; }
     if (position == "DH") { return PlayerPosition::DH; }
-    if (position == "MI") { return PlayerPosition::MiddleInfield; }
-    if (position == "CI") { return PlayerPosition::CornerInfield; }
-    if (position == "U")  { return PlayerPosition::Utility; }
-    if (position == "SP") { return PlayerPosition::Starter; }
-    if (position == "RP") { return PlayerPosition::Relief; }
     if (position == "P")  { return PlayerPosition::Pitcher; }
     return PlayerPosition::None;
 }
@@ -126,6 +116,9 @@ void PlayerTableModel::ResetData()
 //------------------------------------------------------------------------------
 void PlayerTableModel::LoadHittingProjections(const std::string& filename, const PlayerApperances& playerApperances)
 {
+    // Log
+    GlobalLogger::AppendMessage(QString("Loading hitting projections from %1...").arg(QString::fromStdString(filename)));
+
     // Open file
     std::fstream batters(filename);
     std::string row;
@@ -189,39 +182,40 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
                 continue;
             }
 
-            // Lookup appearances 
-            try {
-                const auto& appearances = playerApperances.Lookup(player.name.toStdString());
-                if (appearances.atC > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Catcher, PlayerPosition::Utility }); }
-                if (appearances.at1B > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::First, PlayerPosition::Utility, PlayerPosition::CornerInfield }); }
-                if (appearances.at2B > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Second, PlayerPosition::Utility, PlayerPosition::MiddleInfield }); }
-                if (appearances.atSS > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::SS, PlayerPosition::Utility, PlayerPosition::MiddleInfield }); }
-                if (appearances.at3B > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Third, PlayerPosition::Utility, PlayerPosition::CornerInfield }); }
-                if (appearances.atOF > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Outfield, PlayerPosition::Utility }); }
-
-                // XXX: Don't care about DL
-                // if (appearances.atDH > 0) { player.eligiblePositionBitfield |= ToBitfield(PlayerPosition::DH); }
-
-            }
-            catch (std::runtime_error& e) {
-                std::cerr << "[Hitter] " << e.what() << std::endl;
-            }
-
-            // Set catergory
-            player.catergory = Player::Catergory::Hitter;
-
             // XXX: NL-only
             if (LookupTeamGroup(player.team.toStdString()).leauge != Leauge::NL) {
                 continue;
             }
 
+            // Lookup appearances 
+            try {
+                const auto& appearances = playerApperances.Lookup(player.name.toStdString());
+                if (appearances.atC > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Catcher }); }
+                if (appearances.at1B > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::First }); }
+                if (appearances.at2B > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Second }); }
+                if (appearances.atSS > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::SS }); }
+                if (appearances.at3B > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Third }); }
+                if (appearances.atOF > 0) { player.eligiblePositionBitfield |= ToBitfield({ PlayerPosition::Outfield }); }
+
+                // XXX: Don't care about DL
+                // if (appearances.atDH > 0) { player.eligiblePositionBitfield |= ToBitfield(PlayerPosition::DH); }
+                player.age = appearances.age;
+                player.experience = appearances.exp;
+
+            } catch (std::runtime_error&) {
+                GlobalLogger::AppendMessage(QString("Failed to find appearance records for %1 (hitter with %2 PA)").arg(player.name).arg(player.hitting.PA));
+            }
+
+            // Set catergory
+            player.catergory = Player::Catergory::Hitter;
+
             // Store in vector
             m_vecHitters.emplace_back(player);
 
-        }
-        catch (...) {
+        } catch (...) {
 
             // Try next if something went wrong
+            GlobalLogger::AppendMessage(QString("Failed to parse a hitter (count = %1)").arg(m_vecHitters.size()));
             continue;
         }
     }
@@ -313,6 +307,9 @@ void PlayerTableModel::CalculateHittingScores()
 //------------------------------------------------------------------------------
 void PlayerTableModel::LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances)
 {
+    // Log
+    GlobalLogger::AppendMessage(QString("Loading pitching projections from %1...").arg(QString::fromStdString(filename)));
+
     // Open file
     std::fstream pitchers(filename);
     std::string row;
@@ -395,19 +392,25 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
                 continue;
             }
 
+            // Lookup appearances 
+            try {
+                const auto& appearances = playerApperances.Lookup(player.name.toStdString());
+                player.age = appearances.age;
+                player.experience = appearances.exp;
+            } catch (std::runtime_error&) {
+                GlobalLogger::AppendMessage(QString("Failed to find appearance records for %1 (hitter with %2 PA)").arg(player.name).arg(player.hitting.PA));
+            }
+
             // Set catergory
             player.catergory = Player::Catergory::Pitcher;
             
             // Add to pitchers
             m_vecPitchers.emplace_back(player);
 
-        } catch (std::runtime_error& e) {
-
-            std::cerr << "[Pitcher] " << e.what() << std::endl;
-
         } catch (...) {
 
             // Try next if something went wrong
+            GlobalLogger::AppendMessage(QString("Failed to parse a pitcher (count = %1)").arg(m_vecPitchers.size()));
             continue;
         }
     }
@@ -539,6 +542,8 @@ bool PlayerTableModel::SaveDraftStatus(const QString& filename) const
         stream << player.id;
         stream << player.name;
         stream << player.team;
+        stream << player.age;
+        stream << player.experience;
         stream << player.catergory;
         stream << player.eligiblePositionBitfield;
         stream << player.ownerId;
@@ -596,7 +601,7 @@ bool PlayerTableModel::LoadDraftStatus(const QString& filename)
     stream >> DraftSettings::Get().RosterSize;
     stream >> DraftSettings::Get().HittingSplit;
     stream >> DraftSettings::Get().PitchingSplit;
-    // stream >> DraftSettings::Get().OwnerCount;
+    stream >> DraftSettings::Get().OwnerCount;
     stream >> DraftSettings::Get().OwnerNames;
     stream >> DraftSettings::Get().OwnerAbbreviations;
 
@@ -614,6 +619,8 @@ bool PlayerTableModel::LoadDraftStatus(const QString& filename)
         stream >> player.id;
         stream >> player.name;
         stream >> player.team;
+        stream >> player.age;
+        stream >> player.experience;
         stream >> player.catergory;
         stream >> player.eligiblePositionBitfield;
         stream >> player.ownerId;
@@ -762,15 +769,25 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             return player.name;
         case COLUMN_TEAM:
             return player.team;
+        case COLUMN_AGE:
+            if (role == RawDataRole) {
+                return player.age;
+            } else {
+                return player.age == 0 ? "??" : QString::number(player.age);
+            }
+        case COLUMN_EXPERIENCE:
+            if(role == RawDataRole) {
+                return player.experience;
+            } else {
+                return player.experience == 0 ? "R" : QString::number(player.experience);
+            }
         case COLUMN_CATERGORY:
             return player.catergory;
         case COLUMN_POSITION:
             if (role == RawDataRole) {
                 return player.eligiblePositionBitfield;
             } else {
-                auto positionsToHide = { PlayerPosition::MiddleInfield, PlayerPosition::CornerInfield, PlayerPosition::Utility };
-                auto trimPositions = player.eligiblePositionBitfield & ~ToBitfield(positionsToHide);
-                return PositionMaskToStringList(trimPositions).join(", ");
+                return PositionMaskToStringList(player.eligiblePositionBitfield).join("/");
             }
         case COLUMN_AB:
             return player.hitting.AB;
@@ -869,6 +886,11 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
 
         switch (index.column())
         {
+            case COLUMN_COMMENT:
+            {
+                return QString("<FONT>%1</FONT>").arg(player.comment);
+            }
+
             case COLUMN_Z:
             {
                 if (player.catergory == Player::Catergory::Hitter) {
@@ -977,6 +999,10 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
                 return "Name";
             case COLUMN_TEAM:
                 return "Team";
+            case COLUMN_AGE:
+                return "Age";
+            case COLUMN_EXPERIENCE:
+                return "Exp.";
             case COLUMN_CATERGORY:
                 return "Catergory";
             case COLUMN_POSITION:
@@ -1037,6 +1063,8 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
                 return "%0.3f";
 
             case COLUMN_RANK:
+            case COLUMN_AGE:
+            case COLUMN_EXPERIENCE:
             case COLUMN_AB:
             case COLUMN_HR:
             case COLUMN_R:
@@ -1069,6 +1097,9 @@ Qt::ItemFlags PlayerTableModel::flags(const QModelIndex &index) const
     {
     case COLUMN_DRAFT_BUTTON:
     case COLUMN_COMMENT:
+    case COLUMN_POSITION:
+    case COLUMN_AGE:
+    case COLUMN_EXPERIENCE:
         return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
     default:
         return QAbstractItemModel::flags(index);
@@ -1091,7 +1122,35 @@ bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, 
         break;
     case COLUMN_COMMENT:
         player.comment = value.toString();
-        break;;
+        break;
+    case COLUMN_POSITION:
+    {
+        player.eligiblePositionBitfield = 0;
+        QStringList positions = value.toString().split("/");
+        for (auto position : positions) {
+            position = position.trimmed();
+            player.eligiblePositionBitfield |= (1 << uint32_t(StringToPosition(position)));
+        }
+        break;
+    }
+    case COLUMN_AGE:
+    {
+        bool ok = false;
+        auto result = value.toUInt(&ok);
+        if (ok) {
+            player.age = result;
+        }
+        break;
+    }
+    case COLUMN_EXPERIENCE:
+    {
+        bool ok = false;
+        auto result = value.toUInt(&ok);
+        if (ok) {
+            player.experience = result;
+        }
+        break;
+    }
     default:
         break;
     }

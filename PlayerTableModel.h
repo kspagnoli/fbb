@@ -34,6 +34,8 @@ public:
         COLUMN_PAID,
         COLUMN_NAME,
         COLUMN_TEAM,
+        COLUMN_AGE,
+        COLUMN_EXPERIENCE,
         COLUMN_CATERGORY,
         COLUMN_POSITION,
 
