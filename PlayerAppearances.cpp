@@ -8,18 +8,23 @@
 #include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
 
-PlayerApperances::PlayerApperances(const std::string& filename)
+#include <QFile>
+#include <QString>
+#include <QTextStream>
+
+PlayerApperances::PlayerApperances()
 {
     // Log
-    GlobalLogger::AppendMessage(QString("Loading player appearances from %1...").arg(QString::fromStdString(filename)));
+    GlobalLogger::AppendMessage("Loading player appearances...");
 
     // Open file
-    std::fstream apperances(filename);
-    std::string row;
+    QFile inputFile(":/data/Appearances_2015.csv");
+    inputFile.open(QIODevice::ReadOnly);
+    QTextStream file(&inputFile);
 
     // Tokenize header data
     using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
-    std::getline(apperances, row);
+    std::string row = file.readLine().toStdString();
     Tokenizer tokenizer(row);
 
     // Stats to find
@@ -51,12 +56,14 @@ PlayerApperances::PlayerApperances(const std::string& filename)
     }
 
     // Loop rows
-    while (std::getline(apperances, row)) {
+    // while (std::getline(apperances, row)) {
+    while (!file.atEnd()) {
 
         // Tokenization and/or lexical casts might fail if the data is malformed
         try {
 
             // Tokenize this row
+            std::string row = file.readLine().toStdString();
             Tokenizer tokenizer(row);
             std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
 
@@ -78,15 +85,13 @@ PlayerApperances::PlayerApperances(const std::string& filename)
             apperances.age  = boost::lexical_cast<uint32_t>(parsed[LUT["Age"]]);
             apperances.exp  = boost::lexical_cast<uint32_t>(parsed[LUT["Yrs"]]);
 
-            // Experience is stored as last year
-            apperances.exp++;
-
-            // Storage
+            // Get key
             auto key = std::make_tuple(name, team);
             if (m_mapAppearances.find(key) != m_mapAppearances.end()) {
                 throw 0;
             } 
 
+            // Save in database
             m_mapAppearances.emplace(std::move(std::make_pair(key, apperances)));
 
         } catch (...) {

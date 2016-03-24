@@ -20,7 +20,7 @@ find_package(Qt5Charts REQUIRED)
 
 # QT resrouces files
 qt5_add_resources(RESOURCES 
-	Icons.qrc)
+    Resources.qrc)
 
 # Source files
 set(SOURCE

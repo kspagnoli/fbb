@@ -118,16 +118,18 @@ public:
 
     MainWindow()
     {
+        Q_INIT_RESOURCE(Resources);
+
         // Settings persistence
         ReadSettings();
 
         // Appearance LUT
-        PlayerApperances appearances("2015_appearances.csv");
+        PlayerApperances appearances;
 
         // Build player table model from file
         PlayerTableModel* playerTableModel = new PlayerTableModel(this);
-        playerTableModel->LoadHittingProjections("2015_hitters.csv", appearances);
-        playerTableModel->LoadPitchingProjections("2015_pitchers.csv", appearances);
+        playerTableModel->LoadHittingProjections(appearances);
+        playerTableModel->LoadPitchingProjections(appearances);
         playerTableModel->CalculateHittingScores();
         playerTableModel->CalculatePitchingScores();
         playerTableModel->InitializeTargetValues();

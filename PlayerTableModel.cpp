@@ -114,18 +114,19 @@ void PlayerTableModel::ResetData()
 //------------------------------------------------------------------------------
 // LoadHittingProjections
 //------------------------------------------------------------------------------
-void PlayerTableModel::LoadHittingProjections(const std::string& filename, const PlayerApperances& playerApperances)
+void PlayerTableModel::LoadHittingProjections(const PlayerApperances& playerApperances)
 {
     // Log
-    GlobalLogger::AppendMessage(QString("Loading hitting projections from %1...").arg(QString::fromStdString(filename)));
+    GlobalLogger::AppendMessage("Loading hitting projections...");
 
     // Open file
-    std::fstream batters(filename);
-    std::string row;
+    QFile inputFile(":/data/HittingProjections_2015.csv");
+    inputFile.open(QIODevice::ReadOnly);
+    QTextStream file(&inputFile);
 
     // Tokenize header data
     using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
-    std::getline(batters, row);
+    std::string row = file.readLine().toStdString();
     Tokenizer tokenizer(row);
 
     // Stats to find
@@ -143,6 +144,8 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
         { "SB",0 },
     };
 
+    std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
+
     // Parse the header data (first row)
     for (auto& entry : LUT) {
 
@@ -154,12 +157,13 @@ void PlayerTableModel::LoadHittingProjections(const std::string& filename, const
     }
 
     // Loop rows
-    while (std::getline(batters, row)) {
+    while (!file.atEnd()) {
 
         // Tokenization and/or lexical casts might fail if the data is malformed
         try {
 
             // Tokenize this row
+            std::string row = file.readLine().toStdString();
             Tokenizer tokenizer(row);
             std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
 
@@ -305,18 +309,19 @@ void PlayerTableModel::CalculateHittingScores()
 //------------------------------------------------------------------------------
 // LoadPitchingProjections
 //------------------------------------------------------------------------------
-void PlayerTableModel::LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances)
+void PlayerTableModel::LoadPitchingProjections(const PlayerApperances& playerApperances)
 {
     // Log
-    GlobalLogger::AppendMessage(QString("Loading pitching projections from %1...").arg(QString::fromStdString(filename)));
+    GlobalLogger::AppendMessage("Loading pitching projections...");
 
     // Open file
-    std::fstream pitchers(filename);
-    std::string row;
+    QFile inputFile(":/data/PitchingProjections_2015.csv");
+    inputFile.open(QIODevice::ReadOnly);
+    QTextStream file(&inputFile);
     
     // Tokenize header data
     using Tokenizer = boost::tokenizer<boost::escaped_list_separator<char>>;
-    std::getline(pitchers, row);
+    std::string row = file.readLine().toStdString();
     Tokenizer tokenizer(row);
 
     std::unordered_map<std::string, uint32_t> LUT =
@@ -348,14 +353,17 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
     }
 
     // Loop rows
-    while (std::getline(pitchers, row)) {
+    while (!file.atEnd()) {
 
         // Tokenization and/or lexical casts might fail if the data is malformed
         try {
 
+            // Tokenize line
+            std::string row = file.readLine().toStdString();
             Tokenizer tokenizer(row);
             std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
 
+            // Parse player
             Player player;
             player.id = QString::fromStdString(parsed[LUT["playerid"]]);
             player.name = QString::fromStdString(parsed[LUT["Name"]]);
@@ -398,7 +406,7 @@ void PlayerTableModel::LoadPitchingProjections(const std::string& filename, cons
                 player.age = appearances.age;
                 player.experience = appearances.exp;
             } catch (std::runtime_error&) {
-                GlobalLogger::AppendMessage(QString("Failed to find appearance records for %1 (hitter with %2 PA)").arg(player.name).arg(player.hitting.PA));
+                GlobalLogger::AppendMessage(QString("Failed to find appearance records for %1 (pitcher with %2 IP)").arg(player.name).arg(player.pitching.IP));
             }
 
             // Set catergory

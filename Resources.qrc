@@ -1,0 +1,17 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file>icons/avoid_10x10.png</file>
+    <file>icons/none_10x10.png</file>
+    <file>icons/star_10x10.png</file>
+    <file>icons/watch_10x10.png</file>
+
+    <file>data/HittingProjections_2015.csv</file>
+    <file>data/PitchingProjections_2015.csv</file>
+    
+    <file>data/Appearances_2015.csv</file>
+
+    <file>data/PitchingStats_2015.csv</file>
+    <file>data/PitchingStats_2014.csv</file>
+
+</qresource>
+</RCC>

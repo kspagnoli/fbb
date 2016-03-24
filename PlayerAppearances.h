@@ -40,7 +40,7 @@ struct Appearances
 class PlayerApperances
 {
 public:
-    PlayerApperances(const std::string& filename);
+    PlayerApperances();
     const Appearances& Lookup(const std::string& name) const;
 
 private:

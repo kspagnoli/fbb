@@ -75,8 +75,8 @@ public:
     void ResetData();
 
     // Load projections
-    void LoadHittingProjections(const std::string& filename, const PlayerApperances& playerApperances);
-    void LoadPitchingProjections(const std::string& filename, const PlayerApperances& playerApperances);
+    void LoadHittingProjections(const PlayerApperances& playerApperances);
+    void LoadPitchingProjections(const PlayerApperances& playerApperances);
 
     // Calculations
     void CalculateHittingScores();

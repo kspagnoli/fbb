@@ -1,8 +1,0 @@
-<!DOCTYPE RCC><RCC version="1.0">
-<qresource>
-    <file>icons/avoid_10x10.png</file>
-    <file>icons/none_10x10.png</file>
-    <file>icons/star_10x10.png</file>
-    <file>icons/watch_10x10.png</file>
-</qresource>
-</RCC>
