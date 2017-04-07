@@ -14,14 +14,17 @@ enum class PlayerPosition
     Second,
     SS,
     Third,
-    // MiddleInfield,
-    // CornerInfield,
     Outfield,
-    // Utility,
     DH,
-    // Starter,
-    // Relief,
     Pitcher,
+
+    MiddleInfield,
+    CornerInfield,
+    Utility,
+
+    Starter,
+    Relief,
+
     COUNT,
 };
 
@@ -39,6 +42,30 @@ inline PlayerPositionBitfield ToBitfield(const std::initializer_list<PlayerPosit
         bitfield |= (1 << PlayerPositionBitfield(position));
     }
     return bitfield;
+}
+
+inline PlayerPositionBitfield AddFauxPositions(const PlayerPositionBitfield& positions)
+{
+    PlayerPositionBitfield ret = positions;
+    if (positions & ToBitfield(PlayerPosition::SS) || positions & ToBitfield(PlayerPosition::Second)) {
+        ret |= ToBitfield(PlayerPosition::MiddleInfield);
+    }
+
+    if (positions & ToBitfield(PlayerPosition::First) || positions & ToBitfield(PlayerPosition::Third)) {
+        ret |= ToBitfield(PlayerPosition::CornerInfield);
+    }
+
+    if (positions & ToBitfield(PlayerPosition::Catcher) ||
+        positions & ToBitfield(PlayerPosition::First) ||
+        positions & ToBitfield(PlayerPosition::Second) ||
+        positions & ToBitfield(PlayerPosition::SS) ||
+        positions & ToBitfield(PlayerPosition::Third) ||
+        positions & ToBitfield(PlayerPosition::Outfield))
+    {
+        ret |= ToBitfield(PlayerPosition::Utility);
+    }
+
+    return ret;
 }
 
 //------------------------------------------------------------------------------
@@ -85,6 +112,7 @@ struct Player
 
     // Cost estimate category 
     uint32_t categoryRank = 0;
+    float zScoreBonus = 0;
     float zScore = 0;
     float cost = 0;
 

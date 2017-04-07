@@ -89,7 +89,7 @@ DraftDialog::DraftDialog(QAbstractItemModel* model, const QModelIndex& index)
         QComboBox* positionComboBox = new QComboBox;
         QModelIndex playerPositionsIndex = model->index(index.row(), PlayerTableModel::COLUMN_POSITION);
         uint32_t playerPositionBitField = model->data(playerPositionsIndex, PlayerTableModel::RawDataRole).toUInt();
-        QStringList positionStrings = PositionMaskToStringList(playerPositionBitField);
+        QStringList positionStrings = PositionMaskToStringList(AddFauxPositions(playerPositionBitField));
         positionComboBox->addItems(positionStrings);
         infoGridLayout->addWidget(new QLabel("Position:"), PositionRow, LabelColumn);
         infoGridLayout->addWidget(positionComboBox, PositionRow, ItemColumn);

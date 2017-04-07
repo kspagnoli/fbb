@@ -24,6 +24,7 @@ public:
     int32_t GetRosterSlotsFilled() const;
     int32_t GetRosterSpotsToFill() const;
     int32_t GetMaxBid() const;
+    int32_t GetValue() const;
 
 private:
     uint32_t m_ownerId = 0;

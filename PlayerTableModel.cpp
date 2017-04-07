@@ -2,6 +2,7 @@
 #include "ZScore.h"
 #include "Teams.h"
 #include "Player.h"
+#include "PlayerNews.h"
 #include "DraftSettings.h"
 #include "OwnerSortFilterProxyModel.h"
 #include "GlobalLogger.h"
@@ -21,6 +22,26 @@
 #include <QDir>
 #include <QDesktopServices>
 #include <QCursor>
+
+QString FormatNews(const std::shared_ptr<News>& spNews)
+{
+    return QString(
+        "<b>Quick:</b> <font>%1</font><br>\n\r"
+        "<br>\n\r"
+        "<b>Details:</b> <font>%2</font><br>\n\r"
+        "<br>\n\r"
+        "<b>News:</b> <font>%3</font>").arg(spNews->quick).arg(spNews->details).arg(spNews->news);
+}
+
+
+//------------------------------------------------------------------------------
+// FileExists (static helper)
+//------------------------------------------------------------------------------
+bool FileExists(const char* name)
+{
+    QFileInfo checkFile(name);
+    return checkFile.exists() && checkFile.isFile();
+}
 
 //------------------------------------------------------------------------------
 // PositionToString (static helper)
@@ -54,7 +75,12 @@ QString PositionToString(const PlayerPosition& position)
     case PlayerPosition::Third: return "3B";
     case PlayerPosition::Outfield: return "OF";
     case PlayerPosition::DH: return "DH";
+    case PlayerPosition::MiddleInfield: return "MI";
+    case PlayerPosition::CornerInfield: return "CI";
+    case PlayerPosition::Utility: return "U";
     case PlayerPosition::Pitcher: return "P";
+    case PlayerPosition::Starter: return "SP";
+    case PlayerPosition::Relief: return "RP";
     default:
         return "??";
         break;
@@ -88,6 +114,11 @@ PlayerPosition StringToPosition(const QString& position)
     if (position == "OF") { return PlayerPosition::Outfield; }
     if (position == "DH") { return PlayerPosition::DH; }
     if (position == "P")  { return PlayerPosition::Pitcher; }
+    if (position == "MI") { return PlayerPosition::MiddleInfield; }
+    if (position == "CI") { return PlayerPosition::CornerInfield; }
+    if (position == "U")  { return PlayerPosition::Utility; }
+    if (position == "SP") { return PlayerPosition::Starter; }
+    if (position == "RP") { return PlayerPosition::Relief; }
     return PlayerPosition::None;
 }
 
@@ -120,7 +151,9 @@ void PlayerTableModel::LoadHittingProjections(const PlayerApperances& playerAppe
     GlobalLogger::AppendMessage("Loading hitting projections...");
 
     // Open file
-    QFile inputFile(":/data/HittingProjections_2015.csv");
+    const char* hitters = "hitters.csv";
+    const char* backup = ":/data/2017-hitters-depthcharts.csv";
+    QFile inputFile(FileExists(hitters) ? hitters : backup);
     inputFile.open(QIODevice::ReadOnly);
     QTextStream file(&inputFile);
 
@@ -261,7 +294,7 @@ void PlayerTableModel::CalculateHittingScores()
 
     // Sum zScores
     for (Player& player : m_vecHitters) {
-        player.zScore = (player.hitting.zAVG + player.hitting.zHR + player.hitting.zR + player.hitting.zRBI + player.hitting.zSB);
+        player.zScore = (player.hitting.zAVG + player.hitting.zHR + player.hitting.zR + player.hitting.zRBI + player.hitting.zSB + player.zScoreBonus);
     }
 
     // Re-rank based on z-score
@@ -315,7 +348,9 @@ void PlayerTableModel::LoadPitchingProjections(const PlayerApperances& playerApp
     GlobalLogger::AppendMessage("Loading pitching projections...");
 
     // Open file
-    QFile inputFile(":/data/PitchingProjections_2015.csv");
+    const char* pitchers = "pitchers.csv";
+    const char* backup = ":/data/2017-pitchers-depthcharts.csv";
+    QFile inputFile(FileExists(pitchers) ? pitchers : backup);
     inputFile.open(QIODevice::ReadOnly);
     QTextStream file(&inputFile);
     
@@ -458,7 +493,7 @@ void PlayerTableModel::CalculatePitchingScores()
     // ERASGP  =((475 + [@ER]) * 9 / (1192 + [@IP]) - 3.59) / -0.076
     // WHIPSGP =((1466 + [@H] + [@BB]) / (1192 + [@IP]) - 1.23) / -0.015
 
-    // for (Player& player : vecPitchers) {
+    // for (Player& player : m_vecPitchers) {
     //     player.pitching.zW    = player.pitching.W / 3.03;
     //     player.pitching.zSV   = player.pitching.SV / 9.95;
     //     player.pitching.zSO   = player.pitching.SO / 39.3;
@@ -466,9 +501,18 @@ void PlayerTableModel::CalculatePitchingScores()
     //     player.pitching.zWHIP = ((1466 + player.pitching.H + player.pitching.BB) / (1192 + player.pitching.IP) - 1.23) / -0.015;
     // }
 
+    // Add bonus to starters and closers
+    for (Player& player : m_vecPitchers) {
+
+        // Scale down relief pitchers
+        if (player.pitching.IP <= 100 && player.pitching.SV <= 10) {
+            player.zScoreBonus = -8.0;
+        }
+    }
+
     // Sum z-score
     for (Player& player : m_vecPitchers) {
-        player.zScore = (player.pitching.zSO + player.pitching.zW + player.pitching.zSV + player.pitching.zERA + player.pitching.zWHIP);
+        player.zScore = (player.pitching.zSO + player.pitching.zW + player.pitching.zSV + player.pitching.zERA + player.pitching.zWHIP + player.zScoreBonus);
     }
 
     // Re-rank based on z-score
@@ -667,6 +711,7 @@ bool PlayerTableModel::LoadDraftStatus(const QString& filename)
     CalculateHittingScores();
     CalculatePitchingScores();
     InitializeTargetValues();
+    UpdateInflationFactor();
 
     // All the data is changing
     emit endResetModel();
@@ -691,6 +736,19 @@ void PlayerTableModel::InitializeTargetValues()
     m_arrTargetValues[COLUMN_SV] /= float(DraftSettings::Get().OwnerCount);
     m_arrTargetValues[COLUMN_WHIP] = (m_arrTargetValues[COLUMN_HA] + m_arrTargetValues[COLUMN_BB]) / m_arrTargetValues[COLUMN_IP];
     m_arrTargetValues[COLUMN_ERA] = (9.f * m_arrTargetValues[COLUMN_ER]) / m_arrTargetValues[COLUMN_IP];
+}
+
+//------------------------------------------------------------------------------
+// RemovePlayer
+//------------------------------------------------------------------------------
+void PlayerTableModel::RemovePlayer(uint32_t index)
+{
+    // TODO: not yet implemented...
+
+    // Bounds check
+    if (index < 0 || index >= m_vecPlayers.size()) {
+        return;
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -880,6 +938,7 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
         case COLUMN_DRAFT_POSITION:
         case COLUMN_ID_LINK:
         case COLUMN_FLAG:
+        case COLUMN_NEWS:
             return Qt::AlignmentFlag(int(Qt::AlignCenter) | int(Qt::AlignVCenter));
         case COLUMN_NAME:
         case COLUMN_TEAM:
@@ -903,35 +962,38 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             {
                 if (player.catergory == Player::Catergory::Hitter) {
                     return QString(
-                        "zAVG: %1\n"
-                        "zR:   %2\n"
-                        "zRBI: %3\n"
-                        "zHR:  %4\n"
-                        "zSB:  %5")
+                        "zAVG:   %1\n"
+                        "zR:     %2\n"
+                        "zRBI:   %3\n"
+                        "zHR:    %4\n"
+                        "zSB:    %5\n" 
+                        "zBonus: %6")
                         .arg(player.hitting.zAVG)
                         .arg(player.hitting.zR)
                         .arg(player.hitting.zRBI)
                         .arg(player.hitting.zHR)
-                        .arg(player.hitting.zSB);
+                        .arg(player.hitting.zSB)
+                        .arg(player.zScoreBonus);
                 }
 
                 if (player.catergory == Player::Catergory::Pitcher) {
                     return QString(
-                        "zERA:  %1\n"
-                        "zSO:   %2\n"
-                        "zWHIP: %3\n"
-                        "zW:    %4\n"
-                        "zSV:   %5")
+                        "zERA:   %1\n"
+                        "zSO:    %2\n"
+                        "zWHIP:  %3\n"
+                        "zW:     %4\n"
+                        "zSV:    %5\n"
+                        "zBonus: %6")
                         .arg(player.pitching.zERA)
                         .arg(player.pitching.zSO)
                         .arg(player.pitching.zWHIP)
                         .arg(player.pitching.zW)
-                        .arg(player.pitching.zSV);
+                        .arg(player.pitching.zSV)
+                        .arg(player.zScoreBonus);
                 }
             }
 
-            case COLUMN_ESTIMATE:
-            {
+            case COLUMN_ESTIMATE: {
                 const float baseCost = player.cost;
                 const float inflatedCost = m_inflationFactor * baseCost;
                 const float diff = inflatedCost - baseCost;
@@ -942,7 +1004,12 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
                     .arg(QString::number(inflatedCost, 'f', 2))
                     .arg(QString::number(baseCost, 'f', 2))
                     .arg(QString::number(diff, 'f', 2));
-            }
+            } break;
+
+            case COLUMN_NEWS: {
+                auto spNews = PlayerNews::Lookup(player.id);
+                return spNews ? FormatNews(spNews) : "???";
+            } break;
         }
     }
 
@@ -965,6 +1032,11 @@ QVariant PlayerTableModel::data(const QModelIndex& index, int role) const
             default:
                 break;
             }
+        }
+        case COLUMN_NEWS:
+        {
+            return QIcon(":/icons/news_10x10.png");
+            break;
         }
         default:
             break;
@@ -1053,6 +1125,8 @@ QVariant PlayerTableModel::headerData(int section, Qt::Orientation orientation, 
                 return "zScore";
             case COLUMN_COMMENT:
                 return "Comment";
+            case COLUMN_NEWS:
+                return "News";
             }
         }
 
@@ -1103,11 +1177,14 @@ Qt::ItemFlags PlayerTableModel::flags(const QModelIndex &index) const
 {
     switch (index.column()) 
     {
+    // special
     case COLUMN_DRAFT_BUTTON:
-    case COLUMN_COMMENT:
     case COLUMN_POSITION:
+    case COLUMN_COMMENT:
     case COLUMN_AGE:
     case COLUMN_EXPERIENCE:
+    case COLUMN_IP:
+    case COLUMN_AB:
         return QAbstractItemModel::flags(index) | Qt::ItemIsEditable;
     default:
         return QAbstractItemModel::flags(index);
@@ -1141,6 +1218,8 @@ bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, 
         }
         break;
     }
+
+    // Integers
     case COLUMN_AGE:
     {
         bool ok = false;
@@ -1159,6 +1238,24 @@ bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, 
         }
         break;
     }
+    case COLUMN_IP:
+    {
+        bool ok = false;
+        auto result = value.toUInt(&ok);
+        if (ok) {
+            player.pitching.IP = result;
+        }
+        break;
+    }
+    case COLUMN_AB:
+    {
+        bool ok = false;
+        auto result = value.toUInt(&ok);
+        if (ok) {
+            player.hitting.AB = result;
+        }
+        break;
+    }
     default:
         break;
     }
@@ -1168,7 +1265,27 @@ bool PlayerTableModel::setData(const QModelIndex& index, const QVariant& value, 
 }
 
 //------------------------------------------------------------------------------
-// OnDrafted (override)
+// UpdateInflationFactor 
+//------------------------------------------------------------------------------
+void PlayerTableModel::UpdateInflationFactor()
+{
+    // Update inflation model
+    float sumCost = DraftSettings::Get().OwnerCount * DraftSettings::Get().Budget;
+    float sumValue = DraftSettings::Get().OwnerCount * DraftSettings::Get().Budget;
+    for (auto& player : m_vecPlayers)
+    {
+        if (player.ownerId != 0) {
+            sumCost -= player.paid;
+            sumValue -= player.cost;
+        }
+    }
+    m_inflationFactor = sumValue ? (sumCost / sumValue) : 1.0f;
+    m_inflationFactor = std::max(m_inflationFactor, 0.5);
+    m_inflationFactor = std::min(m_inflationFactor, 2.0);
+}
+
+//------------------------------------------------------------------------------
+// OnDrafted 
 //------------------------------------------------------------------------------
 void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QModelIndex& index, QAbstractItemModel* model)
 {
@@ -1186,19 +1303,8 @@ void PlayerTableModel::OnDrafted(const DraftDialog::Results& results, const QMod
     player.paid = results.cost;
     player.draftPosition = results.position;
 
-    // Update inflation model
-    float sumCost = DraftSettings::Get().OwnerCount * DraftSettings::Get().Budget;
-    float sumValue = DraftSettings::Get().OwnerCount * DraftSettings::Get().Budget;
-    for (auto& player : m_vecPlayers)
-    {
-        if (player.ownerId != 0) {
-            sumCost -= player.paid;
-            sumValue -= player.cost;
-        }
-    }
-    m_inflationFactor = sumValue ? (sumCost / sumValue) : 1.0f;
-    m_inflationFactor = std::max(m_inflationFactor, 0.5);
-    m_inflationFactor = std::min(m_inflationFactor, 2.0);
+    // Update inflation
+    UpdateInflationFactor();
 
     // Log
     if (player.ownerId != 0) {

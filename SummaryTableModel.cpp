@@ -25,29 +25,44 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         return Qt::AlignmentFlag(int(Qt::AlignCenter | Qt::AlignVCenter));
     }
 
+    auto ownerSortFilterProxyModel = m_vecOwnerSortFilterProxyModels[index.row()];
+    auto ownerPoints = m_vecOwnerPoints[index.row()];
+
+    auto FormatTooltip = [](float value, float max, char format = 'd', uint32_t precission = 0) -> QString
+    {
+        if (max == 0) {
+            return "??";
+        }
+
+        return QString("%1 / %2 (%3%)")
+            .arg(QString::number(value, format, precission))
+            .arg(QString::number(max, format, precission))
+            .arg(QString::number(100*value/max, 'f', 2));
+    };
+
     if (role == Qt::ToolTipRole) {
         switch (index.column())
         {
         case BA:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_AVG);
+            return FormatTooltip(ownerSortFilterProxyModel->AVG(), m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_AVG), 'f', 3);
         case R:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_R);
+            return FormatTooltip(ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_R), m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_R));
         case HR:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_HR);
+            return FormatTooltip(ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_HR), m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_HR));
         case RBI:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_RBI);
+            return FormatTooltip(ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_RBI), m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_RBI));
         case SB:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SB);
+            return FormatTooltip(ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_SB), m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SB));
         case ERA:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_ERA);
+            return FormatTooltip(ownerSortFilterProxyModel->ERA(), m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_ERA), 'f', 3);
         case WHIP:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_WHIP);
+            return FormatTooltip(ownerSortFilterProxyModel->WHIP(), m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_WHIP), 'f', 3);
         case W:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_W);
+            return FormatTooltip(ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_W), m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_W));
         case K:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SO);
+            return FormatTooltip(ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_SO), m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SO));
         case S:
-            return m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SV);
+            return FormatTooltip(ownerSortFilterProxyModel->Sum(PlayerTableModel::COLUMN_SV), m_playerTableModel->GetTargetValue(PlayerTableModel::COLUMN_SV));
         case SUM:
             return 10 * ((DraftSettings::Get().OwnerCount + 1) * 0.75);
         default:
@@ -59,8 +74,6 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
         return QVariant();
     }
 
-    auto ownerSortFilterProxyModel = m_vecOwnerSortFilterProxyModels[index.row()];
-    auto ownerPoints = m_vecOwnerPoints[index.row()];
 
     switch (index.column())
     {
@@ -88,6 +101,15 @@ QVariant SummaryTableModel::data(const QModelIndex& index, int role) const
             return rosterSize;
         } else {
             return QString("%1").arg(rosterSize);
+        }
+    }
+    case RankRows::VALUE:
+    {
+        auto value = ownerSortFilterProxyModel->GetValue();
+        if (role == RawDataRole || role == RankRole) {
+            return value;
+        } else {
+            return QString("$%1").arg(value);
         }
     }
     case RankRows::BA:
@@ -233,6 +255,8 @@ QVariant SummaryTableModel::headerData(int section, Qt::Orientation orientation,
             return "Team";
         case RankRows::BUDGET:
             return "Budget";
+        case RankRows::VALUE:
+            return "Value";
         case RankRows::ROSTER_SIZE:
             return "# Players";
         case RankRows::BA:

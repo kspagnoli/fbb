@@ -24,7 +24,7 @@ DraftSettings& DraftSettings::Get()
         s_draftSettings->HitterCount = 14;
         s_draftSettings->PitcherCount = 10;
         s_draftSettings->RosterSize = 24;
-        s_draftSettings->HittingSplit = 0.70f;
+        s_draftSettings->HittingSplit = 0.66f;
         s_draftSettings->PitchingSplit = 1.f - s_draftSettings->HittingSplit;
         s_draftSettings->OwnerCount = 12;
         s_draftSettings->OwnerNames = QStringList({

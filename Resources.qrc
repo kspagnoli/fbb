@@ -4,14 +4,34 @@
     <file>icons/none_10x10.png</file>
     <file>icons/star_10x10.png</file>
     <file>icons/watch_10x10.png</file>
+    <file>icons/news_10x10.png</file>
+
+    <file>data/HittingProjections_2017.csv</file>
+    <file>data/PitchingProjections_2017.csv</file>
 
     <file>data/HittingProjections_2015.csv</file>
     <file>data/PitchingProjections_2015.csv</file>
     
+    <file>data/2016_Appearances.csv</file>
     <file>data/Appearances_2015.csv</file>
+
+    <file>data/News_2017.csv</file>
 
     <file>data/PitchingStats_2015.csv</file>
     <file>data/PitchingStats_2014.csv</file>
+
+
+    <file>data/2017_FAHitters.csv</file>
+    <file>data/2017_FAPitchers.csv</file>
+
+    <file>data/2017-hitters-depthcharts.csv</file>
+    <file>data/2017-pitchers-depthcharts.csv</file>
+
+    <file>data/2017-hitters-fantrax.csv</file>
+    <file>data/2017-pitchers-fantrax.csv</file>
+
+    <file>data/2017-hitters-steamer.csv</file>
+    <file>data/2017-pitchers-steamer.csv</file>
 
 </qresource>
 </RCC>

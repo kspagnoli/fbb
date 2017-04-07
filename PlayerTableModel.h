@@ -39,6 +39,7 @@ public:
         COLUMN_CATERGORY,
         COLUMN_POSITION,
 
+
         // Hitting
         COLUMN_AB,
         COLUMN_H,
@@ -59,12 +60,20 @@ public:
         COLUMN_W,
         COLUMN_SV,
 
-        // General
+        // Fantasy
         COLUMN_Z,
         COLUMN_ESTIMATE,
+
+        // Link
         COLUMN_ID_LINK,
+
+        // News
+        COLUMN_NEWS,
+
+        // Comment
         COLUMN_COMMENT,
 
+        // Column count (must be last)
         COLUMN_COUNT,
     };
 
@@ -92,6 +101,9 @@ public:
     // Get per-stat target values (e.g. 3rd place)
     float GetTargetValue(enum COLUMN stat) const;
 
+    // Right click removal
+    void RemovePlayer(uint32_t index);
+
     // QAbstractTableModel interfaces
     virtual int rowCount(const QModelIndex &) const override;
     virtual int columnCount(const QModelIndex &) const override;
@@ -114,6 +126,9 @@ signals:
     void DraftedEnd();
 
 private:
+
+    // Updates inflation factors based off current $ available and spent
+    void UpdateInflationFactor();
 
     // Update model
     friend class DraftDelegate;

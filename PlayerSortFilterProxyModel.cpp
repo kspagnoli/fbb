@@ -43,6 +43,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QMo
     case PlayerTableModel::COLUMN_Z:
     case PlayerTableModel::COLUMN_ESTIMATE:
     case PlayerTableModel::COLUMN_COMMENT:
+    case PlayerTableModel::COLUMN_NEWS:
         return true;
 
     // Hitting
@@ -81,6 +82,16 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
             return true;
         }
         return m_acceptDrafted;
+    };
+
+    auto AcceptReplacement = [&]() -> bool
+    {
+        const QModelIndex& estimateIndex = sourceModel()->index(sourceRow, PlayerTableModel::COLUMN_ESTIMATE, sourceParent);
+        const float estimate = sourceModel()->data(estimateIndex, PlayerTableModel::RawDataRole).toFloat();
+        if (estimate > -1.0f) {
+            return true;
+        }
+        return m_acceptReplacement;
     };
 
     auto AcceptCatergoty = [&]() -> bool
@@ -176,7 +187,7 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
         return false;
     };
 
-    return AcceptStatus() && AcceptCatergoty() && AcceptTeam() && AcceptPosition();
+    return AcceptStatus() && AcceptReplacement() && AcceptCatergoty() && AcceptTeam() && AcceptPosition();
 }
 
 //------------------------------------------------------------------------------
@@ -185,6 +196,15 @@ bool PlayerSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
 void PlayerSortFilterProxyModel::OnFilterDrafted(bool checked)
 {
     m_acceptDrafted = checked;
+    QSortFilterProxyModel::invalidate();
+}
+
+//------------------------------------------------------------------------------
+// OnFilterReplacement
+//------------------------------------------------------------------------------
+void PlayerSortFilterProxyModel::OnFilterReplacement(bool checked)
+{
+    m_acceptReplacement = checked;
     QSortFilterProxyModel::invalidate();
 }
 

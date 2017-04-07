@@ -16,7 +16,8 @@ public:
 
 public slots:
 
-    void OnFilterDrafted(bool chekced);
+    void OnFilterDrafted(bool checked);
+    void OnFilterReplacement(bool checked);
 
     void OnFilterNL(bool checked);
     void OnFilterAL(bool checked);
@@ -44,6 +45,7 @@ private:
 
     // General filters
     bool m_acceptDrafted = true;
+    bool m_acceptReplacement = true;
     bool m_acceptNL = true;
     bool m_acceptAL = true;
     bool m_acceptFA = true;

@@ -122,3 +122,8 @@ int32_t OwnerSortFilterProxyModel::GetMaxBid() const
 {
     return GetRemainingBudget() - GetRosterSpotsToFill() + 1;
 }
+
+int32_t OwnerSortFilterProxyModel::GetValue() const
+{
+    return Sum(PlayerTableModel::COLUMN_ESTIMATE) - Sum(PlayerTableModel::COLUMN_PAID);
+}

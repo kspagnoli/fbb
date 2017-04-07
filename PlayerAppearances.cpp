@@ -1,3 +1,5 @@
+#define _SCL_SECURE_NO_WARNINGS
+
 #include "PlayerAppearances.h"
 #include "GlobalLogger.h"
 
@@ -7,6 +9,10 @@
 #include <unordered_map>
 #include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
+
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 #include <QFile>
 #include <QString>
@@ -18,7 +24,7 @@ PlayerApperances::PlayerApperances()
     GlobalLogger::AppendMessage("Loading player appearances...");
 
     // Open file
-    QFile inputFile(":/data/Appearances_2015.csv");
+    QFile inputFile(":/data/2016_Appearances.csv");
     inputFile.open(QIODevice::ReadOnly);
     QTextStream file(&inputFile);
 
@@ -27,33 +33,6 @@ PlayerApperances::PlayerApperances()
     std::string row = file.readLine().toStdString();
     Tokenizer tokenizer(row);
 
-    // Stats to find
-    std::unordered_map<std::string, uint32_t> LUT =
-    {
-        { "Name",0 },
-        { "Tm",0 },
-        { "G",0 },
-        { "GS",0 },
-        { "P",0 },
-        { "C",0 },
-        { "1B",0 },
-        { "2B",0 },
-        { "3B",0 },
-        { "SS",0 },
-        { "OF",0 },
-        { "Age",0 },
-        { "Yrs",0 },
-    };
-
-    // Parse the header data (first row)
-    for (auto& entry : LUT) {
-
-        // Populate LUT to figure out stat-to-column association
-        auto itr = std::find(tokenizer.begin(), tokenizer.end(), entry.first);
-        if (itr != tokenizer.end()) {
-            entry.second = std::distance(tokenizer.begin(), itr);
-        }
-    }
 
     // Loop rows
     // while (std::getline(apperances, row)) {
@@ -64,26 +43,36 @@ PlayerApperances::PlayerApperances()
 
             // Tokenize this row
             std::string row = file.readLine().toStdString();
+
+            // Baseball reference likes \ to delimit as well?
+            boost::replace_all(row, "\\", ",");
+
+            // Tokenize!
             Tokenizer tokenizer(row);
             std::vector<std::string> parsed(tokenizer.begin(), tokenizer.end());
 
             // Parse name
-            std::string name = parsed[LUT["Name"]];
-            std::string team = parsed[LUT["Tm"]];
+            std::string name = parsed[1];
+            std::string id   = parsed[2];
+            std::string team = parsed[4];
 
             // Parse apperances
             Appearances apperances;
-            apperances.G    = boost::lexical_cast<uint32_t>(parsed[LUT["G"]]);
-            apperances.GS   = boost::lexical_cast<uint32_t>(parsed[LUT["GS"]]);
-            apperances.atC  = boost::lexical_cast<uint32_t>(parsed[LUT["C"]]);
-            apperances.at1B = boost::lexical_cast<uint32_t>(parsed[LUT["1B"]]);
-            apperances.at2B = boost::lexical_cast<uint32_t>(parsed[LUT["2B"]]);
-            apperances.at3B = boost::lexical_cast<uint32_t>(parsed[LUT["3B"]]);
-            apperances.atSS = boost::lexical_cast<uint32_t>(parsed[LUT["SS"]]);
-            apperances.atOF = boost::lexical_cast<uint32_t>(parsed[LUT["OF"]]);
-            apperances.atDH = boost::lexical_cast<uint32_t>(parsed[LUT["DH"]]);
-            apperances.age  = boost::lexical_cast<uint32_t>(parsed[LUT["Age"]]);
-            apperances.exp  = boost::lexical_cast<uint32_t>(parsed[LUT["Yrs"]]);
+            apperances.age  = boost::lexical_cast<uint32_t>(parsed[3]);
+            if (parsed[5] == "1st") {
+                apperances.exp = 0;
+            } else {
+                apperances.exp = boost::lexical_cast<uint32_t>(parsed[5]);
+            }
+            apperances.G    = boost::lexical_cast<uint32_t>(parsed[6]);
+            apperances.GS   = boost::lexical_cast<uint32_t>(parsed[7]);
+            apperances.atC  = boost::lexical_cast<uint32_t>(parsed[11]);
+            apperances.at1B = boost::lexical_cast<uint32_t>(parsed[12]);
+            apperances.at2B = boost::lexical_cast<uint32_t>(parsed[13]);
+            apperances.at3B = boost::lexical_cast<uint32_t>(parsed[14]);
+            apperances.atSS = boost::lexical_cast<uint32_t>(parsed[15]);
+            apperances.atOF = boost::lexical_cast<uint32_t>(parsed[19]);
+            apperances.atDH = boost::lexical_cast<uint32_t>(parsed[20]);
 
             // Get key
             auto key = std::make_tuple(name, team);

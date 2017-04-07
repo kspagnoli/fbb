@@ -19,6 +19,7 @@ public:
     {
         TEAM,
         BUDGET,
+        VALUE,
         ROSTER_SIZE,
         BA,
         R,
