@@ -30,6 +30,8 @@ set(SOURCE
     main.cpp
     source/FBBApplication.cpp
     source/FBBMainWindow.cpp
+    source/FBBMainMenuBar.cpp
+    source/FBBLeaugeSettingsDialog.cpp
 
     # 1.x
     ### DraftDelegate.cpp
@@ -49,7 +51,7 @@ set(SOURCE
     )
 
 # All headers
-file(GLOB HEADERS *.h)
+file(GLOB HEADERS include/FBB/*.h)
 
 # Tell CMake to create the helloworld executable
 add_executable(fbb WIN32 ${SOURCE} ${HEADERS} ${RESOURCES})

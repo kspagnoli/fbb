@@ -1,3 +1,5 @@
+#pragma once
+
 #include <QMainWindow>
 
 class FBBMainWindow : public QMainWindow
