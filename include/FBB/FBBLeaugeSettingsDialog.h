@@ -2,8 +2,10 @@
 
 #include <QDialog>
 
+struct FBBLeaugeSettings;
+
 class FBBLeaugeSettingsDialog : public QDialog
 {
 public:
-    FBBLeaugeSettingsDialog(QWidget* pParent = nullptr);
+    FBBLeaugeSettingsDialog(FBBLeaugeSettings* pSettings, QWidget* pParent = nullptr);
 };
