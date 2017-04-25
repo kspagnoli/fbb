@@ -11,18 +11,14 @@ FBBApplication::FBBApplication(int& argc, char** argv)
     setStyle(QStyleFactory::create("Fusion"));
 
     setStyleSheet(R"""(
-        QTableView {
+        QTableView, QHeaderView {
             font-family: "Consolas";
             font-size: 11px;
-        })""");
+        }
+        )""");
 
     setApplicationName("Fantasy Baseball");
     setWindowIcon(QIcon(":/icons/baseball.png"));
-}
-
-FBBApplication::~FBBApplication()
-{
-
 }
 
 // Dark theme!

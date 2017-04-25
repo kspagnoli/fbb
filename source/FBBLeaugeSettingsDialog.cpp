@@ -19,7 +19,7 @@
 #include <QApplication>
 #include <QMessageBox>
 #include <QSlider>
-#include <QFrame>
+#include <QSpinBox>
 
 static void BuildOwnerLayout(QGridLayout* pOwnerLayout, FBBLeaugeSettings* pSettings)
 {
@@ -228,13 +228,13 @@ FBBLeaugeSettingsDialog::FBBLeaugeSettingsDialog(FBBLeaugeSettings* pSettings, Q
 
         // Helper to add a new value
         auto AddValue = [=](QFormLayout* pForm, const char* name, uint32_t& setting) {
-            QLineEdit* pLineEdit = new QLineEdit();
-            pLineEdit->setFixedWidth(25);
-            pLineEdit->setValidator(new QIntValidator(0, 99, this));
-            pLineEdit->setText(QString::number(setting));
-            pForm->addRow(QString(name), pLineEdit);
-            connect(pLineEdit, &QLineEdit::textEdited, [=, &setting](const QString& text) {
-                setting = text.toUInt();
+            QSpinBox* pSpinBox = new QSpinBox();
+            pSpinBox->setMinimum(0);
+            pSpinBox->setValue(setting);
+            pSpinBox->setMaximum(99);
+            pForm->addRow(QString(name), pSpinBox);
+            connect(pSpinBox, static_cast<void (QSpinBox::*)(int32_t)>(&QSpinBox::valueChanged), [=, &setting](int value) {
+                setting = value;
                 pSumHitters->setText(QString::number(pSettings->SumHitters()));
                 pSumPitchers->setText(QString::number(pSettings->SumPitchers()));
                 pSumPlayers->setText(QString::number(pSettings->SumPlayers()));
@@ -255,7 +255,7 @@ FBBLeaugeSettingsDialog::FBBLeaugeSettingsDialog(FBBLeaugeSettings* pSettings, Q
         AddValue(pHittingForm, "CF:", pSettings->positions.hitting.numCF);
         AddValue(pHittingForm, "RF:", pSettings->positions.hitting.numRF);
         AddValue(pHittingForm, "DH:", pSettings->positions.hitting.numDH);
-        AddValue(pHittingForm, "UT:", pSettings->positions.hitting.numUT);
+        AddValue(pHittingForm, "UT:", pSettings->positions.hitting.numU);
 
         // Pitching values
         AddValue(pPitchingForm, "SP:", pSettings->positions.pitching.numSP);
@@ -378,6 +378,9 @@ FBBLeaugeSettingsDialog::FBBLeaugeSettingsDialog(FBBLeaugeSettings* pSettings, Q
         pButtonsLayout->addStretch();
         pButtonsLayout->addWidget(pCancelButton);
         pButtonsLayout->addWidget(pAcceptButton);
+
+        connect(pAcceptButton, &QPushButton::pressed, this, &QDialog::accept);
+        connect(pCancelButton, &QPushButton::pressed, this, &QDialog::reject);
 
         pLayout->addWidget(pButtons);
     }

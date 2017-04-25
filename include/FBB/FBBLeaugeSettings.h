@@ -3,13 +3,19 @@
 #include <QString>
 #include <QMap>
 #include <QTime>
-
-#include <memory>
+#include <QObject>
+#include <QSharedPointer>
 
 using FBBOwnerId = uint64_t;
 
-struct FBBLeaugeSettings 
+class FBBLeaugeSettings : public QObject
 {
+    Q_OBJECT;
+
+public:
+
+    static FBBLeaugeSettings& Instance();
+
     struct Leauge
     {
         enum class Type
@@ -66,7 +72,7 @@ struct FBBLeaugeSettings
             uint32_t numRF = 0;
             uint32_t numOF = 5;
             uint32_t numDH = 0;
-            uint32_t numUT = 1;
+            uint32_t numU = 1;
 
         } hitting;
 
@@ -127,7 +133,7 @@ struct FBBLeaugeSettings
             positions.hitting.numRF +
             positions.hitting.numOF +
             positions.hitting.numDH +
-            positions.hitting.numUT;
+            positions.hitting.numU;
     }
     
     uint32_t SumPitchers() const
@@ -141,4 +147,18 @@ struct FBBLeaugeSettings
     {
         return SumHitters() + SumPitchers() + positions.numBench;
     }
+    
+    void OnAccept() const
+    {
+        emit SettingsChanged(*this);
+    }
+
+signals:
+
+    void SettingsChanged(const FBBLeaugeSettings& settings) const;
+
+private:
+
+    // Non-construct/copyable
+    FBBLeaugeSettings(QObject* parent);
 };

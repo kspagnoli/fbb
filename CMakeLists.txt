@@ -23,38 +23,14 @@ find_package(Qt5Charts REQUIRED)
 qt5_add_resources(RESOURCES 
     Resources.qrc)
 
-# Source files
-set(SOURCE
-
-    # 2.0
-    main.cpp
-    source/FBBApplication.cpp
-    source/FBBMainWindow.cpp
-    source/FBBMainMenuBar.cpp
-    source/FBBLeaugeSettingsDialog.cpp
-
-    # 1.x
-    ### DraftDelegate.cpp
-    ### DraftDialog.cpp
-    ### DraftSettings.cpp
-    ### PlayerSortFilterProxyModel.cpp
-    ### PlayerTableModel.cpp
-    ### FreeAgents.cpp
-    ### PlayerNews.cpp
-    ### HittingStats.cpp
-    ### PitchingStats.cpp
-    ### PlayerAppearances.cpp
-    ### PlayerScatterPlotChart.cpp
-    ### SelectedPlayer.cpp
-    ### SummaryTableModel.cpp
-    ### OwnerSortFilterProxyModel.cpp
-    )
-
 # All headers
 file(GLOB HEADERS include/FBB/*.h)
 
+# All source
+file(GLOB SOURCE source/*.cpp)
+
 # Tell CMake to create the helloworld executable
-add_executable(fbb WIN32 ${SOURCE} ${HEADERS} ${RESOURCES})
+add_executable(fbb WIN32 main.cpp ${SOURCE} ${HEADERS} ${RESOURCES})
 
 # Use the Widgets module from Qt 5.
 target_link_libraries(fbb Qt5::Widgets)

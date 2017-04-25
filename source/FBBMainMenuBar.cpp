@@ -17,9 +17,10 @@ FBBMainMenuBar::FBBMainMenuBar(QWidget* parent)
     // Settings > Settings
     QAction* settingsAction = new QAction("&Settings...", this);
     connect(settingsAction, &QAction::triggered, [=](bool checked) {
-        FBBLeaugeSettings settings;
+        FBBLeaugeSettings& settings = FBBLeaugeSettings::Instance();
         FBBLeaugeSettingsDialog dialog(&settings);
         if (dialog.exec()) {
+            settings.OnAccept();
         }
     });
     settingsMenu->addAction(settingsAction);

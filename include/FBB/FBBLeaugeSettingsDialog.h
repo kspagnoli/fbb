@@ -2,7 +2,7 @@
 
 #include <QDialog>
 
-struct FBBLeaugeSettings;
+class FBBLeaugeSettings;
 
 class FBBLeaugeSettingsDialog : public QDialog
 {
