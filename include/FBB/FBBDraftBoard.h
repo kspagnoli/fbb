@@ -1,5 +1,7 @@
 #pragma once
 
+#include "FBB/FBBPlayer.h"
+
 #include <QWidget>
 
 class QTableView;
@@ -9,7 +11,7 @@ class FBBDraftBoardSortFilterProxyModel;
 class FBBDraftBoard : public QWidget
 {
 public:
-    FBBDraftBoard(QWidget* parent = nullptr);
+    FBBDraftBoard(FBBPlayer::Projection::Type type, QWidget* parent = nullptr);
 
 private:
     QTableView* m_pTableView;

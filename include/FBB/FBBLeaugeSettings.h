@@ -4,7 +4,8 @@
 #include <QMap>
 #include <QTime>
 #include <QObject>
-#include <QSharedPointer>
+
+#include <memory>
 
 using FBBOwnerId = uint64_t;
 
@@ -41,6 +42,17 @@ public:
             bool SB = true;
             bool HR = true;
 
+            bool OBP = false;
+            bool SLG = false;
+            bool OPS = false;
+            bool H = false;
+            bool TB = false;
+            bool BB = false;
+            bool RBIpR = false;
+            bool xBH = false;
+            bool SBmCS = false;
+            bool wOBA = false;
+
         } hitting;
 
         struct Pitching
@@ -50,6 +62,13 @@ public:
             bool ERA = true;
             bool WHIP = true;
             bool SO = true;
+
+            bool AVG = false;
+            bool Kp9 = false;
+            bool KpBB = false;
+            bool FIP = false;
+            bool HLD = false;
+            bool QS = false;
 
         } pitching;
 
@@ -94,7 +113,7 @@ public:
         QString abbreviation;
     };
 
-    QMap<FBBOwnerId, QSharedPointer<Owner>> owners;
+    QMap<FBBOwnerId, std::shared_ptr<Owner>> owners;
 
     struct Projections
     {
@@ -109,13 +128,16 @@ public:
         
         Source source = Source::Steamer;
         float hittingPitchingSplit = 0.70f;
+        uint32_t minAB = 100;
+        uint32_t minIP = 10;
+        bool includeFA = false;
 
     } projections;
 
     void CreateOwner()
     {
         FBBOwnerId ownerId = owners.empty() ? 100 : owners.lastKey() + QTime::currentTime().msecsSinceStartOfDay();
-        owners.insert(ownerId, QSharedPointer<Owner>::create());
+        owners.insert(ownerId, std::make_shared<Owner>());
     }
 
     uint32_t SumHitters() const

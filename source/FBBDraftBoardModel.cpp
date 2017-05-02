@@ -3,13 +3,30 @@
 #include "FBB/FBBProjectionService.h"
 #include "FBB/FBBPlayer.h"
 #include "FBB/FBBLeaugeSettings.h"
-
+#include "FBB/FBBPositionService.h"
 
 namespace Impl {
 
-    template <typename T_Ptr, typename Fn_Getter>
-    QVariant GetProjectionData(int role, const T_Ptr& sPtr, const Fn_Getter& fn)
+    template <typename T>
+    QVariant FormatType(T x)
     {
+        return x;
+    }
+
+    QVariant FormatType(float x)
+    {
+        QString str;
+        str.setNum(x, 'f', 3);
+        return str;
+    }
+
+    template <typename Fn_Getter>
+    QVariant GetProjectionData(int role, const std::unique_ptr<FBBPlayer::Projection>& sPtr, FBBPlayer::Projection::Type type, const Fn_Getter& fn)
+    {
+        if (sPtr->type != type) {
+            return QVariant();
+        }
+
         if (role == FBBDraftBoardModel::RawDataRole) {
             if (!sPtr) {
                 return -1;
@@ -20,7 +37,7 @@ namespace Impl {
             if (!sPtr) {
                 return "N/A";
             } else {
-                return fn();
+                return FormatType(fn());
             }
         }
         return QVariant();
@@ -28,9 +45,9 @@ namespace Impl {
 
 }
 
-#define GET_PROJECTION_DATA(role, PTR, STAT)        \
-    return Impl::GetProjectionData(role, PTR, [=]{  \
-        return QVariant(PTR->STAT);                 \
+#define GET_PROJECTION_DATA(role, PTR, TYPE, STAT)          \
+    return Impl::GetProjectionData(role, PTR, TYPE, [=]{    \
+        return PTR->STAT;                                   \
     });
 
 FBBDraftBoardModel::FBBDraftBoardModel(QObject* parent)
@@ -45,6 +62,9 @@ FBBDraftBoardModel::FBBDraftBoardModel(QObject* parent)
     connect(&FBBProjectionService::Instance(), &FBBProjectionService::EndProjectionsUpdated, this, [=]() {
         endResetModel();
     });
+
+    // Bootstrap position data
+    FBBPositionService::LoadPositionData();
 }
 
 int FBBDraftBoardModel::rowCount(const QModelIndex& parent) const
@@ -60,10 +80,10 @@ int FBBDraftBoardModel::columnCount(const QModelIndex& parent) const
 QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
 {
     // Get player
-    const QSharedPointer<FBBPlayer> spPlayer = FBBPlayerDataService::GetPlayer(index.row());
+    const FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(index.row());
 
     // Sanity check
-    if (!spPlayer) {
+    if (!pPlayer) {
         return QVariant();
     }
 
@@ -71,66 +91,56 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
 
         switch (index.column())
         {
-        case COLUMN_FLAG:
-            return "-";
-        case COLUMN_RANK:
-            return index.row();
-        case COLUMN_DRAFT_BUTTON:
-            return "Status";
         case COLUMN_OWNER:
             return "Owner";
         case COLUMN_PAID:
             return "Paid";
-        case COLUMN_ID_LINK:
-            return "Id.";
         case COLUMN_NAME:
-            return spPlayer->name;
+            return pPlayer->name;
         case COLUMN_TEAM:
-            return TeamToString(spPlayer->team);
+            return FBBTeamToString(pPlayer->team);
         case COLUMN_AGE:
-            return "XXX";
+            return pPlayer->age;
         case COLUMN_EXPERIENCE:
-            return "XXX";
-        case COLUMN_CATERGORY:
-            return "Category";
+            return pPlayer->experience;
         case COLUMN_POSITION:
-            return "Pos.";
+            return FBBPositionMaskToString(pPlayer->eligablePositions);
         case COLUMN_AB:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, hitting.AB);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.AB);
         case COLUMN_H:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, hitting.H);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.H);
         case COLUMN_AVG:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, hitting.AVG());
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.AVG());
         case COLUMN_HR:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, hitting.HR);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.HR);
         case COLUMN_R:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, hitting.R);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.R);
         case COLUMN_RBI:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, hitting.RBI);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.RBI);
         case COLUMN_SB:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, hitting.SB);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.SB);
         case COLUMN_IP:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, pitching.IP);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.IP);
         case COLUMN_HA:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, pitching.H);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.H);
         case COLUMN_BB:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, pitching.BB);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.BB);
         case COLUMN_ER:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, pitching.ER);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.ER);
         case COLUMN_SO:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, pitching.SO);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.SO);
         case COLUMN_ERA:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, pitching.ERA());
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.ERA());
         case COLUMN_WHIP:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, pitching.WHIP());
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.WHIP());
         case COLUMN_W:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, pitching.W);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.W);
         case COLUMN_SV:
-            GET_PROJECTION_DATA(role, spPlayer->spProjection, pitching.SV);
+            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.SV);
         case COLUMN_ESTIMATE:
             return "$";
         case COLUMN_Z:
-            return "zScore";
+            return pPlayer->calculations.zScore;
         case COLUMN_COMMENT:
             return "Comment";
         }
@@ -151,18 +161,10 @@ QVariant FBBDraftBoardModel::headerData(int section, Qt::Orientation orientation
 
             switch (section)
             {
-            case COLUMN_FLAG:
-                return "-";
-            case COLUMN_RANK:
-                return "#";
-            case COLUMN_DRAFT_BUTTON:
-                return "Status";
             case COLUMN_OWNER:
                 return "Owner";
             case COLUMN_PAID:
                 return "Paid";
-            case COLUMN_ID_LINK:
-                return "Id.";
             case COLUMN_NAME:
                 return "Name";
             case COLUMN_TEAM:
@@ -171,8 +173,6 @@ QVariant FBBDraftBoardModel::headerData(int section, Qt::Orientation orientation
                 return "Age";
             case COLUMN_EXPERIENCE:
                 return "Exp.";
-            case COLUMN_CATERGORY:
-                return "Catergory";
             case COLUMN_POSITION:
                 return "Pos.";
             case COLUMN_AB:

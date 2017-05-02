@@ -10,29 +10,28 @@ public:
     enum COLUMN
     {
         // General
-        COLUMN_FLAG,
-        COLUMN_RANK,
-        COLUMN_DRAFT_BUTTON,
         COLUMN_OWNER,
         COLUMN_PAID,
         COLUMN_NAME,
         COLUMN_TEAM,
         COLUMN_AGE,
         COLUMN_EXPERIENCE,
-        COLUMN_CATERGORY,
         COLUMN_POSITION,
 
         // Hitting
-        COLUMN_AB,
+        COLUMN_FIRST_HITTING,
+        COLUMN_AB = COLUMN_FIRST_HITTING,
         COLUMN_H,
         COLUMN_AVG,
         COLUMN_HR,
         COLUMN_R,
         COLUMN_RBI,
         COLUMN_SB,
+        COLUMN_LAST_HITTING = COLUMN_SB,
 
         // Pitching
-        COLUMN_IP,
+        COLUMN_FIRST_PITCHING,
+        COLUMN_IP = COLUMN_FIRST_PITCHING,
         COLUMN_HA,
         COLUMN_BB,
         COLUMN_ER,
@@ -41,13 +40,11 @@ public:
         COLUMN_WHIP,
         COLUMN_W,
         COLUMN_SV,
+        COLUMN_LAST_PITCHING = COLUMN_SV,
 
         // Fantasy
         COLUMN_Z,
         COLUMN_ESTIMATE,
-
-        // Link
-        COLUMN_ID_LINK,
 
         // Comment
         COLUMN_COMMENT,

@@ -43,4 +43,4 @@ enum class FBBTeam
     FA,
 };
 
-QString TeamToString(const FBBTeam& team);
+QString FBBTeamToString(const FBBTeam& team);

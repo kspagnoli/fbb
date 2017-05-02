@@ -4,6 +4,9 @@
 
 enum FBBPositionBits
 {
+    // Default
+    FBB_POSITION_UNKNOWN = 0,
+
     // Hitting Positions
     FBB_POSITION_C  = 1 << 1,
     FBB_POSITION_1B = 1 << 2,

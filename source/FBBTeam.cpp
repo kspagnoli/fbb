@@ -1,6 +1,6 @@
 #include "FBB/FBBTeam.h"
 
-QString TeamToString(const FBBTeam& team)
+QString FBBTeamToString(const FBBTeam& team)
 {
     switch (team)
     {

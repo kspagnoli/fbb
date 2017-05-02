@@ -73,48 +73,105 @@ uint32_t FBBPlayerDataService::PlayerCount()
     return Instance().m_flatData.size();
 }
 
-const QSharedPointer<FBBPlayer> FBBPlayerDataService::GetPlayer(uint32_t index)
+FBBPlayer* FBBPlayerDataService::GetPlayer(uint32_t index)
 {
-    return Instance().m_flatData[index];
+    return Instance().m_flatData[index].get();
 }
 
-const QSharedPointer<FBBPlayer> FBBPlayerDataService::GetPlayer(const FBBPlayerID& playerId)
+FBBPlayer* FBBPlayerDataService::GetPlayer(const FBBPlayerID& playerId)
 {
     struct Compare
     {
-        bool operator()(const FBBPlayerID& lhs, const QSharedPointer<FBBPlayer>& rhs)
+        bool operator()(const FBBPlayerID& lhs, const std::shared_ptr<FBBPlayer>& rhs)
         {
             return lhs < rhs->id;
         }
 
-        bool operator()(const QSharedPointer<FBBPlayer>& lhs, const FBBPlayerID& rhs)
+        bool operator()(const std::shared_ptr<FBBPlayer>& lhs, const FBBPlayerID& rhs)
         {
             return lhs->id < rhs;
         }
     };
 
-    // auto itr_xx = std::binary_search(Instance().m_flatData.begin(), Instance().m_flatData.end(), playerId, Compare());
-
     // Lookup player
     auto itr = Instance().m_mappedData.find(playerId);
     if (itr != Instance().m_mappedData.end()) {
-        return itr.value();
+        return itr.value().get();
     } 
 
     // Create new player
-    QSharedPointer<FBBPlayer> spNewPlayer = QSharedPointer<FBBPlayer>::create();
+    std::shared_ptr<FBBPlayer> spNewPlayer = std::make_shared<FBBPlayer>();
 
     // Add to be maps
     Instance().m_mappedData[playerId] = spNewPlayer;
-    Instance().m_flatData.append(spNewPlayer);
+    Instance().m_flatData.push_back(spNewPlayer);
 
     // Return the new player
-    return std::move(spNewPlayer);
+    return spNewPlayer.get();
+}
+
+FBBPlayer* FBBPlayerDataService::GetPlayerFromBaseballReference(const QString& name, const QString& team)
+{
+    QStringList splitName = name.split("\\");
+
+    QList<std::shared_ptr<FBBPlayer>> potentialMatches;
+
+    // Loop all names
+    for (const std::shared_ptr<FBBPlayer>& spPlayer : Instance().m_flatData) {
+
+        // BB reference uses 2first5last2count notion
+        const uint32_t count = splitName[1].right(2).toUInt();
+    
+        // Handle multiple name instances
+        if (spPlayer->name == splitName[0]) {
+            if (count == 1) {
+                return spPlayer.get();
+            } else {
+                potentialMatches.append(spPlayer);
+            }
+        } 
+    }
+
+    // Only one player we know about with this name
+    if (potentialMatches.size() == 1) {
+        return potentialMatches[0].get();
+    }
+
+    // Look for a team match
+    for (auto& spPlayer : potentialMatches) {
+        if ( FBBTeamToString(spPlayer->team) == team) {
+            return spPlayer.get();
+        }
+    }
+
+    return nullptr;
 }
 
 void FBBPlayerDataService::ForEach(const std::function<void(FBBPlayer&)>&& fn)
 {
-    for (const QSharedPointer<FBBPlayer>& spPlayer : Instance().m_flatData) {
+    for (const std::shared_ptr<FBBPlayer>& spPlayer : Instance().m_flatData) {
         fn(*spPlayer);
+    }
+}
+
+void FBBPlayerDataService::ForEachValidHitter(const std::function<void(FBBPlayer&)>&& fn)
+{
+    for (const std::shared_ptr<FBBPlayer>& spPlayer : Instance().m_flatData) {
+        if (spPlayer->spProjection && spPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_HITTING) {
+            if (spPlayer->spProjection->hitting.AB >= FBBLeaugeSettings::Instance().projections.minAB) {
+                fn(*spPlayer);
+            }
+        }
+    }
+}
+
+void FBBPlayerDataService::ForEachValidPitcher(const std::function<void(FBBPlayer&)>&& fn)
+{
+    for (const std::shared_ptr<FBBPlayer>& spPlayer : Instance().m_flatData) {
+        if (spPlayer->spProjection && spPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_PITCHING) {
+            if (spPlayer->spProjection->pitching.IP >= FBBLeaugeSettings::Instance().projections.minIP) {
+                fn(*spPlayer);
+            }
+        }
     }
 }

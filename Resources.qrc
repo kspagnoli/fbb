@@ -35,5 +35,7 @@
     <file>data/2017-hitters-steamer.csv</file>
     <file>data/2017-pitchers-steamer.csv</file>
 
+    <file>data/2016-appearances.csv</file>
+
 </qresource>
 </RCC>

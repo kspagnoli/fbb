@@ -15,6 +15,15 @@ FBBApplication::FBBApplication(int& argc, char** argv)
             font-family: "Consolas";
             font-size: 11px;
         }
+
+        QDockWidget::title {
+            border-top: 1px solid grey;
+            border-bottom: 1px solid grey;
+            font-size: 14px;
+            text-align: left;
+            padding-left: 5px;
+        }
+
         )""");
 
     setApplicationName("Fantasy Baseball");

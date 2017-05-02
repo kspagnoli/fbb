@@ -42,7 +42,7 @@ static void BuildOwnerLayout(QGridLayout* pOwnerLayout, FBBLeaugeSettings* pSett
     // TODO: Can we loop by pairs like the STL?
     for (FBBOwnerId& key : keys) {
 
-        QSharedPointer<FBBLeaugeSettings::Owner>& spOwner = pSettings->owners[key];
+        std::shared_ptr<FBBLeaugeSettings::Owner>& spOwner = pSettings->owners[key];
         row++;
 
         QLabel* pRow = new QLabel("#" + QString::number(row));
@@ -326,6 +326,9 @@ FBBLeaugeSettingsDialog::FBBLeaugeSettingsDialog(FBBLeaugeSettings* pSettings, Q
         QHBoxLayout* pSplitLayout = new QHBoxLayout(pSplit);
         QSlider* pSplitSlider = new QSlider();
         QLabel* pSplitValue = new QLabel();
+        QLineEdit* pMinAB = new QLineEdit();
+        QLineEdit* pMinIP = new QLineEdit();
+        QCheckBox* pIncludeFA = new QCheckBox();
 
         pSourceComboBox->addItem("ZiPS");
         pSourceComboBox->addItem("Fans");
@@ -345,6 +348,14 @@ FBBLeaugeSettingsDialog::FBBLeaugeSettingsDialog(FBBLeaugeSettings* pSettings, Q
 
         pSplitValue->setText(QString::number(pSettings->projections.hittingPitchingSplit * 100) + "%");
 
+        pMinAB->setValidator(new QIntValidator(0, 999, this));
+        pMinAB->setText(QString::number(pSettings->projections.minAB));
+
+        pMinIP->setValidator(new QIntValidator(0, 999, this));
+        pMinIP->setText(QString::number(pSettings->projections.minIP));
+
+        pIncludeFA->setCheckState(pSettings->projections.includeFA ? Qt::Checked : Qt::Unchecked);
+
         connect(pSourceComboBox, static_cast<void (QComboBox::*)(int32_t)>(&QComboBox::currentIndexChanged), this, [=](int32_t index) {
             pSettings->projections.source = FBBLeaugeSettings::Projections::Source(index);
         });
@@ -354,8 +365,23 @@ FBBLeaugeSettingsDialog::FBBLeaugeSettingsDialog(FBBLeaugeSettings* pSettings, Q
             pSplitValue->setText(QString::number(value) + "%");
         });
 
+        connect(pMinAB, &QLineEdit::editingFinished, [=]() {
+            pSettings->projections.minAB = pMinAB->text().toUInt();
+        });
+
+        connect(pMinIP, &QLineEdit::editingFinished, [=]() {
+            pSettings->projections.minIP = pMinIP->text().toUInt();
+        });
+
+        connect(pIncludeFA, &QCheckBox::stateChanged, [=](const int& state) {
+            pSettings->projections.includeFA = (state == Qt::Checked ? true : false);
+        });
+
         pFormLayout->addRow("Source:", pSourceComboBox);
         pFormLayout->addRow("Hitting-to-Pitching Split:", pSplit);
+        pFormLayout->addRow("Minimum AB:", pMinAB);
+        pFormLayout->addRow("Minimum IP:", pMinIP);
+        pFormLayout->addRow("Include FAs:", pIncludeFA);
 
         pTabLayout->addWidget(pDescription);
         pTabLayout->addLayout(pFormLayout);
