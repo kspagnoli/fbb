@@ -36,13 +36,11 @@ static void BuildOwnerLayout(QGridLayout* pOwnerLayout, FBBLeaugeSettings* pSett
     pOwnerLayout->addWidget(new QLabel("Team Name"), row, 1);
     pOwnerLayout->addWidget(new QLabel("Abbreviation"), row, 2);
 
-    QList<FBBOwnerId> keys = pSettings->owners.keys();
-
     // Repopulate
-    // TODO: Can we loop by pairs like the STL?
-    for (FBBOwnerId& key : keys) {
+    for (auto& item: pSettings->owners) {
 
-        std::shared_ptr<FBBLeaugeSettings::Owner>& spOwner = pSettings->owners[key];
+        const FBBOwnerId id = item.first;
+        std::shared_ptr<FBBLeaugeSettings::Owner>& spOwner = item.second;
         row++;
 
         QLabel* pRow = new QLabel("#" + QString::number(row));
@@ -60,7 +58,7 @@ static void BuildOwnerLayout(QGridLayout* pOwnerLayout, FBBLeaugeSettings* pSett
 
         // pDeleteButton->setMaximumWidth(25);
         pDeleteButton->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-        if (pSettings->owners.count() == 1) {
+        if (pSettings->owners.size() == 1) {
             pDeleteButton->setEnabled(false);
         }
 
@@ -73,17 +71,17 @@ static void BuildOwnerLayout(QGridLayout* pOwnerLayout, FBBLeaugeSettings* pSett
         }
 
         QObject::connect(pTeamName, &QLineEdit::editingFinished, [=]() {
-            pSettings->owners[key]->name = pTeamName->text();
+            spOwner->name = pTeamName->text();
         });
 
         QObject::connect(pTeamAbbreviation, &QLineEdit::editingFinished, [=]() {
-            pSettings->owners[key]->abbreviation = pTeamAbbreviation->text();
+            spOwner->abbreviation = pTeamAbbreviation->text();
         });
 
         QObject::connect(pDeleteButton, &QPushButton::pressed, [=]() {
 
             if (QMessageBox::question(nullptr, qApp->applicationName(), "Are you sure you want to delete this owner?") == QMessageBox::Yes) {
-                pSettings->owners.remove(key);
+                pSettings->owners.erase(id);
                 BuildOwnerLayout(pOwnerLayout, pSettings);
             }
         });
@@ -304,7 +302,7 @@ FBBLeaugeSettingsDialog::FBBLeaugeSettingsDialog(FBBLeaugeSettings* pSettings, Q
         });
 
         // Add some defaults if this is empty 
-        if (pSettings->owners.count() == 0) {
+        if (pSettings->owners.empty()) {
             for (uint32_t i = 0; i < 8; i++) {
                 pSettings->CreateOwner();
             }

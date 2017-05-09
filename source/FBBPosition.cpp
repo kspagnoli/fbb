@@ -5,12 +5,17 @@
 
 QString FBBPositionMaskToString(const FBBPositionMask& mask)
 {
+    return FBBPositionMaskToStringList(mask).join("/");
+}
+
+QStringList FBBPositionMaskToStringList(const FBBPositionMask& mask)
+{
     // String list we will build up
     QStringList stringList;
 
     // Only add positions we care about for this leauge
     const FBBLeaugeSettings::Positions positions = FBBLeaugeSettings::Instance().positions;
-     
+
     // Helper macro
 #define HANDLE_POSITION(MASK, SETTING, POSITION)                        \
     if (MASK & FBB_POSITION_##POSITION && SETTING.num##POSITION > 0) {  \
@@ -37,7 +42,6 @@ QString FBBPositionMaskToString(const FBBPositionMask& mask)
     HANDLE_POSITION(mask, positions.pitching, SP);
     HANDLE_POSITION(mask, positions.pitching, RP);
     HANDLE_POSITION(mask, positions.pitching, P);
-    
-    // Return with delimiter
-    return stringList.join("/");
+
+    return stringList;
 }

@@ -43,4 +43,12 @@ enum class FBBTeam
     FA,
 };
 
+enum class FBBLeauge
+{
+    None,
+    NL,
+    AL,
+};
+
 QString FBBTeamToString(const FBBTeam& team);
+FBBLeauge GetDivision(const FBBTeam& team);

@@ -7,12 +7,12 @@
 class FBBDraftBoardSortFilterProxyModel : public QSortFilterProxyModel
 {
 public:
-    FBBDraftBoardSortFilterProxyModel(FBBPlayer::Projection::Type type, QObject* parent = nullptr);
+    FBBDraftBoardSortFilterProxyModel(FBBPlayer::Projection::TypeMask typeMask, QObject* parent = nullptr);
 
     virtual bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
     virtual bool filterAcceptsColumn(int sourceColumn, const QModelIndex& sourceParent) const override;
     virtual bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
 
 private:
-    const FBBPlayer::Projection::Type m_type;
+    const FBBPlayer::Projection::TypeMask m_typeMask;
 };

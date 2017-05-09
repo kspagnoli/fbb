@@ -9,7 +9,11 @@ public:
     // Columns
     enum COLUMN
     {
+        // Key
+        COLUMN_ID,
+
         // General
+        COLUMN_RANK,
         COLUMN_OWNER,
         COLUMN_PAID,
         COLUMN_NAME,

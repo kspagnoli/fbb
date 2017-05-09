@@ -7,6 +7,7 @@
     <file>icons/news_10x10.png</file>
     <file>icons/trash_16x16.png</file>
     <file>icons/baseball.png</file>
+    <file>icons/splash.png</file>
 
     <file>data/HittingProjections_2017.csv</file>
     <file>data/PitchingProjections_2017.csv</file>

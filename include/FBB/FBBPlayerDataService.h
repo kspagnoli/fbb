@@ -12,7 +12,7 @@
 #include <functional>
 
 class FBBPlayer;
-using FBBPlayerID = QString;
+using FBBPlayerId = QString;
 
 //------------------------------------------------------------------------------
 // FBBPlayerDataService
@@ -27,15 +27,17 @@ public:
 
     static uint32_t PlayerCount();
     static FBBPlayer* GetPlayer(uint32_t index);
-    static FBBPlayer* GetPlayer(const FBBPlayerID& playerId);
+    static FBBPlayer* GetPlayer(const FBBPlayerId& playerId);
     static FBBPlayer* GetPlayerFromBaseballReference(const QString& name, const QString& team);
     static void ForEach(const std::function<void(FBBPlayer&)>&& fn);
-    static void ForEachValidHitter(const std::function<void(FBBPlayer&)>&& fn);
-    static void ForEachValidPitcher(const std::function<void(FBBPlayer&)>&& fn);
+    static std::vector<FBBPlayer*> GetValidHitters();
+    static std::vector<FBBPlayer*> GetValidPitchers();
+
+    static bool IsValidUnderCurrentSettings(const FBBPlayer* player);
 
 private:
 
     FBBPlayerDataService(QObject* parent);
     std::vector<std::shared_ptr<FBBPlayer>> m_flatData;
-    QMap<FBBPlayerID, std::shared_ptr<FBBPlayer>> m_mappedData;
+    QMap<FBBPlayerId, std::shared_ptr<FBBPlayer>> m_mappedData;
 };

@@ -4,9 +4,9 @@
 #include "FBB/FBBPlayer.h"
 #include "FBB/FBBLeaugeSettings.h"
 
-FBBDraftBoardSortFilterProxyModel::FBBDraftBoardSortFilterProxyModel(FBBPlayer::Projection::Type type, QObject* parent)
+FBBDraftBoardSortFilterProxyModel::FBBDraftBoardSortFilterProxyModel(FBBPlayer::Projection::TypeMask typeMask, QObject* parent)
     : QSortFilterProxyModel(parent)
-    , m_type(type)
+    , m_typeMask(typeMask)
 {
     connect(&FBBLeaugeSettings::Instance(), &FBBLeaugeSettings::SettingsChanged, this, [=]() {
         invalidateFilter();
@@ -22,11 +22,19 @@ bool FBBDraftBoardSortFilterProxyModel::lessThan(const QModelIndex& left, const 
 
 bool FBBDraftBoardSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, const QModelIndex& sourceParent) const
 {
-    if (m_type == FBBPlayer::Projection::PROJECTION_TYPE_HITTING && sourceColumn >= FBBDraftBoardModel::COLUMN_FIRST_PITCHING && sourceColumn <= FBBDraftBoardModel::COLUMN_LAST_PITCHING) {
+    switch (sourceColumn)
+    {
+    case FBBDraftBoardModel::COLUMN_ID:
+        return false;
+    default:
+        break;
+    }
+
+    if (m_typeMask & FBBPlayer::Projection::PROJECTION_TYPE_HITTING && sourceColumn >= FBBDraftBoardModel::COLUMN_FIRST_PITCHING && sourceColumn <= FBBDraftBoardModel::COLUMN_LAST_PITCHING) {
         return false;
     }
 
-    if (m_type == FBBPlayer::Projection::PROJECTION_TYPE_PITCHING && sourceColumn >= FBBDraftBoardModel::COLUMN_FIRST_HITTING && sourceColumn <= FBBDraftBoardModel::COLUMN_FIRST_PITCHING) {
+    if (m_typeMask & FBBPlayer::Projection::PROJECTION_TYPE_PITCHING && sourceColumn >= FBBDraftBoardModel::COLUMN_FIRST_HITTING && sourceColumn <= FBBDraftBoardModel::COLUMN_LAST_HITTING) {
         return false;
     }
 
@@ -38,22 +46,11 @@ bool FBBDraftBoardSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QM
     const FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(sourceRow);
 
     // Ignore mismatch types
-    if (pPlayer->spProjection->type != m_type) {
+    if (!(pPlayer->spProjection->type & m_typeMask)) {
         return false;
     }
 
-    // Ignore FA
-    if (!FBBLeaugeSettings::Instance().projections.includeFA && pPlayer->team == FBBTeam::FA) {
-        return false;
-    }
-
-    // Ignore min AB
-    if (pPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_HITTING && pPlayer->spProjection->hitting.AB <= FBBLeaugeSettings::Instance().projections.minAB) {
-        return false;
-    }
-
-    // Ignore min IP
-    if (pPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_PITCHING && pPlayer->spProjection->pitching.IP <= FBBLeaugeSettings::Instance().projections.minIP) {
+    if (!FBBPlayerDataService::IsValidUnderCurrentSettings(pPlayer)) {
         return false;
     }
 

@@ -1,44 +1,103 @@
 #include "FBB/FBBDraftBoard.h"
 #include "FBB/FBBDraftBoardModel.h"
 #include "FBB/FBBDraftBoardSortFilterProxyModel.h"
+#include "FBB/FBBPlayerDataService.h"
+#include "FBB/FBBDraftDialog.h"
 
-#include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QTableView>
 #include <QHeaderView>
 #include <QEvent>
 #include <QMouseEvent>
 #include <QContextMenuEvent>
 #include <QMenu>
+#include <QMenuBar>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QCompleter>
 
-// XXX
-FBBDraftBoard::FBBDraftBoard(FBBPlayer::Projection::Type type, QWidget* parent)
+FBBDraftBoard::FBBDraftBoard(FBBPlayer::Projection::TypeMask typeMask, QWidget* parent)
     : QWidget(parent)
 {
-    QHBoxLayout* pLayout = new QHBoxLayout(this);
+    // Main layout
+    QVBoxLayout* pLayout = new QVBoxLayout(this);
 
-    // Source 
-    m_pSourceModel = new FBBDraftBoardModel(this);
+    // Source model
+    FBBDraftBoardModel* pSourceModel = new FBBDraftBoardModel(this);
 
-    // Proxy
-    m_pProxyModel = new FBBDraftBoardSortFilterProxyModel(type, this);
-    m_pProxyModel->setSourceModel(m_pSourceModel);
+    // Proxy model
+    FBBDraftBoardSortFilterProxyModel* pProxyModel = new FBBDraftBoardSortFilterProxyModel(typeMask, this);
+    pProxyModel->setSourceModel(pSourceModel);
+
+    // Header + layout
+    QWidget* pHeader = new QWidget(this);
+    QHBoxLayout* pHeaderLayout = new QHBoxLayout(pHeader);
+    pHeaderLayout->setContentsMargins(0, 0, 0, 0);
+    pLayout->addWidget(pHeader);
+
+    // Draft button
+    QPushButton* pDraftButton = new QPushButton("Draft");
+    pDraftButton->setDisabled(true);
+    pHeaderLayout->addWidget(pDraftButton);
+
+    // Place holders
+    pHeaderLayout->addWidget(new QPushButton("Filter"));
+    pHeaderLayout->addWidget(new QPushButton("Foo"));
+    pHeaderLayout->addStretch();
+
+    // Completer
+    QCompleter* pSearchCompleter = new QCompleter(this);
+    pSearchCompleter->setModel(pProxyModel);
+    pSearchCompleter->setCompletionColumn(FBBDraftBoardModel::COLUMN_NAME);
+    pSearchCompleter->setCompletionRole(Qt::DisplayRole);
+    pSearchCompleter->setFilterMode(Qt::MatchContains);
+    pSearchCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+
+    // Search box
+    QLineEdit* pLineEdit = new QLineEdit();
+    pLineEdit->setCompleter(pSearchCompleter);
+    pLineEdit->setClearButtonEnabled(true);
+    pHeaderLayout->addWidget(pLineEdit);
 
     // Table
-    m_pTableView = new QTableView(this);
-    m_pTableView->setObjectName("draftBoard");
-    m_pTableView->setAlternatingRowColors(true);
-    m_pTableView->setSortingEnabled(true);
-    m_pTableView->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
-    m_pTableView->verticalHeader()->setDefaultSectionSize(15);
-    m_pTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
-    m_pTableView->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
-    m_pTableView->setModel(m_pProxyModel);
-    pLayout->addWidget(m_pTableView);
+    QTableView* pTableView = new QTableView(this);
+    pTableView->setObjectName("DraftBoardTableView");
+    pTableView->setAlternatingRowColors(true);
+    pTableView->setSortingEnabled(true);
+    pTableView->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+    pTableView->verticalHeader()->setDefaultSectionSize(15);
+    pTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    pTableView->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+    pTableView->setModel(pProxyModel);
+    pTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    pTableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    pLayout->addWidget(pTableView);
+
+    // Draft button activation
+    connect(pTableView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, [=](const QModelIndex & current, const QModelIndex & previous) {
+        pDraftButton->setEnabled(current.isValid());
+    });
+
+    // Draft button interactions
+    connect(pDraftButton, &QPushButton::released, this, [=]() {
+        const QModelIndex srcIdx = pProxyModel->mapToSource(pTableView->selectionModel()->currentIndex());
+        FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(srcIdx.row());
+        FBBDraftDialog dialog(pPlayer);
+        dialog.exec();
+    });
+
+    // Search activation
+    connect(pSearchCompleter, static_cast<void(QCompleter::*)(const QModelIndex&)>(&QCompleter::activated), this, [=](const QModelIndex& index) {
+        QAbstractProxyModel* pCompletionModel = reinterpret_cast<QAbstractProxyModel*>(pSearchCompleter->completionModel());
+        const QModelIndex proxyIndex = pCompletionModel->mapToSource(index);
+        pTableView->selectRow(proxyIndex.row());
+        pTableView->setFocus();
+    });
 
     // Table header context menu
-    connect(m_pTableView->horizontalHeader(), &QWidget::customContextMenuRequested, this, [=](const QPoint &pos) {
+    connect(pTableView->horizontalHeader(), &QWidget::customContextMenuRequested, this, [=](const QPoint &pos) {
 
-        QPoint globalPos = m_pTableView->horizontalHeader()->mapToGlobal(pos);
+        QPoint globalPos = pTableView->horizontalHeader()->mapToGlobal(pos);
 
         QMenu menu;
 
@@ -50,8 +109,8 @@ FBBDraftBoard::FBBDraftBoard(FBBPlayer::Projection::Type type, QWidget* parent)
             }
             )""");
 
-        for (int i = 0; i < m_pSourceModel->columnCount(m_pSourceModel->index(0, 0)); i++) {
-            QString columnName = m_pSourceModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+        for (int i = 0; i < pSourceModel->columnCount(pSourceModel->index(0, 0)); i++) {
+            QString columnName = pSourceModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
             menu.addAction(columnName);
         }
         // ...
@@ -69,8 +128,9 @@ FBBDraftBoard::FBBDraftBoard(FBBPlayer::Projection::Type type, QWidget* parent)
     });
 
     // connect(m_pSourceModel, &FBBDraftBoardModel::modelReset, this, [=] {
-        m_pTableView->horizontalHeader()->resizeSections(QHeaderView::ResizeToContents);
-        m_pTableView->horizontalHeader()->setStretchLastSection(true);
+        pTableView->horizontalHeader()->resizeSections(QHeaderView::ResizeToContents);
+        pTableView->horizontalHeader()->setStretchLastSection(true);
     // });
     
 }
+

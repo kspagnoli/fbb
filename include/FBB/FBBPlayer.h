@@ -9,7 +9,7 @@
 #include <memory>
 #include <array>
 
-using PlayerID = QString;
+using FBBPlayerId = QString;
 using FBBOwnerId = uint64_t;
 
 class FBBPlayer
@@ -52,7 +52,7 @@ public:
         PitchingStats_Count
     };
 
-    PlayerID id;
+    FBBPlayerId id;
 
     QString name;
     FBBTeam team = FBBTeam::Unknown;
@@ -64,12 +64,14 @@ public:
     {
         enum Type
         {
-            PROJECTION_TYPE_UNKNONWN,
-            PROJECTION_TYPE_HITTING,
-            PROJECTION_TYPE_PITCHING,
+            PROJECTION_TYPE_UNKNONWN = 0,
+            PROJECTION_TYPE_HITTING = 1 << 1,
+            PROJECTION_TYPE_PITCHING = 1 << 2,
+            PROJECTION_TYPE_ANY = PROJECTION_TYPE_HITTING | PROJECTION_TYPE_PITCHING,
         };
 
         Type type = PROJECTION_TYPE_UNKNONWN;
+        using TypeMask = uint8_t;
 
         union 
         {
@@ -117,7 +119,7 @@ public:
                 uint32_t GS;
                 uint32_t G;
                 uint32_t SV;
-                float IP;
+                uint32_t IP;
                 uint32_t H;
                 uint32_t ER;
                 uint32_t HR;
@@ -134,7 +136,7 @@ public:
 
                 float ERA() const
                 {
-                    return IP > 0 ? ER / float(IP) : 0.f;
+                    return IP > 0 ? (9*ER / float(IP)) : 0.f;
                 }
 
                 float WHIP() const
@@ -165,16 +167,17 @@ public:
         } zPitching;
 
         float zScore = 0;
+        float estimate = 0;
+        uint32_t rank = 0;
 
     } calculations;
 
     struct DraftInfo
     {
-        FBBOwnerId owner;
-        uint32_t paid;
-        FBBPositionBits position;
-    };
+        FBBOwnerId owner = 0;
+        uint32_t paid = 0;
+        FBBPositionBits position = FBB_POSITION_UNKNOWN;
+    } draftInfo;
 
     std::unique_ptr<Projection> spProjection;
-    std::unique_ptr<DraftInfo> spDraftInfo;
 };

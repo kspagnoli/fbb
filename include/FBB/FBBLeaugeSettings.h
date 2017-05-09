@@ -6,6 +6,7 @@
 #include <QObject>
 
 #include <memory>
+#include <map>
 
 using FBBOwnerId = uint64_t;
 
@@ -113,7 +114,7 @@ public:
         QString abbreviation;
     };
 
-    QMap<FBBOwnerId, std::shared_ptr<Owner>> owners;
+    std::map<FBBOwnerId, std::shared_ptr<Owner>> owners;
 
     struct Projections
     {
@@ -128,16 +129,18 @@ public:
         
         Source source = Source::Steamer;
         float hittingPitchingSplit = 0.70f;
-        uint32_t minAB = 100;
+        uint32_t minAB = 50;
         uint32_t minIP = 10;
         bool includeFA = false;
 
     } projections;
 
-    void CreateOwner()
+    std::shared_ptr<Owner> CreateOwner(const Owner& owner = Owner{})
     {
-        FBBOwnerId ownerId = owners.empty() ? 100 : owners.lastKey() + QTime::currentTime().msecsSinceStartOfDay();
-        owners.insert(ownerId, std::make_shared<Owner>());
+        FBBOwnerId ownerId = owners.empty() ? 100 : owners.rbegin()->first + QTime::currentTime().msecsSinceStartOfDay();
+        std::shared_ptr<Owner> spOwner = std::make_shared<Owner>(owner);
+        owners.insert(std::make_pair(ownerId, spOwner));
+        return spOwner;
     }
 
     uint32_t SumHitters() const

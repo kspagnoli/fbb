@@ -75,19 +75,23 @@ uint32_t FBBPlayerDataService::PlayerCount()
 
 FBBPlayer* FBBPlayerDataService::GetPlayer(uint32_t index)
 {
+    if (index >= PlayerCount()) {
+        return nullptr;
+    }
+
     return Instance().m_flatData[index].get();
 }
 
-FBBPlayer* FBBPlayerDataService::GetPlayer(const FBBPlayerID& playerId)
+FBBPlayer* FBBPlayerDataService::GetPlayer(const FBBPlayerId& playerId)
 {
     struct Compare
     {
-        bool operator()(const FBBPlayerID& lhs, const std::shared_ptr<FBBPlayer>& rhs)
+        bool operator()(const FBBPlayerId& lhs, const std::shared_ptr<FBBPlayer>& rhs)
         {
             return lhs < rhs->id;
         }
 
-        bool operator()(const std::shared_ptr<FBBPlayer>& lhs, const FBBPlayerID& rhs)
+        bool operator()(const std::shared_ptr<FBBPlayer>& lhs, const FBBPlayerId& rhs)
         {
             return lhs->id < rhs;
         }
@@ -101,6 +105,9 @@ FBBPlayer* FBBPlayerDataService::GetPlayer(const FBBPlayerID& playerId)
 
     // Create new player
     std::shared_ptr<FBBPlayer> spNewPlayer = std::make_shared<FBBPlayer>();
+
+    // Set id
+    spNewPlayer->id = playerId;
 
     // Add to be maps
     Instance().m_mappedData[playerId] = spNewPlayer;
@@ -139,12 +146,47 @@ FBBPlayer* FBBPlayerDataService::GetPlayerFromBaseballReference(const QString& n
 
     // Look for a team match
     for (auto& spPlayer : potentialMatches) {
-        if ( FBBTeamToString(spPlayer->team) == team) {
+        if (FBBTeamToString(spPlayer->team) == team) {
             return spPlayer.get();
         }
     }
 
     return nullptr;
+}
+
+bool FBBPlayerDataService::IsValidUnderCurrentSettings(const FBBPlayer* pPlayer)
+{
+    // Has min AB
+    if (pPlayer->spProjection && pPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_HITTING) {
+        if (pPlayer->spProjection->hitting.AB < FBBLeaugeSettings::Instance().projections.minAB) {
+            return false;
+        }
+    }
+
+    // Has min IP
+    if (pPlayer->spProjection && pPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_PITCHING) {
+        if (pPlayer->spProjection->pitching.IP < FBBLeaugeSettings::Instance().projections.minIP) {
+            return false;
+        }
+    }
+
+    // Ignore no-AL in AL only
+    if (FBBLeaugeSettings::Instance().leauge.type == FBBLeaugeSettings::Leauge::Type::AL && GetDivision(pPlayer->team) != FBBLeauge::AL) {
+        return false;
+    }
+
+    // Ignore non-NL in NL only
+    if (FBBLeaugeSettings::Instance().leauge.type == FBBLeaugeSettings::Leauge::Type::NL && GetDivision(pPlayer->team) != FBBLeauge::NL) {
+        return false;
+    }
+
+    // Ignore free agents
+    if (!FBBLeaugeSettings::Instance().projections.includeFA && GetDivision(pPlayer->team) == FBBLeauge::None) {
+        return false;
+    }
+
+    // Match
+    return true;
 }
 
 void FBBPlayerDataService::ForEach(const std::function<void(FBBPlayer&)>&& fn)
@@ -154,24 +196,28 @@ void FBBPlayerDataService::ForEach(const std::function<void(FBBPlayer&)>&& fn)
     }
 }
 
-void FBBPlayerDataService::ForEachValidHitter(const std::function<void(FBBPlayer&)>&& fn)
+std::vector<FBBPlayer*> FBBPlayerDataService::GetValidHitters()
 {
+    std::vector<FBBPlayer*> ret;
     for (const std::shared_ptr<FBBPlayer>& spPlayer : Instance().m_flatData) {
         if (spPlayer->spProjection && spPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_HITTING) {
-            if (spPlayer->spProjection->hitting.AB >= FBBLeaugeSettings::Instance().projections.minAB) {
-                fn(*spPlayer);
+            if (IsValidUnderCurrentSettings(spPlayer.get())) {
+                ret.push_back(spPlayer.get());
             }
         }
     }
+    return ret;
 }
 
-void FBBPlayerDataService::ForEachValidPitcher(const std::function<void(FBBPlayer&)>&& fn)
+std::vector<FBBPlayer*> FBBPlayerDataService::GetValidPitchers()
 {
+    std::vector<FBBPlayer*> ret;
     for (const std::shared_ptr<FBBPlayer>& spPlayer : Instance().m_flatData) {
         if (spPlayer->spProjection && spPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_PITCHING) {
-            if (spPlayer->spProjection->pitching.IP >= FBBLeaugeSettings::Instance().projections.minIP) {
-                fn(*spPlayer);
+            if (IsValidUnderCurrentSettings(spPlayer.get())) {
+                ret.push_back(spPlayer.get());
             }
         }
     }
+    return ret;
 }

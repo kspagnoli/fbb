@@ -71,3 +71,46 @@ QString FBBTeamToString(const FBBTeam& team)
         return "Unknown";
     }
 }
+
+FBBLeauge GetDivision(const FBBTeam& team)
+{
+    switch (team)
+    {
+    case FBBTeam::BAL:
+    case FBBTeam::BOS:
+    case FBBTeam::CHW:
+    case FBBTeam::CLE:
+    case FBBTeam::DET:
+    case FBBTeam::HOU:
+    case FBBTeam::KC:
+    case FBBTeam::LAA:
+    case FBBTeam::MIN:
+    case FBBTeam::NYY:
+    case FBBTeam::OAK:
+    case FBBTeam::SD:
+    case FBBTeam::SEA:
+    case FBBTeam::TB:
+    case FBBTeam::TEX:
+    case FBBTeam::TOR:
+        return FBBLeauge::AL;
+
+    case FBBTeam::ARI:
+    case FBBTeam::ATL:
+    case FBBTeam::CHC:
+    case FBBTeam::CIN:
+    case FBBTeam::COL:
+    case FBBTeam::LAD:
+    case FBBTeam::MIA:
+    case FBBTeam::MIL:
+    case FBBTeam::NYM:
+    case FBBTeam::PHI:
+    case FBBTeam::SF:
+    case FBBTeam::STL:
+    case FBBTeam::WAS:
+    case FBBTeam::PIT:
+        return FBBLeauge::NL;
+
+    default:
+        return FBBLeauge::None;
+    }
+}

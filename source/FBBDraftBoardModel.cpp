@@ -21,7 +21,7 @@ namespace Impl {
     }
 
     template <typename Fn_Getter>
-    QVariant GetProjectionData(int role, const std::unique_ptr<FBBPlayer::Projection>& sPtr, FBBPlayer::Projection::Type type, const Fn_Getter& fn)
+    QVariant GetProjectionData(int role, const std::unique_ptr<FBBPlayer::Projection>& sPtr, FBBPlayer::Projection::TypeMask type, const Fn_Getter& fn)
     {
         if (sPtr->type != type) {
             return QVariant();
@@ -91,10 +91,18 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
 
         switch (index.column())
         {
-        case COLUMN_OWNER:
-            return "Owner";
+        case COLUMN_ID:
+            return pPlayer->id;
+        case COLUMN_RANK:
+            return pPlayer->calculations.rank;
+        case COLUMN_OWNER: {
+            if (!pPlayer->draftInfo.owner) {
+                return "--";
+            }
+            return FBBLeaugeSettings::Instance().owners[pPlayer->draftInfo.owner]->abbreviation;
+        } break;
         case COLUMN_PAID:
-            return "Paid";
+            return pPlayer->draftInfo.paid ? QString("$%1").arg(pPlayer->draftInfo.paid) : "--";
         case COLUMN_NAME:
             return pPlayer->name;
         case COLUMN_TEAM:
@@ -138,9 +146,16 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_SV:
             GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.SV);
         case COLUMN_ESTIMATE:
-            return "$";
-        case COLUMN_Z:
-            return pPlayer->calculations.zScore;
+            if (role == FBBDraftBoardModel::RawDataRole) {
+                return pPlayer->calculations.estimate;
+            }
+            return Impl::FormatType(pPlayer->calculations.estimate);
+        case COLUMN_Z: {
+            if (role == FBBDraftBoardModel::RawDataRole) {
+                return pPlayer->calculations.zScore;
+            }
+            return Impl::FormatType(pPlayer->calculations.zScore);
+        } break;
         case COLUMN_COMMENT:
             return "Comment";
         }
@@ -161,6 +176,10 @@ QVariant FBBDraftBoardModel::headerData(int section, Qt::Orientation orientation
 
             switch (section)
             {
+            case COLUMN_RANK:
+                return "#";
+            case COLUMN_ID:
+                return "ID";
             case COLUMN_OWNER:
                 return "Owner";
             case COLUMN_PAID:

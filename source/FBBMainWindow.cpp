@@ -13,22 +13,36 @@ FBBMainWindow::FBBMainWindow(QWidget* parent, Qt::WindowFlags flags)
     FBBMainMenuBar* mainMenuBar = new FBBMainMenuBar(this);
     QMainWindow::setMenuBar(mainMenuBar);
 
-    QDockWidget* pFirstWidget = nullptr;
+    // Create main widget
+    QWidget* pCentralWidget = new QWidget(this);
+    QGridLayout* pCentralLayout = new QGridLayout(pCentralWidget);
+    QMainWindow::setCentralWidget(pCentralWidget);
+
+    // Main tab widget
+    QTabWidget* pTabWidget = new QTabWidget();
+    pCentralLayout->addWidget(pTabWidget);
+
+    // QDockWidget* pFirstWidget = nullptr;
 
     auto InstallWidget = [&](const QString& title,  QWidget* widget) 
     {
-        QDockWidget* pDockWidget = new QDockWidget(title, this);
-        pDockWidget->setWidget(widget);
-        pDockWidget->setFeatures(QDockWidget::DockWidgetMovable);
-        addDockWidget(Qt::LeftDockWidgetArea, pDockWidget);
+        // QDockWidget* pDockWidget = new QDockWidget(title, this);
+        // pDockWidget->setWidget(widget);
+        // pDockWidget->setFeatures(QDockWidget::DockWidgetMovable);
+        // addDockWidget(Qt::LeftDockWidgetArea, pDockWidget);
+        // 
+        // if (!pFirstWidget) {
+        //     pFirstWidget = pDockWidget;
+        // } else {
+        //     tabifyDockWidget(pFirstWidget, pDockWidget);
+        // }
 
-        if (!pFirstWidget) {
-            pFirstWidget = pDockWidget;
-        } else {
-            tabifyDockWidget(pFirstWidget, pDockWidget);
-        }
+        // Create main widget
+        pTabWidget->addTab(widget, title);
     };
 
+
+    InstallWidget("All Players", new FBBDraftBoard(FBBPlayer::Projection::PROJECTION_TYPE_ANY, this));
     InstallWidget("Hitting", new FBBDraftBoard(FBBPlayer::Projection::PROJECTION_TYPE_HITTING, this));
     InstallWidget("Pitching", new FBBDraftBoard(FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, this));
 
