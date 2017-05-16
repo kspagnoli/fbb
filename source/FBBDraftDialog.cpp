@@ -2,6 +2,7 @@
 #include "FBB/FBBPlayer.h"
 #include "FBB/FBBPosition.h"
 #include "FBB/FBBLeaugeSettings.h"
+#include "FBB/FBBPlayerDataService.h"
 
 #include <QPushButton>
 #include <QBoxLayout>
@@ -10,6 +11,7 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QLineEdit>
+#include <QUuid>
 
 enum
 {
@@ -89,9 +91,12 @@ FBBDraftDialog::FBBDraftDialog(FBBPlayer* pPlayer)
     // Accept
     connect(pDraftButton, &QPushButton::clicked, this, [=]() {
         
+        // Get a transaction id
+        pPlayer->draftInfo.transactionId = QUuid::createUuid();
+
         // apply paid
         pPlayer->draftInfo.paid = m_paid;
-
+        
         // apply owner
         for (const auto& item : FBBLeaugeSettings::Instance().owners) {
              if (item.second->name == m_owner) {
@@ -99,6 +104,9 @@ FBBDraftDialog::FBBDraftDialog(FBBPlayer* pPlayer)
                  break;
             }
          }
+
+        // signal
+        emit FBBPlayerDataService::Instance().PlayerDrafted(pPlayer);
 
         accept();
     });

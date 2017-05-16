@@ -4,6 +4,7 @@
 #include "FBB/FBBPosition.h"
 
 #include <QString>
+#include <QUuid>
 
 #include <cstdint>
 #include <memory>
@@ -174,6 +175,7 @@ public:
 
     struct DraftInfo
     {
+        QUuid transactionId;
         FBBOwnerId owner = 0;
         uint32_t paid = 0;
         FBBPositionBits position = FBB_POSITION_UNKNOWN;

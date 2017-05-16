@@ -71,6 +71,8 @@ FBBDraftBoard::FBBDraftBoard(FBBPlayer::Projection::TypeMask typeMask, QWidget* 
     pTableView->setModel(pProxyModel);
     pTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     pTableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    pTableView->setSortingEnabled(true);
+    pTableView->sortByColumn(0, Qt::SortOrder::AscendingOrder);
     pLayout->addWidget(pTableView);
 
     // Draft button activation

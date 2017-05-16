@@ -15,13 +15,13 @@ include_directories(
     CMAKE_INCLUDE_CURRENT_DIR
     "include")
 
-# Find the QtWidgets library 
+# Find the QtWidgets library
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5Charts REQUIRED)
 
 # QT resrouces files
 qt5_add_resources(RESOURCES 
-    Resources.qrc) 
+    Resources.qrc)
 
 # All headers
 file(GLOB HEADERS include/FBB/*.h)

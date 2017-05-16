@@ -35,6 +35,10 @@ public:
 
     static bool IsValidUnderCurrentSettings(const FBBPlayer* player);
 
+signals:
+
+    void PlayerDrafted(FBBPlayer* player);
+
 private:
 
     FBBPlayerDataService(QObject* parent);
