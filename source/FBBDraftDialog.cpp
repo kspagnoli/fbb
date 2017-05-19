@@ -91,9 +91,6 @@ FBBDraftDialog::FBBDraftDialog(FBBPlayer* pPlayer)
     // Accept
     connect(pDraftButton, &QPushButton::clicked, this, [=]() {
         
-        // Get a transaction id
-        pPlayer->draftInfo.transactionId = QUuid::createUuid();
-
         // apply paid
         pPlayer->draftInfo.paid = m_paid;
         

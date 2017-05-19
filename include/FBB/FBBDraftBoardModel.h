@@ -69,4 +69,16 @@ public:
     virtual int columnCount(const QModelIndex& parent) const override;
     virtual QVariant data(const QModelIndex& index, int role) const override;
     virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+
+
+    enum class Mode
+    {
+        STAT,
+        Z_SCORE,
+    };
+    void SetMode(Mode mode);
+
+private:
+
+    Mode m_mode = Mode::STAT;
 };

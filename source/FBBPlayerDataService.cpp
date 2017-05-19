@@ -8,6 +8,17 @@
 
 #include <algorithm>
 
+static uint32_t FindLSB(uint32_t mask)
+{
+    unsigned result = 0;
+    while (!(mask & 1u))
+    {
+        mask >>= 1;
+        ++result;
+    }
+    return result;
+}
+
 static FBBTeam ToFBBTeam(const QString& teamName)
 {
     static const QMap<QString, FBBTeam> s_LUT = 
@@ -60,6 +71,17 @@ static FBBTeam ToFBBTeam(const QString& teamName)
 FBBPlayerDataService::FBBPlayerDataService(QObject* parent)
     : QObject(parent)
 {
+    // Sanitize deleted owners
+    connect(&FBBLeaugeSettings::Instance(), &FBBLeaugeSettings::SettingsChanged, this, [=](const FBBLeaugeSettings& settings) {
+        for (const std::shared_ptr<FBBPlayer>& spPlayer : m_flatData) {
+            if (spPlayer->draftInfo.owner) {
+                auto itr = settings.owners.find(spPlayer->draftInfo.owner);
+                if (itr == settings.owners.end()) {
+                    spPlayer->draftInfo = FBBPlayer::DraftInfo{};
+                }
+            }
+        }
+    });
 }
 
 FBBPlayerDataService& FBBPlayerDataService::Instance()
@@ -220,4 +242,63 @@ std::vector<FBBPlayer*> FBBPlayerDataService::GetValidPitchers()
         }
     }
     return ret;
+}
+
+void FBBPlayerDataService::AddDemoData()
+{
+    // Get hitters
+    std::vector<FBBPlayer*> vecHitters = GetValidHitters();
+    std::sort(vecHitters.begin(), vecHitters.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS) {
+        return pLHS->calculations.rank < pRHS->calculations.rank;
+    });
+    auto itrHitter = vecHitters.begin();
+
+    // Loop hitter count
+    for (uint32_t i = 0; i < FBBLeaugeSettings::Instance().SumHitters(); i+=4) {
+
+        // Loop owners
+        for (auto& entry : FBBLeaugeSettings::Instance().owners) {
+            
+            // Spoof info
+            FBBPlayer* pPlayer = *itrHitter;
+            pPlayer->draftInfo.owner = entry.first;
+            pPlayer->draftInfo.paid = pPlayer->calculations.estimate;
+            pPlayer->draftInfo.position = pPlayer->eligablePositions == 0 ? FBB_POSITION_UNKNOWN : static_cast<FBBPositionBits>(FindLSB(pPlayer->eligablePositions));
+
+            // Signal
+            emit Instance().PlayerDrafted(pPlayer);
+
+            // Next
+            itrHitter++;
+        }
+    }
+
+    // Get pitchers
+    std::vector<FBBPlayer*> vecPitchers = GetValidPitchers();
+    std::sort(vecPitchers.begin(), vecPitchers.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS) {
+        return pLHS->calculations.rank < pRHS->calculations.rank;
+    });
+    auto itrPitcher = vecPitchers.begin();
+
+    // Loop hitter count
+    for (uint32_t i = 0; i < FBBLeaugeSettings::Instance().SumPitchers(); i += 4) {
+
+        // Loop owners
+        for (auto& entry : FBBLeaugeSettings::Instance().owners) {
+
+            // Spoof info
+            FBBPlayer* pPlayer = *itrPitcher;
+            pPlayer->draftInfo.owner = entry.first;
+            pPlayer->draftInfo.paid = pPlayer->calculations.estimate;
+            pPlayer->draftInfo.position = pPlayer->eligablePositions == 0 ? FBB_POSITION_UNKNOWN : static_cast<FBBPositionBits>(FindLSB(pPlayer->eligablePositions));
+
+            // Signal
+            emit Instance().PlayerDrafted(pPlayer);
+
+            // Next
+            itrPitcher++;
+        }
+    }
+
+
 }

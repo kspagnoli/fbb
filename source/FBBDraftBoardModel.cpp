@@ -5,50 +5,22 @@
 #include "FBB/FBBLeaugeSettings.h"
 #include "FBB/FBBPositionService.h"
 
-namespace Impl {
+template <typename T>
+static QVariant ToQVariant(T x, int role)
+{
+    return x;
+}
 
-    template <typename T>
-    QVariant FormatType(T x)
-    {
-        return x;
-    }
-
-    QVariant FormatType(float x)
-    {
+static QVariant ToQVariant(float x, int role)
+{
+    if (role == Qt::DisplayRole) {
         QString str;
         str.setNum(x, 'f', 3);
         return str;
     }
 
-    template <typename Fn_Getter>
-    QVariant GetProjectionData(int role, const std::unique_ptr<FBBPlayer::Projection>& sPtr, FBBPlayer::Projection::TypeMask type, const Fn_Getter& fn)
-    {
-        if (sPtr->type != type) {
-            return QVariant();
-        }
-
-        if (role == FBBDraftBoardModel::RawDataRole) {
-            if (!sPtr) {
-                return -1;
-            } else {
-                return fn();
-            }
-        } else if (role == Qt::DisplayRole) {
-            if (!sPtr) {
-                return "N/A";
-            } else {
-                return FormatType(fn());
-            }
-        }
-        return QVariant();
-    }
-
+    return x;
 }
-
-#define GET_PROJECTION_DATA(role, PTR, TYPE, STAT)          \
-    return Impl::GetProjectionData(role, PTR, TYPE, [=]{    \
-        return PTR->STAT;                                   \
-    });
 
 FBBDraftBoardModel::FBBDraftBoardModel(QObject* parent)
     : QAbstractTableModel(parent)
@@ -114,47 +86,90 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_POSITION:
             return FBBPositionMaskToString(pPlayer->eligablePositions);
         case COLUMN_AB:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.AB);
+             return ToQVariant(pPlayer->spProjection->hitting.AB, role);
         case COLUMN_H:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.H);
+             return ToQVariant(pPlayer->spProjection->hitting.H, role);
         case COLUMN_AVG:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.AVG());
+            if (m_mode == Mode::STAT) {
+                return ToQVariant(pPlayer->spProjection->hitting.AVG(), role);
+            } else if (m_mode == Mode::Z_SCORE) {
+                return ToQVariant(pPlayer->calculations.zHitting.AVG, role);
+            }
+            break;
         case COLUMN_HR:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.HR);
+            if (m_mode == Mode::STAT) {
+                return ToQVariant(pPlayer->spProjection->hitting.HR, role);
+            } else if (m_mode == Mode::Z_SCORE) {
+                return ToQVariant(pPlayer->calculations.zHitting.HR, role);
+            }
+            break;
         case COLUMN_R:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.R);
+            if (m_mode == Mode::STAT) {
+                return ToQVariant(pPlayer->spProjection->hitting.R, role);
+            } else if (m_mode == Mode::Z_SCORE) {
+                return ToQVariant(pPlayer->calculations.zHitting.R, role);
+            }
+            break;
         case COLUMN_RBI:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.RBI);
+            if (m_mode == Mode::STAT) {
+                return ToQVariant(pPlayer->spProjection->hitting.RBI, role);
+            } else if (m_mode == Mode::Z_SCORE) {
+                return ToQVariant(pPlayer->calculations.zHitting.RBI, role);
+            }
+            break;
         case COLUMN_SB:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_HITTING, hitting.SB);
+            if (m_mode == Mode::STAT) {
+                return ToQVariant(pPlayer->spProjection->hitting.SB, role);
+            } else if (m_mode == Mode::Z_SCORE) {
+                return ToQVariant(pPlayer->calculations.zHitting.SB, role);
+            }
+            break;
         case COLUMN_IP:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.IP);
+            return ToQVariant(pPlayer->spProjection->pitching.IP, role);
         case COLUMN_HA:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.H);
+            return ToQVariant(pPlayer->spProjection->pitching.H, role);
         case COLUMN_BB:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.BB);
+            return ToQVariant(pPlayer->spProjection->pitching.BB, role);
         case COLUMN_ER:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.ER);
+            return ToQVariant(pPlayer->spProjection->pitching.ER, role);
         case COLUMN_SO:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.SO);
+            if (m_mode == Mode::STAT) {
+                return ToQVariant(pPlayer->spProjection->pitching.SO, role);
+            } else if (m_mode == Mode::Z_SCORE) {
+                return ToQVariant(pPlayer->calculations.zPitching.SO, role);
+            }
+            break;
         case COLUMN_ERA:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.ERA());
+            if (m_mode == Mode::STAT) {
+                return ToQVariant(pPlayer->spProjection->pitching.ERA(), role);
+            } else if (m_mode == Mode::Z_SCORE) {
+                return ToQVariant(pPlayer->calculations.zPitching.ERA, role);
+            }
+            break;
         case COLUMN_WHIP:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.WHIP());
+            if (m_mode == Mode::STAT) {
+                return ToQVariant(pPlayer->spProjection->pitching.WHIP(), role);
+            } else if (m_mode == Mode::Z_SCORE) {
+                return ToQVariant(pPlayer->calculations.zPitching.WHIP, role);
+            }
+            break;
         case COLUMN_W:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.W);
+            if (m_mode == Mode::STAT) {
+                return ToQVariant(pPlayer->spProjection->pitching.W, role);
+            } else if (m_mode == Mode::Z_SCORE) {
+                return ToQVariant(pPlayer->calculations.zPitching.W, role);
+            }
+            break;
         case COLUMN_SV:
-            GET_PROJECTION_DATA(role, pPlayer->spProjection, FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, pitching.SV);
+            if (m_mode == Mode::STAT) {
+                return ToQVariant(pPlayer->spProjection->pitching.SV, role);
+            } else if (m_mode == Mode::Z_SCORE) {
+                return ToQVariant(pPlayer->calculations.zPitching.SV, role);
+            }
         case COLUMN_ESTIMATE:
-            if (role == FBBDraftBoardModel::RawDataRole) {
-                return pPlayer->calculations.estimate;
-            }
-            return Impl::FormatType(pPlayer->calculations.estimate);
+            return ToQVariant(pPlayer->calculations.estimate, role);
         case COLUMN_Z: {
-            if (role == FBBDraftBoardModel::RawDataRole) {
-                return pPlayer->calculations.zScore;
-            }
-            return Impl::FormatType(pPlayer->calculations.zScore);
+            return ToQVariant(pPlayer->calculations.zScore, role);
         } break;
         case COLUMN_COMMENT:
             return "Comment";
@@ -239,3 +254,9 @@ QVariant FBBDraftBoardModel::headerData(int section, Qt::Orientation orientation
     return QVariant();
 }
 
+void FBBDraftBoardModel::SetMode(Mode mode)
+{
+    m_mode = mode;
+    QVector<int> roles = { Qt::DisplayRole };
+    emit dataChanged(index(0, COLUMN_FIRST_HITTING), index(FBBPlayerDataService::PlayerCount() - 1, COLUMN_LAST_PITCHING), roles);
+}

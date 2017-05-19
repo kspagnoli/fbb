@@ -26,13 +26,27 @@ int FBBDraftLogModel::rowCount(const QModelIndex& parent) const
 
 int FBBDraftLogModel::columnCount(const QModelIndex& parent) const
 {
-    return 1;
+    return DRAFTLOG_COLUMN_COUNT;
 }
 
 QVariant FBBDraftLogModel::data(const QModelIndex& index, int role) const
 {
+    const FBBPlayer* pPlayer = m_vecDraftedPlayers[index.row()];
+
     if (role == Qt::DisplayRole) {
-        return m_vecDraftedPlayers[index.row()]->name;
+        switch (index.column())
+        {
+        case DRAFTLOG_ID:
+            return index.row();
+        case DRAFTLOG_NAME:
+            return pPlayer->name;
+        case DRAFTLOG_OWNER:
+            return pPlayer->draftInfo.owner;
+        case DRAFTLOG_PRICE:
+            return pPlayer->draftInfo.paid;
+        default:
+            break;
+        }
     }
 
     return QVariant();
@@ -43,8 +57,14 @@ QVariant FBBDraftLogModel::headerData(int section, Qt::Orientation orientation, 
     if (orientation == Qt::Horizontal) {
         switch (section)
         {
-        case 0:
+        case DRAFTLOG_ID:
+            return "#";
+        case DRAFTLOG_NAME:
             return "Player";
+        case DRAFTLOG_OWNER:
+            return "Owner";
+        case DRAFTLOG_PRICE:
+            return "$";
         default:
             break;
         }

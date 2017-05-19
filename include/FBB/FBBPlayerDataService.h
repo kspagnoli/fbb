@@ -35,6 +35,9 @@ public:
 
     static bool IsValidUnderCurrentSettings(const FBBPlayer* player);
 
+    // Demo
+    static void AddDemoData();
+
 signals:
 
     void PlayerDrafted(FBBPlayer* player);

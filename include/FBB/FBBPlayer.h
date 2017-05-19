@@ -4,7 +4,6 @@
 #include "FBB/FBBPosition.h"
 
 #include <QString>
-#include <QUuid>
 
 #include <cstdint>
 #include <memory>
@@ -152,19 +151,19 @@ public:
     struct Calculations
     {
         struct {
-            double AVG;
-            double RBI;
-            double R;
-            double SB;
-            double HR;
+            float AVG;
+            float RBI;
+            float R;
+            float SB;
+            float HR;
         } zHitting;
 
         struct {
-            double W;
-            double SV;
-            double ERA;
-            double WHIP;
-            double SO;
+            float W;
+            float SV;
+            float ERA;
+            float WHIP;
+            float SO;
         } zPitching;
 
         float zScore = 0;
@@ -175,7 +174,6 @@ public:
 
     struct DraftInfo
     {
-        QUuid transactionId;
         FBBOwnerId owner = 0;
         uint32_t paid = 0;
         FBBPositionBits position = FBB_POSITION_UNKNOWN;

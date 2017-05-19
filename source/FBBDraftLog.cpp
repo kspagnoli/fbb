@@ -2,7 +2,8 @@
 #include "FBB/FBBDraftLogModel.h"
 
 #include <QHBoxLayout>
-#include <QTreeView>
+#include <QTableView>
+#include <QHeaderView>
 
 FBBDraftLog::FBBDraftLog(QWidget* pParent)
     : QWidget(pParent)
@@ -11,10 +12,13 @@ FBBDraftLog::FBBDraftLog(QWidget* pParent)
     QHBoxLayout* pLayout = new QHBoxLayout(this);
 
     // Add table view
-    QTreeView* pTreeView = new QTreeView(this);
-    pTreeView->setModel(&FBBDraftLogModel::Instance());
-    pTreeView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    pTreeView->setSelectionMode(QAbstractItemView::NoSelection);
-    pTreeView->setUniformRowHeights(true);
-    pLayout->addWidget(pTreeView);
+    QTableView* pTableView = new QTableView(this);
+    pTableView->setModel(&FBBDraftLogModel::Instance());
+    pTableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    pTableView->setSelectionMode(QAbstractItemView::NoSelection);
+    pTableView->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+    pTableView->verticalHeader()->setDefaultSectionSize(15);
+    pTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    pTableView->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+    pLayout->addWidget(pTableView);
 }

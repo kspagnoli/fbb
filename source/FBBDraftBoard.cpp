@@ -40,9 +40,12 @@ FBBDraftBoard::FBBDraftBoard(FBBPlayer::Projection::TypeMask typeMask, QWidget* 
     pDraftButton->setDisabled(true);
     pHeaderLayout->addWidget(pDraftButton);
 
+    // Z/$ button
+    QPushButton* pZscoreToggle = new QPushButton("#/z");
+    pZscoreToggle->setCheckable(true);
+    pHeaderLayout->addWidget(pZscoreToggle);
+
     // Place holders
-    pHeaderLayout->addWidget(new QPushButton("Filter"));
-    pHeaderLayout->addWidget(new QPushButton("Foo"));
     pHeaderLayout->addStretch();
 
     // Completer
@@ -86,6 +89,10 @@ FBBDraftBoard::FBBDraftBoard(FBBPlayer::Projection::TypeMask typeMask, QWidget* 
         FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(srcIdx.row());
         FBBDraftDialog dialog(pPlayer);
         dialog.exec();
+    });
+
+    connect(pZscoreToggle, &QPushButton::toggled, this, [=](bool checked) {
+        pSourceModel->SetMode(checked ? FBBDraftBoardModel::Mode::Z_SCORE : FBBDraftBoardModel::Mode::STAT);
     });
 
     // Search activation
