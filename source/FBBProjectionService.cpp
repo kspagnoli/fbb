@@ -58,7 +58,7 @@ static FBBTeam ToFBBTeam(const QString& teamName)
     return itr.value();
 }
 
-static void LoadHittingProjections(const QString& file)
+void FBBProjectionService::LoadHittingProjections(const QString& file)
 {
     // Log
     // GlobalLogger::AppendMessage("Loading hitting projections...");
@@ -73,23 +73,39 @@ static void LoadHittingProjections(const QString& file)
     parsed.replaceInStrings("\"", "", Qt::CaseInsensitive);
 
     // Stats to find
-    QMap<QString, int32_t> LUT;
-    LUT["Name"] = parsed.indexOf("Name");
-    LUT["Team"] = parsed.indexOf("Team");
-    LUT["PA"] = parsed.indexOf("PA");
-    LUT["AB"] = parsed.indexOf("AB");
-    LUT["H"] = parsed.indexOf("H");
-    LUT["2B"] = parsed.indexOf("2B");
-    LUT["3B"] = parsed.indexOf("3B");
-    LUT["HR"] = parsed.indexOf("HR");
-    LUT["R"] = parsed.indexOf("R");
-    LUT["RBI"] = parsed.indexOf("RBI");
-    LUT["BB"] = parsed.indexOf("BB");
-    LUT["SO"] = parsed.indexOf("SO");
-    LUT["HBP"] = parsed.indexOf("HBP");
-    LUT["SB"] = parsed.indexOf("SB");
-    LUT["CS"] = parsed.indexOf("CS");
-    LUT["playerid"] = parsed.indexOf("playerid");
+    // Stats to find
+    enum FanHitter
+    {
+        FAN_HITTER_NAME,
+        FAN_HITTER_TEAM,
+        FAN_HITTER_G,
+        FAN_HITTER_PA,
+        FAN_HITTER_AB,
+        FAN_HITTER_H,
+        FAN_HITTER_2B,
+        FAN_HITTER_3B,
+        FAN_HITTER_HR,
+        FAN_HITTER_R,
+        FAN_HITTER_RBI,
+        FAN_HITTER_BB,
+        FAN_HITTER_SO,
+        FAN_HITTER_HBP,
+        FAN_HITTER_SB,
+        FAN_HITTER_CS,
+        FAN_HITTER_AVG,
+        FAN_HITTER_OBP,
+        FAN_HITTER_SLG,
+        FAN_HITTER_OPS,
+        FAN_HITTER_WOBA,
+        FAN_HITTER_FLD,
+        FAN_HITTER_BSR,
+        FAN_HITTER_WAR,
+        FAN_HITTER_ADP,
+        FAN_HITTER_PLAYER_ID,
+    };
+
+    // Rk,Name,Age,PA,AB,R,H,2B,3B,HR,RBI,SB,CS,BB,SO,BA,OBP,SLG,OPS,TB,GDP,HBP,SH,SF,IBB,Rel
+    // 1,Jose Abreu\abreujo02,32,544,492,65,136,31,2,21,75,2,1,35,106,.276,.335,.476,.811,234,15,11,0,5,5,86%
 
     // Loop rows
     while (!textStream.atEnd()) {
@@ -99,36 +115,36 @@ static void LoadHittingProjections(const QString& file)
         parsed.replaceInStrings("\"", "", Qt::CaseInsensitive);
 
         // Lazily get player
-        FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(parsed[LUT["playerid"]]);
-        pPlayer->name = parsed[LUT["Name"]];
-        pPlayer->team = ToFBBTeam(parsed[LUT["Team"]]);
-        pPlayer->id = parsed[LUT["playerid"]];
+        FBBPlayer* pPlayer = new FBBPlayer(FBBPlayer::PLAYER_TYPE_HITTER, parsed[FAN_HITTER_PLAYER_ID], parsed[FAN_HITTER_NAME], this);
+        pPlayer->team = ToFBBTeam(parsed[FAN_HITTER_TEAM]);
 
         // Create projections
         std::unique_ptr<FBBPlayer::Projection> spProjection = std::make_unique<FBBPlayer::Projection>();
 
         // Load stats
-        spProjection->type = FBBPlayer::Projection::PROJECTION_TYPE_HITTING;
-        spProjection->hitting.PA = parsed[LUT["PA"]].toUInt();
-        spProjection->hitting.AB = parsed[LUT["AB"]].toUInt();
-        spProjection->hitting.H = parsed[LUT["H"]].toUInt();
-        spProjection->hitting._2B = parsed[LUT["2B"]].toUInt();
-        spProjection->hitting._3B = parsed[LUT["3B"]].toUInt();
-        spProjection->hitting.HR = parsed[LUT["HR"]].toUInt();
-        spProjection->hitting.R = parsed[LUT["R"]].toUInt();
-        spProjection->hitting.RBI = parsed[LUT["RBI"]].toUInt();
-        spProjection->hitting.BB = parsed[LUT["BB"]].toUInt();
-        spProjection->hitting.SO = parsed[LUT["SO"]].toUInt();
-        spProjection->hitting.HBP = parsed[LUT["HBP"]].toUInt();
-        spProjection->hitting.SB = parsed[LUT["SB"]].toUInt();
-        spProjection->hitting.CS = parsed[LUT["CS"]].toUInt();
+        spProjection->hitting.PA =  parsed[FAN_HITTER_PA].toUInt();
+        spProjection->hitting.AB =  parsed[FAN_HITTER_AB].toUInt();
+        spProjection->hitting.H =   parsed[FAN_HITTER_H].toUInt();
+        spProjection->hitting._2B = parsed[FAN_HITTER_2B].toUInt();
+        spProjection->hitting._3B = parsed[FAN_HITTER_3B].toUInt();
+        spProjection->hitting.HR =  parsed[FAN_HITTER_HR].toUInt();
+        spProjection->hitting.R =   parsed[FAN_HITTER_R].toUInt();
+        spProjection->hitting.RBI = parsed[FAN_HITTER_RBI].toUInt();
+        spProjection->hitting.BB =  parsed[FAN_HITTER_BB].toUInt();
+        spProjection->hitting.SO =  parsed[FAN_HITTER_SO].toUInt();
+        spProjection->hitting.HBP = parsed[FAN_HITTER_HBP].toUInt();
+        spProjection->hitting.SB =  parsed[FAN_HITTER_SB].toUInt();
+        spProjection->hitting.CS =  parsed[FAN_HITTER_CS].toUInt();
 
         // Save to player
         pPlayer->spProjection = std::move(spProjection);
+
+        // Add player
+        FBBPlayerDataService::AddPlayer(pPlayer);
     }
 }
 
-static void LoadPitchingProjections(const QString& file)
+void FBBProjectionService::LoadPitchingProjections(const QString& file)
 {
     // Log
     // GlobalLogger::AppendMessage("Loading hitting projections...");
@@ -142,23 +158,31 @@ static void LoadPitchingProjections(const QString& file)
     QStringList parsed = textStream.readLine().split(",");
     parsed.replaceInStrings("\"", "", Qt::CaseInsensitive);
 
-    // Stats to find
-    QMap<QString, int32_t> LUT;
-    LUT["Name"] = parsed.indexOf("Name");
-    LUT["Team"] = parsed.indexOf("Team");
-    LUT["W"] = parsed.indexOf("W");
-    LUT["L"] = parsed.indexOf("L");
-    LUT["GS"] = parsed.indexOf("GS");
-    LUT["G"] = parsed.indexOf("G");
-    LUT["SV"] = parsed.indexOf("SV");
-    LUT["IP"] = parsed.indexOf("IP");
-    LUT["H"] = parsed.indexOf("H");
-    LUT["ER"] = parsed.indexOf("ER");
-    LUT["HR"] = parsed.indexOf("HR");
-    LUT["SO"] = parsed.indexOf("SO");
-    LUT["BB"] = parsed.indexOf("BB");
-    LUT["ADP"] = parsed.indexOf("ADP");
-    LUT["playerid"] = parsed.indexOf("playerid");
+    enum FanPitcher
+    {
+        FAN_PITCHER_NAME,
+        FAN_PITCHER_TEAM,
+        FAN_PITCHER_W,
+        FAN_PITCHER_L,
+        FAN_PITCHER_SV,
+        FAN_PITCHER_HLD,
+        FAN_PITCHER_ERA,
+        FAN_PITCHER_GS,
+        FAN_PITCHER_G,
+        FAN_PITCHER_IP,
+        FAN_PITCHER_H,
+        FAN_PITCHER_ER,
+        FAN_PITCHER_HR,
+        FAN_PITCHER_SO,
+        FAN_PITCHER_BB,
+        FAN_PITCHER_WHIP,
+        FAN_PITCHER_Kp9,
+        FAN_PITCHER_BBp9,
+        FAN_PITCHER_FIP,
+        FAN_PITCHER_WAR,
+        FAN_PITCHER_ADP,
+        FAN_PITCHER_PLAYER_ID,
+    };
 
     // Loop rows
     while (!textStream.atEnd()) {
@@ -168,29 +192,138 @@ static void LoadPitchingProjections(const QString& file)
         parsed.replaceInStrings("\"", "", Qt::CaseInsensitive);
 
         // Lazily get player
-        FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(parsed[LUT["playerid"]]);
-        pPlayer->name = parsed[LUT["Name"]];
-        pPlayer->team = ToFBBTeam(parsed[LUT["Team"]]);
+        FBBPlayer* pPlayer = new FBBPlayer(FBBPlayer::PLAYER_TYPE_PITCHER, parsed[FAN_PITCHER_PLAYER_ID], parsed[FAN_PITCHER_NAME], this);
+        pPlayer->team = ToFBBTeam(parsed[FAN_PITCHER_TEAM]);
         
         // Create projections
         std::unique_ptr<FBBPlayer::Projection> spProjection = std::make_unique<FBBPlayer::Projection>();
 
         // Load stats
-        spProjection->type = FBBPlayer::Projection::PROJECTION_TYPE_PITCHING;
-        spProjection->pitching.W = parsed[LUT["W"]].toUInt();
-        spProjection->pitching.L = parsed[LUT["L"]].toUInt();
-        spProjection->pitching.GS = parsed[LUT["GS"]].toUInt();
-        spProjection->pitching.G = parsed[LUT["G"]].toUInt();
-        spProjection->pitching.SV = parsed[LUT["SV"]].toUInt();
-        spProjection->pitching.IP = parsed[LUT["IP"]].toFloat();
-        spProjection->pitching.H = parsed[LUT["H"]].toUInt();
-        spProjection->pitching.ER = parsed[LUT["ER"]].toUInt();
-        spProjection->pitching.HR = parsed[LUT["HR"]].toUInt();
-        spProjection->pitching.SO = parsed[LUT["SO"]].toUInt();
-        spProjection->pitching.BB = parsed[LUT["BB"]].toUInt();
+        spProjection->pitching.W =  parsed[FAN_PITCHER_W].toUInt();
+        spProjection->pitching.L =  parsed[FAN_PITCHER_L].toUInt();
+        spProjection->pitching.GS = parsed[FAN_PITCHER_GS].toUInt();
+        spProjection->pitching.G =  parsed[FAN_PITCHER_G].toUInt();
+        spProjection->pitching.SV = parsed[FAN_PITCHER_SV].toUInt();
+        spProjection->pitching.IP = parsed[FAN_PITCHER_IP].toFloat();
+        spProjection->pitching.H =  parsed[FAN_PITCHER_H].toUInt();
+        spProjection->pitching.ER = parsed[FAN_PITCHER_ER].toUInt();
+        spProjection->pitching.HR = parsed[FAN_PITCHER_HR].toUInt();
+        spProjection->pitching.SO = parsed[FAN_PITCHER_SO].toUInt();
+        spProjection->pitching.BB = parsed[FAN_PITCHER_BB].toUInt();
 
         // Save to player
         pPlayer->spProjection = std::move(spProjection);
+
+        // Add to list
+        FBBPlayerDataService::AddPlayer(pPlayer);
+    }
+}
+
+static void LoadFielding(const QString& file)
+{
+    // Open file
+    QFile inputFile(":/data/2019-appearances.csv");
+    inputFile.open(QIODevice::ReadOnly);
+    QTextStream textStream(&inputFile);
+
+    // Tokenize header data
+    QStringList parsed = textStream.readLine().split(",");
+    parsed.replaceInStrings("\"", "", Qt::CaseInsensitive);
+
+    enum
+    {
+        APPEARANCE_NAME,
+        APPEARANCE_TEAM,
+        APPEARANCE_POS,
+        APPEARANCE_INN,
+        APPEARANCE_RSZ,
+        APPEARANCE_RCERA,
+        APPEARANCE_RSB,
+        APPEARANCE_RGDP,
+        APPEARANCE_RARM,
+        APPEARANCE_RGFP,
+        APPEARANCE_RPM,
+        APPEARANCE_RTS,
+        APPEARANCE_DRS,
+        APPEARANCE_BIZ,
+        APPEARANCE_PLAYS,
+        APPEARANCE_RZR,
+        APPEARANCE_OOZ,
+        APPEARANCE_FSR,
+        APPEARANCE_FRM,
+        APPEARANCE_ARM,
+        APPEARANCE_DPR,
+        APPEARANCE_RNGR,
+        APPEARANCE_ERRR,
+        APPEARANCE_UZR,
+        APPEARANCE_UZRp150,
+        APPEARANCE_DEF,
+        APPEARANCE_PLAYERID,
+    };
+
+    // Loop rows
+    while (!textStream.atEnd()) {
+
+        // Tokenize this row
+        QStringList parsed = textStream.readLine().split(",");
+        parsed.replaceInStrings("\"", "", Qt::CaseInsensitive);
+
+        QString id = parsed[APPEARANCE_PLAYERID];
+
+        FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(id);
+        if (!pPlayer) {
+            continue;
+        }
+
+        const QString pos = parsed[APPEARANCE_POS];
+        const float count = parsed[APPEARANCE_INN].toFloat();
+
+        static std::map<QString, FBBPlayer::Fielding> s_LUT = 
+        {
+            { "C", FBBPlayer::FIELDING_C},
+            { "1B", FBBPlayer::FIELDING_1B},
+            { "2B", FBBPlayer::FIELDING_2B},
+            { "SS", FBBPlayer::FIELDING_SS},
+            { "3B", FBBPlayer::FIELDING_3B},
+            { "LF", FBBPlayer::FIELDING_LF},
+            { "CF", FBBPlayer::FIELDING_CF},
+            { "RF", FBBPlayer::FIELDING_RF},
+        };
+
+        auto itr = s_LUT.find(pos);
+        if (itr == s_LUT.end()) {
+            continue;
+        }
+
+        switch (itr->second)
+        {
+        case FBBPlayer::FIELDING_C:
+            pPlayer->appearances.fielding.C += count;
+            break;
+        case FBBPlayer::FIELDING_1B:
+            pPlayer->appearances.fielding._1B += count;
+            break;
+        case FBBPlayer::FIELDING_2B:
+            pPlayer->appearances.fielding._2B += count;
+            break;
+        case FBBPlayer::FIELDING_SS:
+            pPlayer->appearances.fielding.SS += count;
+            break;
+        case FBBPlayer::FIELDING_3B:
+            pPlayer->appearances.fielding._3B += count;
+            break;
+        case FBBPlayer::FIELDING_LF:
+            pPlayer->appearances.fielding.LF += count;
+            break;
+        case FBBPlayer::FIELDING_CF:
+            pPlayer->appearances.fielding.CF += count;
+            break;
+        case FBBPlayer::FIELDING_RF:
+            pPlayer->appearances.fielding.RF += count;
+            break;
+        default:
+            break;
+        }
     }
 }
 
@@ -331,18 +464,16 @@ static void CalculateHittingZScores()
     });
 
     // Get replacement player
-    const uint32_t numDraftedHitters = FBBLeaugeSettings::Instance().SumHitters() * FBBLeaugeSettings::Instance().owners.size();
+    const size_t numDraftedHitters = FBBLeaugeSettings::Instance().SumHitters() * FBBLeaugeSettings::Instance().owners.size();
     if (numDraftedHitters >= vecHitters.size()) {
         return;
     }
     double replacementZ = vecHitters[numDraftedHitters]->calculations.zScore;
     
     // Normalize zScores
-    int rank = 1;
     double sumZ = 0;
     for (FBBPlayer* pHitter : vecHitters) {
         pHitter->calculations.zScore -= replacementZ;
-        pHitter->calculations.rank = rank++;
         if (pHitter->calculations.zScore > 0.0) {
             sumZ += pHitter->calculations.zScore;
         }
@@ -495,18 +626,16 @@ static void CalculatePitchingZScores()
     });
 
     // Get replacement player
-    const uint32_t numDraftedPitchers = FBBLeaugeSettings::Instance().SumPitchers() * FBBLeaugeSettings::Instance().owners.size();
+    const size_t numDraftedPitchers = FBBLeaugeSettings::Instance().SumPitchers() * FBBLeaugeSettings::Instance().owners.size();
     if (numDraftedPitchers >= vecPitchers.size()) {
         return;
     }
     double replacementZ = vecPitchers[numDraftedPitchers]->calculations.zScore;
 
     // Normalize zScores
-    int rank = 1;
     double sumZ = 0;
     for (FBBPlayer* pPitcher : vecPitchers) {
         pPitcher->calculations.zScore -= replacementZ;
-        pPitcher->calculations.rank = rank++;
         if (pPitcher->calculations.zScore > 0.0) {
             sumZ += pPitcher->calculations.zScore;
         }
@@ -541,43 +670,9 @@ FBBProjectionService& FBBProjectionService::Instance()
 
 void FBBProjectionService::LoadProjections(const FBBLeaugeSettings::Projections::Source& source)
 {
-    const QString hittingFile = [&]() -> QString
-    {
-        switch (source)
-        {
-        case FBBLeaugeSettings::Projections::Source::ZiPS:
-            return ":/data/2017-hitters-zips.csv";
-        case FBBLeaugeSettings::Projections::Source::Fans:
-            return ":/data/2017-hitters-fans.csv";
-        case FBBLeaugeSettings::Projections::Source::Steamer:
-            return ":/data/2017-hitters-steamer.csv";
-        case FBBLeaugeSettings::Projections::Source::DepthCharts:
-            return ":/data/2017-hitters-depthcharts.csv";
-        case FBBLeaugeSettings::Projections::Source::ATC:
-            return ":/data/2017-hitters-atc.csv";
-        default:
-            return QString();
-        }
-    }();
-
-    const QString pitchingFile = [&]() -> QString
-    {
-        switch (source)
-        {
-        case FBBLeaugeSettings::Projections::Source::ZiPS:
-            return ":/data/2017-pitchers-zips.csv";
-        case FBBLeaugeSettings::Projections::Source::Fans:
-            return ":/data/2017-pitchers-fans.csv";
-        case FBBLeaugeSettings::Projections::Source::Steamer:
-            return ":/data/2017-pitchers-steamer.csv";
-        case FBBLeaugeSettings::Projections::Source::DepthCharts:
-            return ":/data/2017-pitchers-depthcharts.csv";
-        case FBBLeaugeSettings::Projections::Source::ATC:
-            return ":/data/2017-pitchers-atc.csv";
-        default:
-            return QString();
-        }
-    }();
+    const QString hittingFile = ":/data/2019-hitters-fan.csv";
+    const QString pitchingFile = ":/data/2019-pitchers-fan.csv";
+    const QString appearanceFile = ":/data/2019-appearances.csv";
 
     emit BeginProjectionsUpdated();
     
@@ -587,13 +682,19 @@ void FBBProjectionService::LoadProjections(const FBBLeaugeSettings::Projections:
     });
 
     // Load new hitting projections
-    LoadHittingProjections(hittingFile);
+    FBBProjectionService::LoadHittingProjections(hittingFile);
 
     // Load new pitching projections
-    LoadPitchingProjections(pitchingFile);
+    FBBProjectionService::LoadPitchingProjections(pitchingFile);
+
+    // Load new pitching projections
+    LoadFielding(pitchingFile);
 
     CalculateHittingZScores();
     CalculatePitchingZScores();
+
+    // Calculate ranks and sort
+    FBBPlayerDataService::Finalize();
 
     emit EndProjectionsUpdated();
 }

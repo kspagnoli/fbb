@@ -25,8 +25,7 @@ FBBMainWindow::FBBMainWindow(QWidget* parent, Qt::WindowFlags flags)
     pCentralLayout->addWidget(pTabWidget);
 
     // Add tabs
-    pTabWidget->addTab(new FBBDraftBoard(FBBPlayer::Projection::PROJECTION_TYPE_HITTING, this), "Hitting");
-    pTabWidget->addTab(new FBBDraftBoard(FBBPlayer::Projection::PROJECTION_TYPE_PITCHING, this), "Pitching");
+    pTabWidget->addTab(new FBBDraftBoard(this), "Draft");
     pTabWidget->addTab(new FBBDraftLog(this), "Log");
 }
 

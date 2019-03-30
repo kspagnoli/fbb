@@ -59,6 +59,9 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         return QVariant();
     }
 
+    const bool isHitter = pPlayer->type == FBBPlayer::PLAYER_TYPE_HITTER;
+    const bool isPitcher = pPlayer->type == FBBPlayer::PLAYER_TYPE_PITCHER;
+
     if (role == Qt::DisplayRole || role == RawDataRole) {
 
         switch (index.column())
@@ -84,88 +87,123 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_EXPERIENCE:
             return pPlayer->experience;
         case COLUMN_POSITION:
-            return FBBPositionMaskToString(pPlayer->eligablePositions);
+        {
+            return FBBPositionMaskToString(pPlayer->EligablePositions(), true);
+        }
         case COLUMN_AB:
-             return ToQVariant(pPlayer->spProjection->hitting.AB, role);
+            if (isHitter) {
+                return ToQVariant(pPlayer->spProjection->hitting.AB, role);
+            }
         case COLUMN_H:
-             return ToQVariant(pPlayer->spProjection->hitting.H, role);
+            if (isHitter) {
+                return ToQVariant(pPlayer->spProjection->hitting.H, role);
+            }
         case COLUMN_AVG:
-            if (m_mode == Mode::STAT) {
-                return ToQVariant(pPlayer->spProjection->hitting.AVG(), role);
-            } else if (m_mode == Mode::Z_SCORE) {
-                return ToQVariant(pPlayer->calculations.zHitting.AVG, role);
+            if (isHitter) {
+                if (m_mode == Mode::STAT) {
+                    return ToQVariant(pPlayer->spProjection->hitting.AVG(), role);
+                } else if (m_mode == Mode::Z_SCORE) {
+                    return ToQVariant(pPlayer->calculations.zHitting.AVG, role);
+                }
             }
             break;
         case COLUMN_HR:
-            if (m_mode == Mode::STAT) {
-                return ToQVariant(pPlayer->spProjection->hitting.HR, role);
-            } else if (m_mode == Mode::Z_SCORE) {
-                return ToQVariant(pPlayer->calculations.zHitting.HR, role);
+            if (isHitter) {
+                if (m_mode == Mode::STAT) {
+                    return ToQVariant(pPlayer->spProjection->hitting.HR, role);
+                } else if (m_mode == Mode::Z_SCORE) {
+                    return ToQVariant(pPlayer->calculations.zHitting.HR, role);
+                }
             }
             break;
         case COLUMN_R:
-            if (m_mode == Mode::STAT) {
-                return ToQVariant(pPlayer->spProjection->hitting.R, role);
-            } else if (m_mode == Mode::Z_SCORE) {
-                return ToQVariant(pPlayer->calculations.zHitting.R, role);
+            if (isHitter) {
+                if (m_mode == Mode::STAT) {
+                    return ToQVariant(pPlayer->spProjection->hitting.R, role);
+                }else if (m_mode == Mode::Z_SCORE) {
+                    return ToQVariant(pPlayer->calculations.zHitting.R, role);
+                }
             }
             break;
         case COLUMN_RBI:
-            if (m_mode == Mode::STAT) {
-                return ToQVariant(pPlayer->spProjection->hitting.RBI, role);
-            } else if (m_mode == Mode::Z_SCORE) {
-                return ToQVariant(pPlayer->calculations.zHitting.RBI, role);
+            if (isHitter) {
+                if (m_mode == Mode::STAT) {
+                    return ToQVariant(pPlayer->spProjection->hitting.RBI, role);
+                }else if (m_mode == Mode::Z_SCORE) {
+                    return ToQVariant(pPlayer->calculations.zHitting.RBI, role);
+                }
             }
             break;
         case COLUMN_SB:
-            if (m_mode == Mode::STAT) {
-                return ToQVariant(pPlayer->spProjection->hitting.SB, role);
-            } else if (m_mode == Mode::Z_SCORE) {
-                return ToQVariant(pPlayer->calculations.zHitting.SB, role);
+            if (isHitter) {
+                if (m_mode == Mode::STAT) {
+                    return ToQVariant(pPlayer->spProjection->hitting.SB, role);
+                } else if (m_mode == Mode::Z_SCORE) {
+                    return ToQVariant(pPlayer->calculations.zHitting.SB, role);
+                }
             }
             break;
         case COLUMN_IP:
-            return ToQVariant(pPlayer->spProjection->pitching.IP, role);
+            if (isPitcher) {
+                return ToQVariant(pPlayer->spProjection->pitching.IP, role);
+            }
         case COLUMN_HA:
-            return ToQVariant(pPlayer->spProjection->pitching.H, role);
+            if (isPitcher) {
+                return ToQVariant(pPlayer->spProjection->pitching.H, role);
+            }
         case COLUMN_BB:
-            return ToQVariant(pPlayer->spProjection->pitching.BB, role);
+            if (isPitcher) {
+                return ToQVariant(pPlayer->spProjection->pitching.BB, role);
+            }
         case COLUMN_ER:
-            return ToQVariant(pPlayer->spProjection->pitching.ER, role);
+            if (isPitcher) {
+                return ToQVariant(pPlayer->spProjection->pitching.ER, role);
+            }
         case COLUMN_SO:
-            if (m_mode == Mode::STAT) {
-                return ToQVariant(pPlayer->spProjection->pitching.SO, role);
-            } else if (m_mode == Mode::Z_SCORE) {
-                return ToQVariant(pPlayer->calculations.zPitching.SO, role);
+            if (isPitcher) {
+                if (m_mode == Mode::STAT) {
+                    return ToQVariant(pPlayer->spProjection->pitching.SO, role);
+                } else if (m_mode == Mode::Z_SCORE) {
+                    return ToQVariant(pPlayer->calculations.zPitching.SO, role);
+                }
             }
             break;
         case COLUMN_ERA:
-            if (m_mode == Mode::STAT) {
-                return ToQVariant(pPlayer->spProjection->pitching.ERA(), role);
-            } else if (m_mode == Mode::Z_SCORE) {
-                return ToQVariant(pPlayer->calculations.zPitching.ERA, role);
+            if (isPitcher) {
+                if (m_mode == Mode::STAT) {
+                    return ToQVariant(pPlayer->spProjection->pitching.ERA(), role);
+                } else if (m_mode == Mode::Z_SCORE) {
+                    return ToQVariant(pPlayer->calculations.zPitching.ERA, role);
+                }
             }
             break;
         case COLUMN_WHIP:
-            if (m_mode == Mode::STAT) {
-                return ToQVariant(pPlayer->spProjection->pitching.WHIP(), role);
-            } else if (m_mode == Mode::Z_SCORE) {
-                return ToQVariant(pPlayer->calculations.zPitching.WHIP, role);
+            if (isPitcher) {
+                if (m_mode == Mode::STAT) {
+                    return ToQVariant(pPlayer->spProjection->pitching.WHIP(), role);
+                } else if (m_mode == Mode::Z_SCORE) {
+                    return ToQVariant(pPlayer->calculations.zPitching.WHIP, role);
+                }
             }
             break;
         case COLUMN_W:
-            if (m_mode == Mode::STAT) {
-                return ToQVariant(pPlayer->spProjection->pitching.W, role);
-            } else if (m_mode == Mode::Z_SCORE) {
-                return ToQVariant(pPlayer->calculations.zPitching.W, role);
+            if (isPitcher) {
+                if (m_mode == Mode::STAT) {
+                    return ToQVariant(pPlayer->spProjection->pitching.W, role);
+                } else if (m_mode == Mode::Z_SCORE) {
+                    return ToQVariant(pPlayer->calculations.zPitching.W, role);
+                }
             }
             break;
         case COLUMN_SV:
-            if (m_mode == Mode::STAT) {
-                return ToQVariant(pPlayer->spProjection->pitching.SV, role);
-            } else if (m_mode == Mode::Z_SCORE) {
-                return ToQVariant(pPlayer->calculations.zPitching.SV, role);
+            if (isPitcher) {
+                if (m_mode == Mode::STAT) {
+                    return ToQVariant(pPlayer->spProjection->pitching.SV, role);
+                } else if (m_mode == Mode::Z_SCORE) {
+                    return ToQVariant(pPlayer->calculations.zPitching.SV, role);
+                }
             }
+            break;
         case COLUMN_ESTIMATE:
             return ToQVariant(pPlayer->calculations.estimate, role);
         case COLUMN_Z: {

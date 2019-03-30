@@ -2,3 +2,6 @@
 BUILD_*/
 *_automoc.cpp
 *.exe
+/.vs/fbb/v15
+/.vs
+/BUILD

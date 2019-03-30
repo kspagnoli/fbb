@@ -12,7 +12,7 @@ using FBBOwnerId = uint64_t;
 
 class FBBLeaugeSettings : public QObject
 {
-    Q_OBJECT;
+    Q_OBJECT
 
 public:
 
@@ -143,7 +143,7 @@ public:
         return spOwner;
     }
 
-    uint32_t SumHitters() const
+    size_t SumHitters() const
     {
         return positions.hitting.numC +
             positions.hitting.num1B +
@@ -161,14 +161,14 @@ public:
             positions.hitting.numU;
     }
     
-    uint32_t SumPitchers() const
+    size_t SumPitchers() const
     {
         return positions.pitching.numP + 
             positions.pitching.numSP + 
             positions.pitching.numRP;
     }
     
-    uint32_t SumPlayers() const
+    size_t SumPlayers() const
     {
         return SumHitters() + SumPitchers() + positions.numBench;
     }

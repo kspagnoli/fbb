@@ -33,5 +33,5 @@ enum FBBPositionBits
 
 using FBBPositionMask = uint32_t;
 
-QString FBBPositionMaskToString(const FBBPositionMask& mask);
-QStringList FBBPositionMaskToStringList(const FBBPositionMask& mask);
+QString FBBPositionMaskToString(FBBPositionMask mask, bool exclude = false);
+QStringList FBBPositionMaskToStringList(FBBPositionMask mask, bool exclude = false);

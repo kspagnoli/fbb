@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required(VERSION 3.2)
+
+
+set(CMAKE_PREFIX_PATH "C:\\Qt\\Qt5.12.2\\5.12.2\\msvc2017_64")
 
 # Project name
 project(fbb)
@@ -16,8 +19,8 @@ include_directories(
     "include")
 
 # Find the QtWidgets library
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5Charts REQUIRED)
+find_package(Qt5Widgets CONFIG REQUIRED)
+find_package(Qt5Charts CONFIG REQUIRED)
 
 # QT resrouces files
 qt5_add_resources(RESOURCES 
@@ -36,3 +39,9 @@ add_executable(fbb WIN32 main.cpp ${SOURCE} ${HEADERS} ${RESOURCES})
 target_link_libraries(fbb Qt5::Widgets)
 target_link_libraries(fbb Qt5::Charts)
 
+
+# JSON TOOL
+add_executable(fbb_json WIN32 fbb_json.cpp ${RESOURCES})
+target_link_libraries(fbb_json Qt5::Core)
+target_link_libraries(fbb_json Qt5::Widgets)
+set_target_properties(fbb_json PROPERTIES LINK_FLAGS /SUBSYSTEM:CONSOLE)

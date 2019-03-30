@@ -16,7 +16,7 @@
 #include <QLineEdit>
 #include <QCompleter>
 
-FBBDraftBoard::FBBDraftBoard(FBBPlayer::Projection::TypeMask typeMask, QWidget* parent)
+FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     : QWidget(parent)
 {
     // Main layout
@@ -26,7 +26,7 @@ FBBDraftBoard::FBBDraftBoard(FBBPlayer::Projection::TypeMask typeMask, QWidget* 
     FBBDraftBoardModel* pSourceModel = new FBBDraftBoardModel(this);
 
     // Proxy model
-    FBBDraftBoardSortFilterProxyModel* pProxyModel = new FBBDraftBoardSortFilterProxyModel(typeMask, this);
+    FBBDraftBoardSortFilterProxyModel* pProxyModel = new FBBDraftBoardSortFilterProxyModel(this);
     pProxyModel->setSourceModel(pSourceModel);
 
     // Header + layout

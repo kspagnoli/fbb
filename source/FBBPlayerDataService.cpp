@@ -73,11 +73,11 @@ FBBPlayerDataService::FBBPlayerDataService(QObject* parent)
 {
     // Sanitize deleted owners
     connect(&FBBLeaugeSettings::Instance(), &FBBLeaugeSettings::SettingsChanged, this, [=](const FBBLeaugeSettings& settings) {
-        for (const std::shared_ptr<FBBPlayer>& spPlayer : m_flatData) {
-            if (spPlayer->draftInfo.owner) {
-                auto itr = settings.owners.find(spPlayer->draftInfo.owner);
+        for (FBBPlayer* pPlayer : m_flatData) {
+            if (pPlayer->draftInfo.owner) {
+                auto itr = settings.owners.find(pPlayer->draftInfo.owner);
                 if (itr == settings.owners.end()) {
-                    spPlayer->draftInfo = FBBPlayer::DraftInfo{};
+                    pPlayer->draftInfo = FBBPlayer::DraftInfo{};
                 }
             }
         }
@@ -92,7 +92,12 @@ FBBPlayerDataService& FBBPlayerDataService::Instance()
 
 uint32_t FBBPlayerDataService::PlayerCount()
 {
-    return Instance().m_flatData.size();
+    return (uint32_t) Instance().m_flatData.size();
+}
+
+void FBBPlayerDataService::AddPlayer(FBBPlayer* pPlayer)
+{
+    return Instance().m_flatData.push_back(pPlayer);
 }
 
 FBBPlayer* FBBPlayerDataService::GetPlayer(uint32_t index)
@@ -101,92 +106,51 @@ FBBPlayer* FBBPlayerDataService::GetPlayer(uint32_t index)
         return nullptr;
     }
 
-    return Instance().m_flatData[index].get();
+    return Instance().m_flatData[index];
 }
 
 FBBPlayer* FBBPlayerDataService::GetPlayer(const FBBPlayerId& playerId)
 {
-    struct Compare
-    {
-        bool operator()(const FBBPlayerId& lhs, const std::shared_ptr<FBBPlayer>& rhs)
-        {
-            return lhs < rhs->id;
-        }
-
-        bool operator()(const std::shared_ptr<FBBPlayer>& lhs, const FBBPlayerId& rhs)
-        {
-            return lhs->id < rhs;
-        }
-    };
-
     // Lookup player
-    auto itr = Instance().m_mappedData.find(playerId);
-    if (itr != Instance().m_mappedData.end()) {
-        return itr.value().get();
-    } 
+    auto itr = std::find_if(Instance().m_flatData.begin(), Instance().m_flatData.end(), [&](const FBBPlayer* pPlayer){
+        return pPlayer->id == playerId;
+    });
 
-    // Create new player
-    std::shared_ptr<FBBPlayer> spNewPlayer = std::make_shared<FBBPlayer>();
-
-    // Set id
-    spNewPlayer->id = playerId;
-
-    // Add to be maps
-    Instance().m_mappedData[playerId] = spNewPlayer;
-    Instance().m_flatData.push_back(spNewPlayer);
-
-    // Return the new player
-    return spNewPlayer.get();
+    // TODO: binary search
+    if (itr == Instance().m_flatData.end()) {
+        return nullptr;
+    } else {
+        return *itr;
+    }
 }
 
-FBBPlayer* FBBPlayerDataService::GetPlayerFromBaseballReference(const QString& name, const QString& team)
+void FBBPlayerDataService::Finalize()
 {
-    QStringList splitName = name.split("\\");
+    std::sort(Instance().m_flatData.begin(), Instance().m_flatData.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS){
+        return pLHS->calculations.zScore > pRHS->calculations.zScore;
+    });
 
-    QList<std::shared_ptr<FBBPlayer>> potentialMatches;
-
-    // Loop all names
-    for (const std::shared_ptr<FBBPlayer>& spPlayer : Instance().m_flatData) {
-
-        // BB reference uses 2first5last2count notion
-        const uint32_t count = splitName[1].right(2).toUInt();
-    
-        // Handle multiple name instances
-        if (spPlayer->name == splitName[0]) {
-            if (count == 1) {
-                return spPlayer.get();
-            } else {
-                potentialMatches.append(spPlayer);
-            }
-        } 
+    for (size_t i = 0; i < Instance().m_flatData.size(); i++) {
+        Instance().m_flatData[i]->calculations.rank = uint32_t(i)+1;
     }
 
-    // Only one player we know about with this name
-    if (potentialMatches.size() == 1) {
-        return potentialMatches[0].get();
-    }
+    std::sort(Instance().m_flatData.begin(), Instance().m_flatData.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS){
+        return pLHS->id < pRHS->id;
+    });
 
-    // Look for a team match
-    for (auto& spPlayer : potentialMatches) {
-        if (FBBTeamToString(spPlayer->team) == team) {
-            return spPlayer.get();
-        }
-    }
-
-    return nullptr;
 }
 
 bool FBBPlayerDataService::IsValidUnderCurrentSettings(const FBBPlayer* pPlayer)
 {
     // Has min AB
-    if (pPlayer->spProjection && pPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_HITTING) {
+    if (pPlayer->spProjection && pPlayer->type == FBBPlayer::PLAYER_TYPE_HITTER) {
         if (pPlayer->spProjection->hitting.AB < FBBLeaugeSettings::Instance().projections.minAB) {
             return false;
         }
     }
 
     // Has min IP
-    if (pPlayer->spProjection && pPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_PITCHING) {
+    if (pPlayer->spProjection && pPlayer->type == FBBPlayer::PLAYER_TYPE_PITCHER) {
         if (pPlayer->spProjection->pitching.IP < FBBLeaugeSettings::Instance().projections.minIP) {
             return false;
         }
@@ -213,18 +177,18 @@ bool FBBPlayerDataService::IsValidUnderCurrentSettings(const FBBPlayer* pPlayer)
 
 void FBBPlayerDataService::ForEach(const std::function<void(FBBPlayer&)>&& fn)
 {
-    for (const std::shared_ptr<FBBPlayer>& spPlayer : Instance().m_flatData) {
-        fn(*spPlayer);
+    for (FBBPlayer* pPlayer : Instance().m_flatData) {
+        fn(*pPlayer);
     }
 }
 
 std::vector<FBBPlayer*> FBBPlayerDataService::GetValidHitters()
 {
     std::vector<FBBPlayer*> ret;
-    for (const std::shared_ptr<FBBPlayer>& spPlayer : Instance().m_flatData) {
-        if (spPlayer->spProjection && spPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_HITTING) {
-            if (IsValidUnderCurrentSettings(spPlayer.get())) {
-                ret.push_back(spPlayer.get());
+    for (FBBPlayer* pPlayer : Instance().m_flatData) {
+        if (pPlayer->spProjection && pPlayer->type == FBBPlayer::PLAYER_TYPE_HITTER) {
+            if (IsValidUnderCurrentSettings(pPlayer)) {
+                ret.push_back(pPlayer);
             }
         }
     }
@@ -234,10 +198,10 @@ std::vector<FBBPlayer*> FBBPlayerDataService::GetValidHitters()
 std::vector<FBBPlayer*> FBBPlayerDataService::GetValidPitchers()
 {
     std::vector<FBBPlayer*> ret;
-    for (const std::shared_ptr<FBBPlayer>& spPlayer : Instance().m_flatData) {
-        if (spPlayer->spProjection && spPlayer->spProjection->type == FBBPlayer::Projection::PROJECTION_TYPE_PITCHING) {
-            if (IsValidUnderCurrentSettings(spPlayer.get())) {
-                ret.push_back(spPlayer.get());
+    for (FBBPlayer* pPlayer : Instance().m_flatData) {
+        if (pPlayer->spProjection && pPlayer->type == FBBPlayer::PLAYER_TYPE_PITCHER) {
+            if (IsValidUnderCurrentSettings(pPlayer)) {
+                ret.push_back(pPlayer);
             }
         }
     }
@@ -263,7 +227,7 @@ void FBBPlayerDataService::AddDemoData()
             FBBPlayer* pPlayer = *itrHitter;
             pPlayer->draftInfo.owner = entry.first;
             pPlayer->draftInfo.paid = pPlayer->calculations.estimate;
-            pPlayer->draftInfo.position = pPlayer->eligablePositions == 0 ? FBB_POSITION_UNKNOWN : static_cast<FBBPositionBits>(FindLSB(pPlayer->eligablePositions));
+            pPlayer->draftInfo.position = pPlayer->EligablePositions() == 0 ? FBB_POSITION_UNKNOWN : static_cast<FBBPositionBits>(FindLSB(pPlayer->EligablePositions()));
 
             // Signal
             emit Instance().PlayerDrafted(pPlayer);
@@ -290,7 +254,7 @@ void FBBPlayerDataService::AddDemoData()
             FBBPlayer* pPlayer = *itrPitcher;
             pPlayer->draftInfo.owner = entry.first;
             pPlayer->draftInfo.paid = pPlayer->calculations.estimate;
-            pPlayer->draftInfo.position = pPlayer->eligablePositions == 0 ? FBB_POSITION_UNKNOWN : static_cast<FBBPositionBits>(FindLSB(pPlayer->eligablePositions));
+            pPlayer->draftInfo.position = pPlayer->EligablePositions() == 0 ? FBB_POSITION_UNKNOWN : static_cast<FBBPositionBits>(FindLSB(pPlayer->EligablePositions()));
 
             // Signal
             emit Instance().PlayerDrafted(pPlayer);
@@ -299,6 +263,4 @@ void FBBPlayerDataService::AddDemoData()
             itrPitcher++;
         }
     }
-
-
 }

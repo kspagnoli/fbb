@@ -123,7 +123,7 @@ FBBLeaugeSettingsDialog::FBBLeaugeSettingsDialog(FBBLeaugeSettings* pSettings, Q
         pTypeCombo->addItem("AL Only");
         pTypeCombo->setCurrentIndex(uint32_t(pSettings->leauge.type));
 
-        pBudget->setValidator(new QIntValidator(0, UINT32_MAX, this));
+        pBudget->setValidator(new QIntValidator(0, INT32_MAX, this));
         pBudget->setText(QString::number(pSettings->leauge.budget));
 
         pPositionEligibility->setValidator(new QIntValidator(0, 100, this));

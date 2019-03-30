@@ -7,5 +7,5 @@
 class FBBDraftBoard : public QWidget
 {
 public:
-    FBBDraftBoard(FBBPlayer::Projection::TypeMask typeMask, QWidget* parent = nullptr);
+    FBBDraftBoard(QWidget* parent = nullptr);
 };
