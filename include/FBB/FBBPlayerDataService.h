@@ -14,6 +14,8 @@
 class FBBPlayer;
 using FBBPlayerId = QString;
 
+class FBBDraftBoardModel;
+
 //------------------------------------------------------------------------------
 // FBBPlayerDataService
 //------------------------------------------------------------------------------
@@ -36,6 +38,11 @@ public:
     static bool IsValidUnderCurrentSettings(const FBBPlayer* player);
     static void Finalize();
 
+    static void SetDraftModel(FBBDraftBoardModel* pModel);
+
+    static bool Save();
+    static bool Load();
+
     // Demo
     static void AddDemoData();
 
@@ -47,4 +54,5 @@ private:
 
     FBBPlayerDataService(QObject* parent);
     std::vector<FBBPlayer*> m_flatData;
+    FBBDraftBoardModel* m_pModel;
 };

@@ -6,6 +6,8 @@
 FBBApplication::FBBApplication(int& argc, char** argv)
     : QApplication(argc, argv)
 {
+    s_app = this;
+
     Q_INIT_RESOURCE(Resources);
 
     setStyle(QStyleFactory::create("Fusion"));

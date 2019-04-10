@@ -118,26 +118,20 @@ void FBBProjectionService::LoadHittingProjections(const QString& file)
         FBBPlayer* pPlayer = new FBBPlayer(FBBPlayer::PLAYER_TYPE_HITTER, parsed[FAN_HITTER_PLAYER_ID], parsed[FAN_HITTER_NAME], this);
         pPlayer->team = ToFBBTeam(parsed[FAN_HITTER_TEAM]);
 
-        // Create projections
-        std::unique_ptr<FBBPlayer::Projection> spProjection = std::make_unique<FBBPlayer::Projection>();
-
         // Load stats
-        spProjection->hitting.PA =  parsed[FAN_HITTER_PA].toUInt();
-        spProjection->hitting.AB =  parsed[FAN_HITTER_AB].toUInt();
-        spProjection->hitting.H =   parsed[FAN_HITTER_H].toUInt();
-        spProjection->hitting._2B = parsed[FAN_HITTER_2B].toUInt();
-        spProjection->hitting._3B = parsed[FAN_HITTER_3B].toUInt();
-        spProjection->hitting.HR =  parsed[FAN_HITTER_HR].toUInt();
-        spProjection->hitting.R =   parsed[FAN_HITTER_R].toUInt();
-        spProjection->hitting.RBI = parsed[FAN_HITTER_RBI].toUInt();
-        spProjection->hitting.BB =  parsed[FAN_HITTER_BB].toUInt();
-        spProjection->hitting.SO =  parsed[FAN_HITTER_SO].toUInt();
-        spProjection->hitting.HBP = parsed[FAN_HITTER_HBP].toUInt();
-        spProjection->hitting.SB =  parsed[FAN_HITTER_SB].toUInt();
-        spProjection->hitting.CS =  parsed[FAN_HITTER_CS].toUInt();
-
-        // Save to player
-        pPlayer->spProjection = std::move(spProjection);
+        pPlayer->projection.hitting.PA =  parsed[FAN_HITTER_PA].toUInt();
+        pPlayer->projection.hitting.AB =  parsed[FAN_HITTER_AB].toUInt();
+        pPlayer->projection.hitting.H =   parsed[FAN_HITTER_H].toUInt();
+        pPlayer->projection.hitting._2B = parsed[FAN_HITTER_2B].toUInt();
+        pPlayer->projection.hitting._3B = parsed[FAN_HITTER_3B].toUInt();
+        pPlayer->projection.hitting.HR =  parsed[FAN_HITTER_HR].toUInt();
+        pPlayer->projection.hitting.R =   parsed[FAN_HITTER_R].toUInt();
+        pPlayer->projection.hitting.RBI = parsed[FAN_HITTER_RBI].toUInt();
+        pPlayer->projection.hitting.BB =  parsed[FAN_HITTER_BB].toUInt();
+        pPlayer->projection.hitting.SO =  parsed[FAN_HITTER_SO].toUInt();
+        pPlayer->projection.hitting.HBP = parsed[FAN_HITTER_HBP].toUInt();
+        pPlayer->projection.hitting.SB =  parsed[FAN_HITTER_SB].toUInt();
+        pPlayer->projection.hitting.CS =  parsed[FAN_HITTER_CS].toUInt();
 
         // Add player
         FBBPlayerDataService::AddPlayer(pPlayer);
@@ -195,24 +189,18 @@ void FBBProjectionService::LoadPitchingProjections(const QString& file)
         FBBPlayer* pPlayer = new FBBPlayer(FBBPlayer::PLAYER_TYPE_PITCHER, parsed[FAN_PITCHER_PLAYER_ID], parsed[FAN_PITCHER_NAME], this);
         pPlayer->team = ToFBBTeam(parsed[FAN_PITCHER_TEAM]);
         
-        // Create projections
-        std::unique_ptr<FBBPlayer::Projection> spProjection = std::make_unique<FBBPlayer::Projection>();
-
         // Load stats
-        spProjection->pitching.W =  parsed[FAN_PITCHER_W].toUInt();
-        spProjection->pitching.L =  parsed[FAN_PITCHER_L].toUInt();
-        spProjection->pitching.GS = parsed[FAN_PITCHER_GS].toUInt();
-        spProjection->pitching.G =  parsed[FAN_PITCHER_G].toUInt();
-        spProjection->pitching.SV = parsed[FAN_PITCHER_SV].toUInt();
-        spProjection->pitching.IP = parsed[FAN_PITCHER_IP].toFloat();
-        spProjection->pitching.H =  parsed[FAN_PITCHER_H].toUInt();
-        spProjection->pitching.ER = parsed[FAN_PITCHER_ER].toUInt();
-        spProjection->pitching.HR = parsed[FAN_PITCHER_HR].toUInt();
-        spProjection->pitching.SO = parsed[FAN_PITCHER_SO].toUInt();
-        spProjection->pitching.BB = parsed[FAN_PITCHER_BB].toUInt();
-
-        // Save to player
-        pPlayer->spProjection = std::move(spProjection);
+        pPlayer->projection.pitching.W =  parsed[FAN_PITCHER_W].toUInt();
+        pPlayer->projection.pitching.L =  parsed[FAN_PITCHER_L].toUInt();
+        pPlayer->projection.pitching.GS = parsed[FAN_PITCHER_GS].toUInt();
+        pPlayer->projection.pitching.G =  parsed[FAN_PITCHER_G].toUInt();
+        pPlayer->projection.pitching.SV = parsed[FAN_PITCHER_SV].toUInt();
+        pPlayer->projection.pitching.IP = parsed[FAN_PITCHER_IP].toFloat();
+        pPlayer->projection.pitching.H =  parsed[FAN_PITCHER_H].toUInt();
+        pPlayer->projection.pitching.ER = parsed[FAN_PITCHER_ER].toUInt();
+        pPlayer->projection.pitching.HR = parsed[FAN_PITCHER_HR].toUInt();
+        pPlayer->projection.pitching.SO = parsed[FAN_PITCHER_SO].toUInt();
+        pPlayer->projection.pitching.BB = parsed[FAN_PITCHER_BB].toUInt();
 
         // Add to list
         FBBPlayerDataService::AddPlayer(pPlayer);
@@ -351,19 +339,19 @@ static void CalculateHittingZScores()
 
     PerHitting sumHitting;
     for (FBBPlayer* pHitter : vecHitters) {
-        sumHitting.PA += pHitter->spProjection->hitting.PA;
-        sumHitting.AB += pHitter->spProjection->hitting.AB;
-        sumHitting.H += pHitter->spProjection->hitting.H;
-        sumHitting._2B += pHitter->spProjection->hitting._2B;
-        sumHitting._3B += pHitter->spProjection->hitting._3B;
-        sumHitting.HR += pHitter->spProjection->hitting.HR;
-        sumHitting.R += pHitter->spProjection->hitting.R;
-        sumHitting.RBI += pHitter->spProjection->hitting.RBI;
-        sumHitting.BB += pHitter->spProjection->hitting.BB;
-        sumHitting.SO += pHitter->spProjection->hitting.SO;
-        sumHitting.HBP += pHitter->spProjection->hitting.HBP;
-        sumHitting.SB += pHitter->spProjection->hitting.SB;
-        sumHitting.CS += pHitter->spProjection->hitting.CS;
+        sumHitting.PA += pHitter->projection.hitting.PA;
+        sumHitting.AB += pHitter->projection.hitting.AB;
+        sumHitting.H += pHitter->projection.hitting.H;
+        sumHitting._2B += pHitter->projection.hitting._2B;
+        sumHitting._3B += pHitter->projection.hitting._3B;
+        sumHitting.HR += pHitter->projection.hitting.HR;
+        sumHitting.R += pHitter->projection.hitting.R;
+        sumHitting.RBI += pHitter->projection.hitting.RBI;
+        sumHitting.BB += pHitter->projection.hitting.BB;
+        sumHitting.SO += pHitter->projection.hitting.SO;
+        sumHitting.HBP += pHitter->projection.hitting.HBP;
+        sumHitting.SB += pHitter->projection.hitting.SB;
+        sumHitting.CS += pHitter->projection.hitting.CS;
     }
 
     PerHitting avgHitting;
@@ -384,20 +372,20 @@ static void CalculateHittingZScores()
 
     PerHitting stddevHitting;
     for (FBBPlayer* pHitter : vecHitters) {
-        stddevHitting.PA += std::pow(pHitter->spProjection->hitting.PA - avgHitting.PA, 2.0);
-        stddevHitting.AB += std::pow(pHitter->spProjection->hitting.AB - avgHitting.AB, 2.0);
-        stddevHitting.H += std::pow(pHitter->spProjection->hitting.H - avgHitting.H, 2.0);
-        stddevHitting._2B += std::pow(pHitter->spProjection->hitting._2B - avgHitting._2B, 2.0);
-        stddevHitting._3B += std::pow(pHitter->spProjection->hitting._3B - avgHitting._3B, 2.0);
-        stddevHitting.HR += std::pow(pHitter->spProjection->hitting.HR - avgHitting.HR, 2.0);
-        stddevHitting.R += std::pow(pHitter->spProjection->hitting.R - avgHitting.R, 2.0);
-        stddevHitting.RBI += std::pow(pHitter->spProjection->hitting.RBI - avgHitting.RBI, 2.0);
-        stddevHitting.BB += std::pow(pHitter->spProjection->hitting.BB - avgHitting.BB, 2.0);
-        stddevHitting.SO += std::pow(pHitter->spProjection->hitting.SO - avgHitting.SO, 2.0);
-        stddevHitting.HBP += std::pow(pHitter->spProjection->hitting.HBP - avgHitting.HBP, 2.0);
-        stddevHitting.SB += std::pow(pHitter->spProjection->hitting.SB - avgHitting.SB, 2.0);
-        stddevHitting.CS += std::pow(pHitter->spProjection->hitting.CS - avgHitting.CS, 2.0);
-        stddevHitting.AVG += std::pow(pHitter->spProjection->hitting.AVG() - avgHitting.AVG, 2.0);
+        stddevHitting.PA += std::pow(pHitter->projection.hitting.PA - avgHitting.PA, 2.0);
+        stddevHitting.AB += std::pow(pHitter->projection.hitting.AB - avgHitting.AB, 2.0);
+        stddevHitting.H += std::pow(pHitter->projection.hitting.H - avgHitting.H, 2.0);
+        stddevHitting._2B += std::pow(pHitter->projection.hitting._2B - avgHitting._2B, 2.0);
+        stddevHitting._3B += std::pow(pHitter->projection.hitting._3B - avgHitting._3B, 2.0);
+        stddevHitting.HR += std::pow(pHitter->projection.hitting.HR - avgHitting.HR, 2.0);
+        stddevHitting.R += std::pow(pHitter->projection.hitting.R - avgHitting.R, 2.0);
+        stddevHitting.RBI += std::pow(pHitter->projection.hitting.RBI - avgHitting.RBI, 2.0);
+        stddevHitting.BB += std::pow(pHitter->projection.hitting.BB - avgHitting.BB, 2.0);
+        stddevHitting.SO += std::pow(pHitter->projection.hitting.SO - avgHitting.SO, 2.0);
+        stddevHitting.HBP += std::pow(pHitter->projection.hitting.HBP - avgHitting.HBP, 2.0);
+        stddevHitting.SB += std::pow(pHitter->projection.hitting.SB - avgHitting.SB, 2.0);
+        stddevHitting.CS += std::pow(pHitter->projection.hitting.CS - avgHitting.CS, 2.0);
+        stddevHitting.AVG += std::pow(pHitter->projection.hitting.AVG() - avgHitting.AVG, 2.0);
     }
 
     stddevHitting.PA = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.PA);
@@ -416,16 +404,16 @@ static void CalculateHittingZScores()
     stddevHitting.AVG = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.AVG);
 
     for (FBBPlayer* pHitter : vecHitters) {
-        pHitter->calculations.zHitting.HR = (pHitter->spProjection->hitting.HR - avgHitting.HR) / stddevHitting.HR;
-        pHitter->calculations.zHitting.R = (pHitter->spProjection->hitting.R - avgHitting.R) / stddevHitting.R;
-        pHitter->calculations.zHitting.RBI = (pHitter->spProjection->hitting.RBI - avgHitting.RBI) / stddevHitting.RBI;
-        pHitter->calculations.zHitting.SB = (pHitter->spProjection->hitting.SB - avgHitting.SB) / stddevHitting.SB;
-        pHitter->calculations.zHitting.AVG = (pHitter->spProjection->hitting.AVG() - avgHitting.AVG) / stddevHitting.AVG;
+        pHitter->calculations.zHitting.HR = (pHitter->projection.hitting.HR - avgHitting.HR) / stddevHitting.HR;
+        pHitter->calculations.zHitting.R = (pHitter->projection.hitting.R - avgHitting.R) / stddevHitting.R;
+        pHitter->calculations.zHitting.RBI = (pHitter->projection.hitting.RBI - avgHitting.RBI) / stddevHitting.RBI;
+        pHitter->calculations.zHitting.SB = (pHitter->projection.hitting.SB - avgHitting.SB) / stddevHitting.SB;
+        pHitter->calculations.zHitting.AVG = (pHitter->projection.hitting.AVG() - avgHitting.AVG) / stddevHitting.AVG;
     }
 
     sumHitting.AVG = 0;
     for (FBBPlayer* pHitter : vecHitters) {
-        pHitter->calculations.zHitting.AVG *= pHitter->spProjection->hitting.AB;
+        pHitter->calculations.zHitting.AVG *= pHitter->projection.hitting.AB;
         sumHitting.AVG += pHitter->calculations.zHitting.AVG;
     }
 
@@ -511,17 +499,17 @@ static void CalculatePitchingZScores()
 
     PerPitching sumPitching;
     for (FBBPlayer* pPitcher : vecPitchers) {
-        sumPitching.W += pPitcher->spProjection->pitching.W;
-        sumPitching.L += pPitcher->spProjection->pitching.L;
-        sumPitching.GS += pPitcher->spProjection->pitching.GS;
-        sumPitching.G += pPitcher->spProjection->pitching.G;
-        sumPitching.SV += pPitcher->spProjection->pitching.SV;
-        sumPitching.IP += pPitcher->spProjection->pitching.IP;
-        sumPitching.H += pPitcher->spProjection->pitching.H;
-        sumPitching.ER += pPitcher->spProjection->pitching.ER;
-        sumPitching.HR += pPitcher->spProjection->pitching.HR;
-        sumPitching.SO += pPitcher->spProjection->pitching.SO;
-        sumPitching.BB += pPitcher->spProjection->pitching.BB;
+        sumPitching.W += pPitcher->projection.pitching.W;
+        sumPitching.L += pPitcher->projection.pitching.L;
+        sumPitching.GS += pPitcher->projection.pitching.GS;
+        sumPitching.G += pPitcher->projection.pitching.G;
+        sumPitching.SV += pPitcher->projection.pitching.SV;
+        sumPitching.IP += pPitcher->projection.pitching.IP;
+        sumPitching.H += pPitcher->projection.pitching.H;
+        sumPitching.ER += pPitcher->projection.pitching.ER;
+        sumPitching.HR += pPitcher->projection.pitching.HR;
+        sumPitching.SO += pPitcher->projection.pitching.SO;
+        sumPitching.BB += pPitcher->projection.pitching.BB;
     }
 
     PerPitching avgPitching;
@@ -541,19 +529,19 @@ static void CalculatePitchingZScores()
 
     PerPitching stddevPitching;
     for (FBBPlayer* pPitcher : vecPitchers) {
-        stddevPitching.W += std::pow(pPitcher->spProjection->pitching.W - avgPitching.W, 2.0);
-        stddevPitching.L += std::pow(pPitcher->spProjection->pitching.L - avgPitching.L, 2.0);
-        stddevPitching.GS += std::pow(pPitcher->spProjection->pitching.GS - avgPitching.GS, 2.0);
-        stddevPitching.G += std::pow(pPitcher->spProjection->pitching.G - avgPitching.G, 2.0);
-        stddevPitching.SV += std::pow(pPitcher->spProjection->pitching.SV - avgPitching.SV, 2.0);
-        stddevPitching.IP += std::pow(pPitcher->spProjection->pitching.IP - avgPitching.IP, 2.0);
-        stddevPitching.H += std::pow(pPitcher->spProjection->pitching.H - avgPitching.H, 2.0);
-        stddevPitching.ER += std::pow(pPitcher->spProjection->pitching.ER - avgPitching.ER, 2.0);
-        stddevPitching.HR += std::pow(pPitcher->spProjection->pitching.HR - avgPitching.HR, 2.0);
-        stddevPitching.SO += std::pow(pPitcher->spProjection->pitching.SO - avgPitching.SO, 2.0);
-        stddevPitching.BB += std::pow(pPitcher->spProjection->pitching.BB - avgPitching.BB, 2.0);
-        stddevPitching.ERA += std::pow(pPitcher->spProjection->pitching.ERA() - avgPitching.ERA, 2.0);
-        stddevPitching.WHIP += std::pow(pPitcher->spProjection->pitching.WHIP() - avgPitching.WHIP, 2.0);
+        stddevPitching.W += std::pow(pPitcher->projection.pitching.W - avgPitching.W, 2.0);
+        stddevPitching.L += std::pow(pPitcher->projection.pitching.L - avgPitching.L, 2.0);
+        stddevPitching.GS += std::pow(pPitcher->projection.pitching.GS - avgPitching.GS, 2.0);
+        stddevPitching.G += std::pow(pPitcher->projection.pitching.G - avgPitching.G, 2.0);
+        stddevPitching.SV += std::pow(pPitcher->projection.pitching.SV - avgPitching.SV, 2.0);
+        stddevPitching.IP += std::pow(pPitcher->projection.pitching.IP - avgPitching.IP, 2.0);
+        stddevPitching.H += std::pow(pPitcher->projection.pitching.H - avgPitching.H, 2.0);
+        stddevPitching.ER += std::pow(pPitcher->projection.pitching.ER - avgPitching.ER, 2.0);
+        stddevPitching.HR += std::pow(pPitcher->projection.pitching.HR - avgPitching.HR, 2.0);
+        stddevPitching.SO += std::pow(pPitcher->projection.pitching.SO - avgPitching.SO, 2.0);
+        stddevPitching.BB += std::pow(pPitcher->projection.pitching.BB - avgPitching.BB, 2.0);
+        stddevPitching.ERA += std::pow(pPitcher->projection.pitching.ERA() - avgPitching.ERA, 2.0);
+        stddevPitching.WHIP += std::pow(pPitcher->projection.pitching.WHIP() - avgPitching.WHIP, 2.0);
     }
 
     stddevPitching.W = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.W);
@@ -571,18 +559,18 @@ static void CalculatePitchingZScores()
     stddevPitching.WHIP = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.WHIP);
 
     for (FBBPlayer* pPitcher : vecPitchers) {
-        pPitcher->calculations.zPitching.W = (pPitcher->spProjection->pitching.W - avgPitching.W) / stddevPitching.W;
-        pPitcher->calculations.zPitching.SV = (pPitcher->spProjection->pitching.SV - avgPitching.SV) / stddevPitching.SV;
-        pPitcher->calculations.zPitching.SO = (pPitcher->spProjection->pitching.SO - avgPitching.SO) / stddevPitching.SO;
-        pPitcher->calculations.zPitching.ERA = (pPitcher->spProjection->pitching.ERA() - avgPitching.ERA) / stddevPitching.ERA;
-        pPitcher->calculations.zPitching.WHIP = (pPitcher->spProjection->pitching.WHIP() - avgPitching.WHIP) / stddevPitching.WHIP;
+        pPitcher->calculations.zPitching.W = (pPitcher->projection.pitching.W - avgPitching.W) / stddevPitching.W;
+        pPitcher->calculations.zPitching.SV = (pPitcher->projection.pitching.SV - avgPitching.SV) / stddevPitching.SV;
+        pPitcher->calculations.zPitching.SO = (pPitcher->projection.pitching.SO - avgPitching.SO) / stddevPitching.SO;
+        pPitcher->calculations.zPitching.ERA = (pPitcher->projection.pitching.ERA() - avgPitching.ERA) / stddevPitching.ERA;
+        pPitcher->calculations.zPitching.WHIP = (pPitcher->projection.pitching.WHIP() - avgPitching.WHIP) / stddevPitching.WHIP;
     }
 
     sumPitching.ERA = 0;
     sumPitching.WHIP = 0;
     for (FBBPlayer* pPitcher : vecPitchers) {
-        pPitcher->calculations.zPitching.ERA *= pPitcher->spProjection->pitching.IP;
-        pPitcher->calculations.zPitching.WHIP *= pPitcher->spProjection->pitching.IP;
+        pPitcher->calculations.zPitching.ERA *= pPitcher->projection.pitching.IP;
+        pPitcher->calculations.zPitching.WHIP *= pPitcher->projection.pitching.IP;
         sumPitching.ERA += pPitcher->calculations.zPitching.ERA;
         sumPitching.WHIP += pPitcher->calculations.zPitching.WHIP;
     }
@@ -655,7 +643,7 @@ FBBProjectionService::FBBProjectionService(QObject* parent)
 {
     // Listen for settings changes
     connect(&FBBLeaugeSettings::Instance(), &FBBLeaugeSettings::SettingsChanged, this, [=](const FBBLeaugeSettings& settings) {
-        LoadProjections(FBBLeaugeSettings::Instance().projections.source);
+        UpdateCalculations();
     });
 
     // Load initial projections
@@ -674,26 +662,19 @@ void FBBProjectionService::LoadProjections(const FBBLeaugeSettings::Projections:
     const QString pitchingFile = ":/data/2019-pitchers-fan.csv";
     const QString appearanceFile = ":/data/2019-appearances.csv";
 
-    emit BeginProjectionsUpdated();
-    
-    // Clear existing projections
-    FBBPlayerDataService::ForEach([](FBBPlayer& player) {
-        player.spProjection.reset();
-    });
-
-    // Load new hitting projections
     FBBProjectionService::LoadHittingProjections(hittingFile);
-
-    // Load new pitching projections
     FBBProjectionService::LoadPitchingProjections(pitchingFile);
-
-    // Load new pitching projections
     LoadFielding(pitchingFile);
+
+    UpdateCalculations();
+}
+
+void FBBProjectionService::UpdateCalculations()
+{
+    emit BeginProjectionsUpdated();
 
     CalculateHittingZScores();
     CalculatePitchingZScores();
-
-    // Calculate ranks and sort
     FBBPlayerDataService::Finalize();
 
     emit EndProjectionsUpdated();

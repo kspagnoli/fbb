@@ -5,6 +5,9 @@
 #include "FBB/FBBLeaugeSettings.h"
 #include "FBB/FBBPositionService.h"
 
+#include <QColor>
+#include <QJsonArray>
+
 template <typename T>
 static QVariant ToQVariant(T x, int role)
 {
@@ -25,6 +28,10 @@ static QVariant ToQVariant(float x, int role)
 FBBDraftBoardModel::FBBDraftBoardModel(QObject* parent)
     : QAbstractTableModel(parent)
 {
+    m_font = QFont("Consolas", 9);
+    m_draftedFont = m_font;
+    m_draftedFont.setItalic(true);
+
     // Listen for settings changed
     connect(&FBBProjectionService::Instance(), &FBBProjectionService::BeginProjectionsUpdated, this, [=]() {
         beginResetModel();
@@ -37,6 +44,29 @@ FBBDraftBoardModel::FBBDraftBoardModel(QObject* parent)
 
     // Bootstrap position data
     FBBPositionService::LoadPositionData();
+
+    // 
+    FBBPlayerDataService::SetDraftModel(this);
+}
+
+QJsonObject FBBDraftBoardModel::ToJson() const
+{
+    QJsonObject jsonArray;
+    FBBPlayerDataService::ForEach([&](const FBBPlayer& player){
+
+        if (player.draftInfo.owner != -1)
+        {
+            QVariantMap vm;
+            vm["owner"] = player.draftInfo.owner;
+            vm["paid"] = player.draftInfo.paid;
+            vm["position"] = player.draftInfo.position;
+            jsonArray[player.id] = (QJsonObject::fromVariantMap(vm));
+        }
+    });
+
+    QJsonObject json;
+    json["drafted"] = jsonArray;
+    return json;
 }
 
 int FBBDraftBoardModel::rowCount(const QModelIndex& parent) const
@@ -47,6 +77,12 @@ int FBBDraftBoardModel::rowCount(const QModelIndex& parent) const
 int FBBDraftBoardModel::columnCount(const QModelIndex& parent) const
 {
     return COLUMN_COUNT;
+}
+
+Qt::ItemFlags FBBDraftBoardModel::flags(const QModelIndex& index) const
+{
+    Qt::ItemFlags flags = QAbstractItemModel::flags(index);
+    return flags;
 }
 
 QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
@@ -92,16 +128,16 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         }
         case COLUMN_AB:
             if (isHitter) {
-                return ToQVariant(pPlayer->spProjection->hitting.AB, role);
+                return ToQVariant(pPlayer->projection.hitting.AB, role);
             }
         case COLUMN_H:
             if (isHitter) {
-                return ToQVariant(pPlayer->spProjection->hitting.H, role);
+                return ToQVariant(pPlayer->projection.hitting.H, role);
             }
         case COLUMN_AVG:
             if (isHitter) {
                 if (m_mode == Mode::STAT) {
-                    return ToQVariant(pPlayer->spProjection->hitting.AVG(), role);
+                    return ToQVariant(pPlayer->projection.hitting.AVG(), role);
                 } else if (m_mode == Mode::Z_SCORE) {
                     return ToQVariant(pPlayer->calculations.zHitting.AVG, role);
                 }
@@ -110,7 +146,7 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_HR:
             if (isHitter) {
                 if (m_mode == Mode::STAT) {
-                    return ToQVariant(pPlayer->spProjection->hitting.HR, role);
+                    return ToQVariant(pPlayer->projection.hitting.HR, role);
                 } else if (m_mode == Mode::Z_SCORE) {
                     return ToQVariant(pPlayer->calculations.zHitting.HR, role);
                 }
@@ -119,7 +155,7 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_R:
             if (isHitter) {
                 if (m_mode == Mode::STAT) {
-                    return ToQVariant(pPlayer->spProjection->hitting.R, role);
+                    return ToQVariant(pPlayer->projection.hitting.R, role);
                 }else if (m_mode == Mode::Z_SCORE) {
                     return ToQVariant(pPlayer->calculations.zHitting.R, role);
                 }
@@ -128,7 +164,7 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_RBI:
             if (isHitter) {
                 if (m_mode == Mode::STAT) {
-                    return ToQVariant(pPlayer->spProjection->hitting.RBI, role);
+                    return ToQVariant(pPlayer->projection.hitting.RBI, role);
                 }else if (m_mode == Mode::Z_SCORE) {
                     return ToQVariant(pPlayer->calculations.zHitting.RBI, role);
                 }
@@ -137,7 +173,7 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_SB:
             if (isHitter) {
                 if (m_mode == Mode::STAT) {
-                    return ToQVariant(pPlayer->spProjection->hitting.SB, role);
+                    return ToQVariant(pPlayer->projection.hitting.SB, role);
                 } else if (m_mode == Mode::Z_SCORE) {
                     return ToQVariant(pPlayer->calculations.zHitting.SB, role);
                 }
@@ -145,24 +181,24 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
             break;
         case COLUMN_IP:
             if (isPitcher) {
-                return ToQVariant(pPlayer->spProjection->pitching.IP, role);
+                return ToQVariant(pPlayer->projection.pitching.IP, role);
             }
         case COLUMN_HA:
             if (isPitcher) {
-                return ToQVariant(pPlayer->spProjection->pitching.H, role);
+                return ToQVariant(pPlayer->projection.pitching.H, role);
             }
         case COLUMN_BB:
             if (isPitcher) {
-                return ToQVariant(pPlayer->spProjection->pitching.BB, role);
+                return ToQVariant(pPlayer->projection.pitching.BB, role);
             }
         case COLUMN_ER:
             if (isPitcher) {
-                return ToQVariant(pPlayer->spProjection->pitching.ER, role);
+                return ToQVariant(pPlayer->projection.pitching.ER, role);
             }
         case COLUMN_SO:
             if (isPitcher) {
                 if (m_mode == Mode::STAT) {
-                    return ToQVariant(pPlayer->spProjection->pitching.SO, role);
+                    return ToQVariant(pPlayer->projection.pitching.SO, role);
                 } else if (m_mode == Mode::Z_SCORE) {
                     return ToQVariant(pPlayer->calculations.zPitching.SO, role);
                 }
@@ -171,7 +207,7 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_ERA:
             if (isPitcher) {
                 if (m_mode == Mode::STAT) {
-                    return ToQVariant(pPlayer->spProjection->pitching.ERA(), role);
+                    return ToQVariant(pPlayer->projection.pitching.ERA(), role);
                 } else if (m_mode == Mode::Z_SCORE) {
                     return ToQVariant(pPlayer->calculations.zPitching.ERA, role);
                 }
@@ -180,7 +216,7 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_WHIP:
             if (isPitcher) {
                 if (m_mode == Mode::STAT) {
-                    return ToQVariant(pPlayer->spProjection->pitching.WHIP(), role);
+                    return ToQVariant(pPlayer->projection.pitching.WHIP(), role);
                 } else if (m_mode == Mode::Z_SCORE) {
                     return ToQVariant(pPlayer->calculations.zPitching.WHIP, role);
                 }
@@ -189,7 +225,7 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_W:
             if (isPitcher) {
                 if (m_mode == Mode::STAT) {
-                    return ToQVariant(pPlayer->spProjection->pitching.W, role);
+                    return ToQVariant(pPlayer->projection.pitching.W, role);
                 } else if (m_mode == Mode::Z_SCORE) {
                     return ToQVariant(pPlayer->calculations.zPitching.W, role);
                 }
@@ -198,7 +234,7 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         case COLUMN_SV:
             if (isPitcher) {
                 if (m_mode == Mode::STAT) {
-                    return ToQVariant(pPlayer->spProjection->pitching.SV, role);
+                    return ToQVariant(pPlayer->projection.pitching.SV, role);
                 } else if (m_mode == Mode::Z_SCORE) {
                     return ToQVariant(pPlayer->calculations.zPitching.SV, role);
                 }
@@ -214,18 +250,72 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
         }
     }
 
+    if (role == Qt::TextAlignmentRole) {
+
+        switch (index.column()) {
+        
+        case COLUMN_NAME:
+        case COLUMN_TEAM:
+        case COLUMN_POSITION:
+        case COLUMN_OWNER:
+        case COLUMN_COMMENT:
+            return int(Qt::AlignLeft| Qt::AlignVCenter);
+
+        case COLUMN_ID:
+        case COLUMN_RANK:
+        case COLUMN_PAID:
+        case COLUMN_AGE:
+        case COLUMN_EXPERIENCE:
+        case COLUMN_AB:
+        case COLUMN_H:
+        case COLUMN_AVG:
+        case COLUMN_HR:
+        case COLUMN_R:
+        case COLUMN_RBI:
+        case COLUMN_SB:
+        case COLUMN_IP:
+        case COLUMN_HA:
+        case COLUMN_BB:
+        case COLUMN_ER:
+        case COLUMN_SO:
+        case COLUMN_ERA:
+        case COLUMN_WHIP:
+        case COLUMN_W:
+        case COLUMN_SV:
+        case COLUMN_Z:
+        case COLUMN_ESTIMATE:
+            return int(Qt::AlignRight | Qt::AlignVCenter);
+        case COLUMN_COUNT:
+            break;
+        }
+    }
+
+    if (role == Qt::FontRole) {
+        if (pPlayer->draftInfo.owner != 0) {
+            return m_draftedFont;
+        } else {
+            return m_font;
+        }
+    }
+
+    if (role == Qt::ForegroundRole) {
+        if (pPlayer->draftInfo.owner != 0) {
+            return QColor(Qt::gray);
+        }
+    }
+
     return QVariant();
 }
 
 QVariant FBBDraftBoardModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
+    if (role == Qt::FontRole) {
+        return m_font;
+    }
+
     if (orientation == Qt::Horizontal) {
 
-        if (role == Qt::InitialSortOrderRole) {
-            return section;
-        }
-
-        if (role == Qt::DisplayRole) {
+        if (role == Qt::DisplayRole || role == Qt::ToolTipRole) {
 
             switch (section)
             {

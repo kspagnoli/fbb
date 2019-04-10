@@ -92,7 +92,6 @@ public:
     uint32_t age = 0;
     uint32_t experience = 0;
 
-
     struct Appearances
     {
         Appearances()
@@ -111,6 +110,7 @@ public:
             float CF;
             float RF;
         } fielding;
+
     } appearances;
 
     struct Projection
@@ -182,12 +182,17 @@ public:
                 return IP > 0 ? (BB + H) / float(IP) : 0.f;
             }
         } pitching;
-        
 
-    };
+    } projection;
 
     FBBPositionMask EligablePositions() const
     {
+        // XXX
+        if (type == PLAYER_TYPE_PITCHER)
+        {
+            return FBB_POSITION_P;
+        }
+
         const float inningEligibitlity = (FBBLeaugeSettings::Instance().leauge.positionEligibility * 6.f);
 
         FBBPositionMask mask = FBB_POSITION_UNKNOWN;
@@ -266,5 +271,4 @@ public:
         FBBPositionBits position = FBB_POSITION_UNKNOWN;
     } draftInfo;
 
-    std::unique_ptr<Projection> spProjection;
 };

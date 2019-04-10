@@ -1,10 +1,12 @@
 #include "FBB/FBBPlayerDataService.h"
 #include "FBB/FBBPlayer.h"
 #include "FBB/FBBLeaugeSettings.h"
+#include "FBB/FBBDraftBoardModel.h"
 
 #include <QApplication>
 #include <QFile>
 #include <QTextStream>
+#include <QJsonDocument>
 
 #include <algorithm>
 
@@ -137,21 +139,40 @@ void FBBPlayerDataService::Finalize()
     std::sort(Instance().m_flatData.begin(), Instance().m_flatData.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS){
         return pLHS->id < pRHS->id;
     });
+}
 
+void FBBPlayerDataService::SetDraftModel(FBBDraftBoardModel* pModel)
+{
+    Instance().m_pModel = pModel;
+}
+
+bool FBBPlayerDataService::Save()
+{
+    QJsonObject json = Instance().m_pModel->ToJson();
+
+    QJsonDocument doc(json);
+    doc.toJson(QJsonDocument::Indented).toStdString();
+
+    return true;
+}
+
+bool FBBPlayerDataService::Load()
+{
+    return true;
 }
 
 bool FBBPlayerDataService::IsValidUnderCurrentSettings(const FBBPlayer* pPlayer)
 {
     // Has min AB
-    if (pPlayer->spProjection && pPlayer->type == FBBPlayer::PLAYER_TYPE_HITTER) {
-        if (pPlayer->spProjection->hitting.AB < FBBLeaugeSettings::Instance().projections.minAB) {
+    if (pPlayer->type == FBBPlayer::PLAYER_TYPE_HITTER) {
+        if (pPlayer->projection.hitting.AB < FBBLeaugeSettings::Instance().projections.minAB) {
             return false;
         }
     }
 
     // Has min IP
-    if (pPlayer->spProjection && pPlayer->type == FBBPlayer::PLAYER_TYPE_PITCHER) {
-        if (pPlayer->spProjection->pitching.IP < FBBLeaugeSettings::Instance().projections.minIP) {
+    if (pPlayer->type == FBBPlayer::PLAYER_TYPE_PITCHER) {
+        if (pPlayer->projection.pitching.IP < FBBLeaugeSettings::Instance().projections.minIP) {
             return false;
         }
     }
@@ -186,7 +207,7 @@ std::vector<FBBPlayer*> FBBPlayerDataService::GetValidHitters()
 {
     std::vector<FBBPlayer*> ret;
     for (FBBPlayer* pPlayer : Instance().m_flatData) {
-        if (pPlayer->spProjection && pPlayer->type == FBBPlayer::PLAYER_TYPE_HITTER) {
+        if (pPlayer->type == FBBPlayer::PLAYER_TYPE_HITTER) {
             if (IsValidUnderCurrentSettings(pPlayer)) {
                 ret.push_back(pPlayer);
             }
@@ -199,7 +220,7 @@ std::vector<FBBPlayer*> FBBPlayerDataService::GetValidPitchers()
 {
     std::vector<FBBPlayer*> ret;
     for (FBBPlayer* pPlayer : Instance().m_flatData) {
-        if (pPlayer->spProjection && pPlayer->type == FBBPlayer::PLAYER_TYPE_PITCHER) {
+        if (pPlayer->type == FBBPlayer::PLAYER_TYPE_PITCHER) {
             if (IsValidUnderCurrentSettings(pPlayer)) {
                 ret.push_back(pPlayer);
             }

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QAbstractTableModel>
+#include <QFont>
+#include <QJsonObject>
 
 class FBBDraftBoardModel : public QAbstractTableModel
 {
@@ -65,10 +67,14 @@ public:
 
     FBBDraftBoardModel(QObject* parent = nullptr);
 
-    virtual int rowCount(const QModelIndex& parent) const override;
+    QJsonObject ToJson() const;
+
+    virtual int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     virtual int columnCount(const QModelIndex& parent) const override;
+    virtual Qt::ItemFlags flags(const QModelIndex& index) const override;
     virtual QVariant data(const QModelIndex& index, int role) const override;
     virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+
 
     enum class Mode
     {
@@ -80,4 +86,6 @@ public:
 private:
 
     Mode m_mode = Mode::STAT;
+    QFont m_font;
+    QFont m_draftedFont;
 };

@@ -23,6 +23,7 @@ private:
 
     FBBProjectionService(QObject* parent);
     void LoadProjections(const FBBLeaugeSettings::Projections::Source& source);
+    void UpdateCalculations();
 
     void LoadPitchingProjections(const QString& file);
     void LoadHittingProjections(const QString& file);
