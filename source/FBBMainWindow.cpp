@@ -2,11 +2,13 @@
 #include "FBB/FBBMainMenuBar.h"
 #include "FBB/FBBDraftBoard.h"
 #include "FBB/FBBDraftLog.h"
+#include "FBB/FBBDraftBoardModel.h"
 
 #include <QGridLayout>
 #include <QTabWidget>
 #include <QDockWidget>
 #include <QTableView>
+#include <QFile>
 
 FBBMainWindow::FBBMainWindow(QWidget* parent, Qt::WindowFlags flags)
     : QMainWindow(parent, flags)

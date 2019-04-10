@@ -3,6 +3,7 @@
 #include "FBB/FBBDraftBoardSortFilterProxyModel.h"
 #include "FBB/FBBPlayerDataService.h"
 #include "FBB/FBBDraftDialog.h"
+#include "FBB/FBBApplication.h"
 
 #include <QVBoxLayout>
 #include <QTableView>
@@ -51,12 +52,9 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     // Main layout
     QVBoxLayout* pLayout = new QVBoxLayout(this);
 
-    // Source model
-    FBBDraftBoardModel* pSourceModel = new FBBDraftBoardModel(this);
-
     // Proxy model
     FBBDraftBoardSortFilterProxyModel* pProxyModel = new FBBDraftBoardSortFilterProxyModel(this);
-    pProxyModel->setSourceModel(pSourceModel);
+    pProxyModel->setSourceModel(fbbApp->DraftBoardModel());
 
     // Header + layout
     QWidget* pHeader = new QWidget(this);
@@ -265,8 +263,8 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
         pDraftButton->setEnabled(current.isValid());
         if (current.isValid()) {
             const int row = pProxyModel->mapToSource(current).row();
-            QModelIndex idx = pSourceModel->index(row, FBBDraftBoardModel::COLUMN_NAME);
-            QString name = pSourceModel->data(idx, Qt::DisplayRole).toString();
+            QModelIndex idx = fbbApp->DraftBoardModel()->index(row, FBBDraftBoardModel::COLUMN_NAME);
+            QString name = fbbApp->DraftBoardModel()->data(idx, Qt::DisplayRole).toString();
             pDraftButton->setText(QString("Draft\n%1").arg(name));
         } else {
             pDraftButton->setText("Draft...");
@@ -282,7 +280,7 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     });
 
     connect(pZscoreToggle, &QPushButton::toggled, this, [=](bool checked) {
-        pSourceModel->SetMode(checked ? FBBDraftBoardModel::Mode::Z_SCORE : FBBDraftBoardModel::Mode::STAT);
+        fbbApp->DraftBoardModel()->SetMode(checked ? FBBDraftBoardModel::Mode::Z_SCORE : FBBDraftBoardModel::Mode::STAT);
     });
 
     // Search activation
@@ -300,8 +298,8 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
 
         QMenu menu;
 
-        for (int i = 0; i < pSourceModel->columnCount(pSourceModel->index(0, 0)); i++) {
-            QString columnName = pSourceModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+        for (int i = 0; i < fbbApp->DraftBoardModel()->columnCount(fbbApp->DraftBoardModel()->index(0, 0)); i++) {
+            QString columnName = fbbApp->DraftBoardModel()->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
             menu.addAction(columnName);
         }
         // ...

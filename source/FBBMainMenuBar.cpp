@@ -2,15 +2,32 @@
 #include "FBB/FBBLeaugeSettingsDialog.h"
 #include "FBB/FBBLeaugeSettings.h"
 #include "FBB/FBBPlayerDataService.h"
+#include "FBB/FBBApplication.h"
 
 #include <QMenu>
 #include <QAction>
+#include <QApplication>
 
 FBBMainMenuBar::FBBMainMenuBar(QWidget* parent)
     : QMenuBar(parent)
 {
     // File menu
     QMenu* fileMenu = addMenu("&File");
+    fileMenu->addAction("&Exit", [=](){
+        fbbApp->Exit();
+    });
+
+    fileMenu->addAction("&Save", [=](){
+        // fbbApp->Save();
+    });
+
+    fileMenu->addAction("Save &As", [=](){
+        fbbApp->SaveAs();
+    });
+
+    fileMenu->addAction("&Open", [=](){
+        // fbbApp->Open();
+    });
 
     // Settings
     QMenu* settingsMenu = addMenu("&Settings");

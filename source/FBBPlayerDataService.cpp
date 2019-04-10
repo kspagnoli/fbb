@@ -146,21 +146,6 @@ void FBBPlayerDataService::SetDraftModel(FBBDraftBoardModel* pModel)
     Instance().m_pModel = pModel;
 }
 
-bool FBBPlayerDataService::Save()
-{
-    QJsonObject json = Instance().m_pModel->ToJson();
-
-    QJsonDocument doc(json);
-    doc.toJson(QJsonDocument::Indented).toStdString();
-
-    return true;
-}
-
-bool FBBPlayerDataService::Load()
-{
-    return true;
-}
-
 bool FBBPlayerDataService::IsValidUnderCurrentSettings(const FBBPlayer* pPlayer)
 {
     // Has min AB

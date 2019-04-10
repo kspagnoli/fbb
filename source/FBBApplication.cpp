@@ -1,12 +1,23 @@
 #include "FBB/FBBApplication.h"
+#include "FBB/FBBDraftBoardModel.h"
 
 #include <QStyleFactory>
 #include <QIcon>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QFileDialog>
+#include <QStandardPaths>
+#include <QFileInfo>
+
+static const char* k_AppName = "Fantasy Baseball";
+
+FBBApplication* FBBApplication::s_instance = nullptr;
 
 FBBApplication::FBBApplication(int& argc, char** argv)
     : QApplication(argc, argv)
+    , m_pDraftBoardModel(new FBBDraftBoardModel(this))
 {
-    s_app = this;
+    s_instance = this;
 
     Q_INIT_RESOURCE(Resources);
 
@@ -28,8 +39,50 @@ FBBApplication::FBBApplication(int& argc, char** argv)
 
         )""");
 
-    setApplicationName("Fantasy Baseball");
     setWindowIcon(QIcon(":/icons/baseball.png"));
+
+    auto SetApplicationName = [=]() {
+        if (m_file.isEmpty()) { 
+            setApplicationName(k_AppName);
+        } else {
+            const QFileInfo fileInfo(m_file);
+            const QString name = QString("%1 - %2").arg(fileInfo.baseName()).arg(k_AppName);
+            setApplicationName(name);
+        }
+    };
+    
+    connect(this, &FBBApplication::PathChanged, [=](){
+        SetApplicationName();
+    });
+
+    SetApplicationName();
+}
+
+void FBBApplication::Exit()
+{
+    exit();
+}
+
+void FBBApplication::Save()
+{
+    QJsonObject json = m_pDraftBoardModel->ToJson();
+    QJsonDocument doc(json);
+
+    QFile jsonFile(m_file);
+    jsonFile.open(QFile::WriteOnly);
+    jsonFile.write(doc.toJson(QJsonDocument::Indented));
+}
+
+void FBBApplication::SaveAs()
+{
+    const QString docFolder = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    m_file = QFileDialog::getSaveFileName(nullptr, tr("Open File"), docFolder, tr("JSON Files (*.json)"));
+    Save();
+    emit PathChanged();
+}
+
+void FBBApplication::Load(const QString& fileName)
+{
 }
 
 // Dark theme!

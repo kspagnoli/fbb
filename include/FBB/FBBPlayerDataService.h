@@ -40,9 +40,6 @@ public:
 
     static void SetDraftModel(FBBDraftBoardModel* pModel);
 
-    static bool Save();
-    static bool Load();
-
     // Demo
     static void AddDemoData();
 
