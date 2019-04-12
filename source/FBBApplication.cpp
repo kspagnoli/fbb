@@ -1,5 +1,7 @@
 #include "FBB/FBBApplication.h"
 #include "FBB/FBBDraftBoardModel.h"
+#include "FBB/FBBProjectionService.h"
+#include "FBB/FBBLeaugeSettings.h"
 
 #include <QStyleFactory>
 #include <QIcon>
@@ -15,6 +17,7 @@ FBBApplication* FBBApplication::s_instance = nullptr;
 
 FBBApplication::FBBApplication(int& argc, char** argv)
     : QApplication(argc, argv)
+    , m_pSettings(new FBBLeaugeSettings(this))
     , m_pDraftBoardModel(new FBBDraftBoardModel(this))
 {
     s_instance = this;
@@ -56,6 +59,9 @@ FBBApplication::FBBApplication(int& argc, char** argv)
     });
 
     SetApplicationName();
+
+
+    FBBProjectionService::Instance().LoadProjections();
 }
 
 void FBBApplication::Exit()

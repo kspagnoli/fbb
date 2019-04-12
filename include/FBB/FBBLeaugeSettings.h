@@ -15,8 +15,7 @@ class FBBLeaugeSettings : public QObject
     Q_OBJECT
 
 public:
-
-    static FBBLeaugeSettings& Instance();
+    FBBLeaugeSettings(QObject* parent);
 
     struct Leauge
     {
@@ -181,9 +180,4 @@ public:
 signals:
 
     void SettingsChanged(const FBBLeaugeSettings& settings) const;
-
-private:
-
-    // Non-construct/copyable
-    FBBLeaugeSettings(QObject* parent);
 };

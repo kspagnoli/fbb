@@ -3,6 +3,7 @@
 #include "FBB/FBBTeam.h"
 #include "FBB/FBBPosition.h"
 #include "FBB/FBBLeaugeSettings.h"
+#include "FBB/FBBApplication.h"
 
 #include <QString>
 #include <QObject>
@@ -193,7 +194,7 @@ public:
             return FBB_POSITION_P;
         }
 
-        const float inningEligibitlity = (FBBLeaugeSettings::Instance().leauge.positionEligibility * 6.f);
+        const float inningEligibitlity = (fbbApp->Settings()->leauge.positionEligibility * 6.f);
 
         FBBPositionMask mask = FBB_POSITION_UNKNOWN;
 
@@ -271,4 +272,6 @@ public:
         FBBPositionBits position = FBB_POSITION_UNKNOWN;
     } draftInfo;
 
+
+    bool IsValidUnderCurrentSettings() const;
 };

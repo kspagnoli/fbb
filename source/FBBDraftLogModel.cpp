@@ -1,5 +1,6 @@
 #include "FBB/FBBDraftLogModel.h"
-#include "FBB/FBBPlayerDataService.h"
+#include "FBB/FBBDraftBoardModel.h"
+#include "FBB/FBBApplication.h"
 
 #include <QApplication>
 
@@ -12,7 +13,7 @@ FBBDraftLogModel& FBBDraftLogModel::Instance()
 FBBDraftLogModel::FBBDraftLogModel(QObject* pParent)
     : QAbstractTableModel(pParent)
 {
-    connect(&FBBPlayerDataService::Instance(), &FBBPlayerDataService::PlayerDrafted, this, [=](FBBPlayer* pPlayer) {
+    connect(fbbApp->DraftBoardModel(), &FBBDraftBoardModel::PlayerDrafted, this, [=](FBBPlayer* pPlayer) {
         beginResetModel();
         m_vecDraftedPlayers.push_back(pPlayer);
         endResetModel();

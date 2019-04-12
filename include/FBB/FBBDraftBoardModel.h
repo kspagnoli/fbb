@@ -4,8 +4,12 @@
 #include <QFont>
 #include <QJsonObject>
 
+#include "FBB/FBBPlayer.h"
+
 class FBBDraftBoardModel : public QAbstractTableModel
 {
+    Q_OBJECT
+
 public:
 
     // Columns
@@ -67,15 +71,25 @@ public:
 
     FBBDraftBoardModel(QObject* parent = nullptr);
 
+    void Reset(const std::vector<FBBPlayer*>& vecPlayers);
+    uint32_t PlayerCount() const;
+    void AddPlayer(FBBPlayer* pPlayer);
+    FBBPlayer* GetPlayer(uint32_t index);
+    FBBPlayer* GetPlayer(const FBBPlayerId& playerId);
+    std::vector<FBBPlayer*> GetValidHitters();
+    std::vector<FBBPlayer*> GetValidPitchers();
+    
+    // Export
     QJsonObject ToJson() const;
 
+    // QAbstractTableModel
     virtual int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     virtual int columnCount(const QModelIndex& parent) const override;
     virtual Qt::ItemFlags flags(const QModelIndex& index) const override;
     virtual QVariant data(const QModelIndex& index, int role) const override;
     virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
-
-
+    
+    // TODO: remove this...
     enum class Mode
     {
         STAT,
@@ -83,7 +97,15 @@ public:
     };
     void SetMode(Mode mode);
 
+signals:
+    void PlayerDrafted(FBBPlayer* player);
+
 private:
+
+    void CalculateHittingZScores();
+    void CalculatePitchingZScores();
+
+    std::vector<FBBPlayer*> m_vecPlayers;
 
     Mode m_mode = Mode::STAT;
     QFont m_font;

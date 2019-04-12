@@ -3,6 +3,9 @@
 #include "FBB/FBBLeaugeSettings.h"
 
 #include <QObject>
+#include <vector>
+
+class FBBPlayer;
 
 //------------------------------------------------------------------------------
 // FBBProjectionService
@@ -14,17 +17,10 @@ class FBBProjectionService : public QObject
 public:
 
     static FBBProjectionService& Instance();
-
-signals:
-    void BeginProjectionsUpdated();
-    void EndProjectionsUpdated();
+    FBBProjectionService(QObject* parent);
+    void LoadProjections();
 
 private:
-
-    FBBProjectionService(QObject* parent);
-    void LoadProjections(const FBBLeaugeSettings::Projections::Source& source);
-    void UpdateCalculations();
-
-    void LoadPitchingProjections(const QString& file);
-    void LoadHittingProjections(const QString& file);
+    void LoadPitchingProjections(std::vector<FBBPlayer*>& vecPlayers, const QString& file);
+    void LoadHittingProjections(std::vector<FBBPlayer*>& vecPlayers, const QString& file);
 };

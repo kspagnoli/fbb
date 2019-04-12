@@ -19,11 +19,4 @@ FBBLeaugeSettings::FBBLeaugeSettings(QObject* parent)
     CreateOwner({ "Owner #12", "BIZ" });
 }
 
-FBBLeaugeSettings& FBBLeaugeSettings::Instance()
-{
-    static FBBLeaugeSettings* s_instance = new FBBLeaugeSettings(qApp);
-    return *s_instance;
-}
-
-
 #include "FBBLeaugeSettings.moc"

@@ -1,7 +1,6 @@
 #include "FBB/FBBMainMenuBar.h"
 #include "FBB/FBBLeaugeSettingsDialog.h"
 #include "FBB/FBBLeaugeSettings.h"
-#include "FBB/FBBPlayerDataService.h"
 #include "FBB/FBBApplication.h"
 
 #include <QMenu>
@@ -35,19 +34,18 @@ FBBMainMenuBar::FBBMainMenuBar(QWidget* parent)
     // Settings > Settings
     QAction* pSettingsAction = new QAction("&Settings...", this);
     connect(pSettingsAction, &QAction::triggered, [=](bool checked) {
-        FBBLeaugeSettings& settings = FBBLeaugeSettings::Instance();
-        FBBLeaugeSettingsDialog dialog(&settings);
+        FBBLeaugeSettingsDialog dialog(fbbApp->Settings());
         if (dialog.exec()) {
-            settings.OnAccept();
+            fbbApp->Settings()->OnAccept();
         }
     });
     settingsMenu->addAction(pSettingsAction);
 
     // Settings > Demo Data
-    QAction* pDemoDataAction = new QAction("&Demo Data", this);
-    connect(pDemoDataAction, &QAction::triggered, [=](bool checked) {
-        FBBPlayerDataService::AddDemoData();
-    });
-    settingsMenu->addAction(pDemoDataAction);
+    /// QAction* pDemoDataAction = new QAction("&Demo Data", this);
+    /// connect(pDemoDataAction, &QAction::triggered, [=](bool checked) {
+    ///     FBBPlayerDataService::AddDemoData();
+    /// });
+    /// settingsMenu->addAction(pDemoDataAction);
 
 }

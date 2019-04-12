@@ -2,7 +2,6 @@
 #include "FBB/FBBPlayer.h"
 #include "FBB/FBBPosition.h"
 #include "FBB/FBBLeaugeSettings.h"
-#include "FBB/FBBPlayerDataService.h"
 
 #include <QPushButton>
 #include <QBoxLayout>
@@ -53,7 +52,7 @@ FBBDraftDialog::FBBDraftDialog(FBBPlayer* pPlayer)
     const QString defaultOwnerText = "Select...";
     QComboBox* pOwnerComboBox = new QComboBox;
     QStringList list = { defaultOwnerText };
-    for (const auto& item : FBBLeaugeSettings::Instance().owners) {
+    for (const auto& item : fbbApp->Settings()->owners) {
         list += item.second->name;
     }
     pOwnerComboBox->addItems(list);
@@ -61,7 +60,7 @@ FBBDraftDialog::FBBDraftDialog(FBBPlayer* pPlayer)
     pInfoGridLayout->addWidget(pOwnerComboBox, OwnerRow, ItemColumn);
 
     // Cost line edit
-    const uint32_t MAX_BID = FBBLeaugeSettings::Instance().leauge.budget;
+    const uint32_t MAX_BID = fbbApp->Settings()->leauge.budget;
     QLineEdit* pCostLineEdit = new QLineEdit;
     pCostLineEdit->setValidator(new QIntValidator(0, MAX_BID, this));
     pInfoGridLayout->addWidget(new QLabel("Cost:"), CostRow, LabelColumn);
@@ -95,7 +94,7 @@ FBBDraftDialog::FBBDraftDialog(FBBPlayer* pPlayer)
         pPlayer->draftInfo.paid = m_paid;
         
         // apply owner
-        for (const auto& item : FBBLeaugeSettings::Instance().owners) {
+        for (const auto& item : fbbApp->Settings()->owners) {
              if (item.second->name == m_owner) {
                  pPlayer->draftInfo.owner = item.first;
                  break;
@@ -103,7 +102,7 @@ FBBDraftDialog::FBBDraftDialog(FBBPlayer* pPlayer)
          }
 
         // signal
-        emit FBBPlayerDataService::Instance().PlayerDrafted(pPlayer);
+        /// emit FBBPlayerDataService::Instance().PlayerDrafted(pPlayer);
 
         accept();
     });

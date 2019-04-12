@@ -1,5 +1,6 @@
 #include "FBB/FBBPosition.h"
 #include "FBB/FBBLeaugeSettings.h"
+#include "FBB/FBBApplication.h"
 
 #include <QStringList>
 
@@ -14,7 +15,7 @@ QStringList FBBPositionMaskToStringList(FBBPositionMask mask, bool exclude)
     QStringList stringList;
 
     // Only add positions we care about for this leauge
-    const FBBLeaugeSettings::Positions positions = FBBLeaugeSettings::Instance().positions;
+    const FBBLeaugeSettings::Positions positions = fbbApp->Settings()->positions;
 
     // Helper macro
 #define HANDLE_POSITION(MASK, EXCLUDE, SETTING, POSITION)                   \

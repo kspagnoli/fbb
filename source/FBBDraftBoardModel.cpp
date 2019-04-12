@@ -1,9 +1,8 @@
 #include "FBB/FBBDraftBoardModel.h"
-#include "FBB/FBBPlayerDataService.h"
 #include "FBB/FBBProjectionService.h"
 #include "FBB/FBBPlayer.h"
 #include "FBB/FBBLeaugeSettings.h"
-#include "FBB/FBBPositionService.h"
+#include "FBB/FBBApplication.h"
 
 #include <QColor>
 #include <QJsonArray>
@@ -31,38 +30,109 @@ FBBDraftBoardModel::FBBDraftBoardModel(QObject* parent)
     m_font = QFont("Consolas", 9);
     m_draftedFont = m_font;
     m_draftedFont.setItalic(true);
-
-    // Listen for settings changed
-    connect(&FBBProjectionService::Instance(), &FBBProjectionService::BeginProjectionsUpdated, this, [=]() {
-        beginResetModel();
-    });
-
-    // Listen for settings changed
-    connect(&FBBProjectionService::Instance(), &FBBProjectionService::EndProjectionsUpdated, this, [=]() {
-        endResetModel();
-    });
-
-    // Bootstrap position data
-    FBBPositionService::LoadPositionData();
-
-    // 
-    FBBPlayerDataService::SetDraftModel(this);
 }
+
+void FBBDraftBoardModel::Reset(const std::vector<FBBPlayer*>& vecPlayers)
+{
+    emit beginResetModel();
+    m_vecPlayers = vecPlayers;
+    CalculateHittingZScores();
+    CalculatePitchingZScores();
+    emit endResetModel();
+}
+
+uint32_t FBBDraftBoardModel::PlayerCount() const
+{
+    return static_cast<uint32_t>(m_vecPlayers.size());
+}
+
+void FBBDraftBoardModel::AddPlayer(FBBPlayer* pPlayer)
+{
+    // XXX: Signals!
+    return m_vecPlayers.push_back(pPlayer);
+}
+
+FBBPlayer* FBBDraftBoardModel::GetPlayer(uint32_t index)
+{
+    if (index >= PlayerCount()) {
+        return nullptr;
+    }
+
+    return m_vecPlayers[index];
+}
+
+FBBPlayer* FBBDraftBoardModel::GetPlayer(const FBBPlayerId& playerId)
+{
+    // Lookup player
+    auto itr = std::find_if(m_vecPlayers.begin(), m_vecPlayers.end(), [&](const FBBPlayer* pPlayer) {
+        return pPlayer->id == playerId;
+    });
+
+    // TODO: binary search
+    if (itr == m_vecPlayers.end()) {
+        return nullptr;
+    } else {
+        return *itr;
+    }
+}
+
+std::vector<FBBPlayer*> FBBDraftBoardModel::GetValidHitters()
+{
+    std::vector<FBBPlayer*> ret;
+    for (FBBPlayer* pPlayer : m_vecPlayers) {
+        if (pPlayer->type == FBBPlayer::PLAYER_TYPE_HITTER) {
+            if (pPlayer->IsValidUnderCurrentSettings()) {
+                ret.push_back(pPlayer);
+            }
+        }
+    }
+    return ret;
+}
+
+std::vector<FBBPlayer*> FBBDraftBoardModel::GetValidPitchers()
+{
+    std::vector<FBBPlayer*> ret;
+    for (FBBPlayer* pPlayer : m_vecPlayers) {
+        if (pPlayer->type == FBBPlayer::PLAYER_TYPE_PITCHER) {
+            if (pPlayer->IsValidUnderCurrentSettings()) {
+                ret.push_back(pPlayer);
+            }
+        }
+    }
+    return ret;
+}
+
+/*
+void FBBDraftBoardModel::Finalize()
+{
+    std::sort(m_vecPlayers.begin(), m_vecPlayers.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS){
+        return pLHS->calculations.zScore > pRHS->calculations.zScore;
+    });
+
+    for (size_t i = 0; i < m_vecPlayers.size(); i++) {
+        m_vecPlayers[i]->calculations.rank = uint32_t(i)+1;
+    }
+
+    std::sort(m_vecPlayers.begin(), m_vecPlayers.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS){
+        return pLHS->id < pRHS->id;
+    });
+}
+*/
 
 QJsonObject FBBDraftBoardModel::ToJson() const
 {
     QJsonObject jsonArray;
-    FBBPlayerDataService::ForEach([&](const FBBPlayer& player){
-
-        if (player.draftInfo.owner != -1)
+    for (const FBBPlayer* pPlayer : m_vecPlayers)
+    {
+        if (pPlayer->draftInfo.owner != -1)
         {
             QVariantMap vm;
-            vm["owner"] = player.draftInfo.owner;
-            vm["paid"] = player.draftInfo.paid;
-            vm["position"] = player.draftInfo.position;
-            jsonArray[player.id] = (QJsonObject::fromVariantMap(vm));
+            vm["owner"] = pPlayer->draftInfo.owner;
+            vm["paid"] = pPlayer->draftInfo.paid;
+            vm["position"] = pPlayer->draftInfo.position;
+            jsonArray[pPlayer->id] = (QJsonObject::fromVariantMap(vm));
         }
-    });
+    }
 
     QJsonObject json;
     json["drafted"] = jsonArray;
@@ -71,7 +141,7 @@ QJsonObject FBBDraftBoardModel::ToJson() const
 
 int FBBDraftBoardModel::rowCount(const QModelIndex& parent) const
 {
-    return FBBPlayerDataService::PlayerCount();
+    return PlayerCount();
 }
 
 int FBBDraftBoardModel::columnCount(const QModelIndex& parent) const
@@ -88,7 +158,7 @@ Qt::ItemFlags FBBDraftBoardModel::flags(const QModelIndex& index) const
 QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
 {
     // Get player
-    const FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(index.row());
+    const FBBPlayer* pPlayer = m_vecPlayers[index.row()];
 
     // Sanity check
     if (!pPlayer) {
@@ -110,7 +180,7 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
             if (!pPlayer->draftInfo.owner) {
                 return "--";
             }
-            return FBBLeaugeSettings::Instance().owners[pPlayer->draftInfo.owner]->abbreviation;
+            return fbbApp->Settings()->owners[pPlayer->draftInfo.owner]->abbreviation;
         } break;
         case COLUMN_PAID:
             return pPlayer->draftInfo.paid ? QString("$%1").arg(pPlayer->draftInfo.paid) : "--";
@@ -386,5 +456,328 @@ void FBBDraftBoardModel::SetMode(Mode mode)
 {
     m_mode = mode;
     QVector<int> roles = { Qt::DisplayRole };
-    emit dataChanged(index(0, COLUMN_FIRST_HITTING), index(FBBPlayerDataService::PlayerCount() - 1, COLUMN_LAST_PITCHING), roles);
+    emit dataChanged(index(0, COLUMN_FIRST_HITTING), index(PlayerCount() - 1, COLUMN_LAST_PITCHING), roles);
+}
+
+void FBBDraftBoardModel::CalculateHittingZScores()
+{
+    std::vector<FBBPlayer*> vecHitters = GetValidHitters();
+
+    struct PerHitting
+    {
+        double PA = 0;
+        double AB = 0;
+        double H = 0;
+        double _2B = 0;
+        double _3B = 0;
+        double HR = 0;
+        double R = 0;
+        double RBI = 0;
+        double BB = 0;
+        double SO = 0;
+        double HBP = 0;
+        double SB = 0;
+        double CS = 0;
+        double AVG = 0;
+    };
+
+    PerHitting sumHitting;
+    for (FBBPlayer* pHitter : vecHitters) {
+        sumHitting.PA += pHitter->projection.hitting.PA;
+        sumHitting.AB += pHitter->projection.hitting.AB;
+        sumHitting.H += pHitter->projection.hitting.H;
+        sumHitting._2B += pHitter->projection.hitting._2B;
+        sumHitting._3B += pHitter->projection.hitting._3B;
+        sumHitting.HR += pHitter->projection.hitting.HR;
+        sumHitting.R += pHitter->projection.hitting.R;
+        sumHitting.RBI += pHitter->projection.hitting.RBI;
+        sumHitting.BB += pHitter->projection.hitting.BB;
+        sumHitting.SO += pHitter->projection.hitting.SO;
+        sumHitting.HBP += pHitter->projection.hitting.HBP;
+        sumHitting.SB += pHitter->projection.hitting.SB;
+        sumHitting.CS += pHitter->projection.hitting.CS;
+    }
+
+    PerHitting avgHitting;
+    avgHitting.PA = sumHitting.PA / vecHitters.size();
+    avgHitting.AB = sumHitting.AB / vecHitters.size();
+    avgHitting.H = sumHitting.H / vecHitters.size();
+    avgHitting._2B = sumHitting._2B / vecHitters.size();
+    avgHitting._3B = sumHitting._3B / vecHitters.size();
+    avgHitting.HR = sumHitting.HR / vecHitters.size();
+    avgHitting.R = sumHitting.R / vecHitters.size();
+    avgHitting.RBI = sumHitting.RBI / vecHitters.size();
+    avgHitting.BB = sumHitting.BB / vecHitters.size();
+    avgHitting.SO = sumHitting.SO / vecHitters.size();
+    avgHitting.HBP = sumHitting.HBP / vecHitters.size();
+    avgHitting.SB = sumHitting.SB / vecHitters.size();
+    avgHitting.CS = sumHitting.CS / vecHitters.size();
+    avgHitting.AVG = sumHitting.H / sumHitting.AB;
+
+    PerHitting stddevHitting;
+    for (FBBPlayer* pHitter : vecHitters) {
+        stddevHitting.PA += std::pow(pHitter->projection.hitting.PA - avgHitting.PA, 2.0);
+        stddevHitting.AB += std::pow(pHitter->projection.hitting.AB - avgHitting.AB, 2.0);
+        stddevHitting.H += std::pow(pHitter->projection.hitting.H - avgHitting.H, 2.0);
+        stddevHitting._2B += std::pow(pHitter->projection.hitting._2B - avgHitting._2B, 2.0);
+        stddevHitting._3B += std::pow(pHitter->projection.hitting._3B - avgHitting._3B, 2.0);
+        stddevHitting.HR += std::pow(pHitter->projection.hitting.HR - avgHitting.HR, 2.0);
+        stddevHitting.R += std::pow(pHitter->projection.hitting.R - avgHitting.R, 2.0);
+        stddevHitting.RBI += std::pow(pHitter->projection.hitting.RBI - avgHitting.RBI, 2.0);
+        stddevHitting.BB += std::pow(pHitter->projection.hitting.BB - avgHitting.BB, 2.0);
+        stddevHitting.SO += std::pow(pHitter->projection.hitting.SO - avgHitting.SO, 2.0);
+        stddevHitting.HBP += std::pow(pHitter->projection.hitting.HBP - avgHitting.HBP, 2.0);
+        stddevHitting.SB += std::pow(pHitter->projection.hitting.SB - avgHitting.SB, 2.0);
+        stddevHitting.CS += std::pow(pHitter->projection.hitting.CS - avgHitting.CS, 2.0);
+        stddevHitting.AVG += std::pow(pHitter->projection.hitting.AVG() - avgHitting.AVG, 2.0);
+    }
+
+    stddevHitting.PA = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.PA);
+    stddevHitting.AB = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.AB);
+    stddevHitting.H = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.H);
+    stddevHitting._2B = std::sqrt(1. / double(vecHitters.size()) * stddevHitting._2B);
+    stddevHitting._3B = std::sqrt(1. / double(vecHitters.size()) * stddevHitting._3B);
+    stddevHitting.HR = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.HR);
+    stddevHitting.R = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.R);
+    stddevHitting.RBI = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.RBI);
+    stddevHitting.BB = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.BB);
+    stddevHitting.SO = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.SO);
+    stddevHitting.HBP = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.HBP);
+    stddevHitting.SB = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.SB);
+    stddevHitting.CS = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.CS);
+    stddevHitting.AVG = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.AVG);
+
+    for (FBBPlayer* pHitter : vecHitters) {
+        pHitter->calculations.zHitting.HR = (pHitter->projection.hitting.HR - avgHitting.HR) / stddevHitting.HR;
+        pHitter->calculations.zHitting.R = (pHitter->projection.hitting.R - avgHitting.R) / stddevHitting.R;
+        pHitter->calculations.zHitting.RBI = (pHitter->projection.hitting.RBI - avgHitting.RBI) / stddevHitting.RBI;
+        pHitter->calculations.zHitting.SB = (pHitter->projection.hitting.SB - avgHitting.SB) / stddevHitting.SB;
+        pHitter->calculations.zHitting.AVG = (pHitter->projection.hitting.AVG() - avgHitting.AVG) / stddevHitting.AVG;
+    }
+
+    sumHitting.AVG = 0;
+    for (FBBPlayer* pHitter : vecHitters) {
+        pHitter->calculations.zHitting.AVG *= pHitter->projection.hitting.AB;
+        sumHitting.AVG += pHitter->calculations.zHitting.AVG;
+    }
+
+    stddevHitting.AVG = 0;
+    for (FBBPlayer* pHitter : vecHitters) {
+        stddevHitting.AVG += std::pow(pHitter->calculations.zHitting.AVG - avgHitting.AVG, 2.0);
+    }
+    stddevHitting.AVG = std::sqrt(1. / double(vecHitters.size()) * stddevHitting.AVG);
+
+    for (FBBPlayer* pHitter : vecHitters) {
+        pHitter->calculations.zHitting.AVG = (pHitter->calculations.zHitting.AVG - avgHitting.AVG) / stddevHitting.AVG;
+    }
+
+    for (FBBPlayer* pHitter : vecHitters) {
+        pHitter->calculations.zScore = 0;
+        if (fbbApp->Settings()->categories.hitting.HR) {
+            pHitter->calculations.zScore += pHitter->calculations.zHitting.HR;
+        }
+        if (fbbApp->Settings()->categories.hitting.R) {
+            pHitter->calculations.zScore += pHitter->calculations.zHitting.R;
+        }
+        if (fbbApp->Settings()->categories.hitting.RBI) {
+            pHitter->calculations.zScore += pHitter->calculations.zHitting.RBI;
+        }
+        if (fbbApp->Settings()->categories.hitting.SB) {
+            pHitter->calculations.zScore += pHitter->calculations.zHitting.SB;
+        }
+        if (fbbApp->Settings()->categories.hitting.AVG) {
+            pHitter->calculations.zScore += pHitter->calculations.zHitting.AVG;
+        }
+    }
+
+    // Sort by zScore
+    std::sort(vecHitters.begin(), vecHitters.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS) {
+        return pLHS->calculations.zScore > pRHS->calculations.zScore;
+    });
+
+    // Get replacement player
+    const size_t numDraftedHitters = fbbApp->Settings()->SumHitters() * fbbApp->Settings()->owners.size();
+    if (numDraftedHitters >= vecHitters.size()) {
+        return;
+    }
+    double replacementZ = vecHitters[numDraftedHitters]->calculations.zScore;
+    
+    // Normalize zScores
+    double sumZ = 0;
+    for (FBBPlayer* pHitter : vecHitters) {
+        pHitter->calculations.zScore -= replacementZ;
+        if (pHitter->calculations.zScore > 0.0) {
+            sumZ += pHitter->calculations.zScore;
+        }
+    }
+
+    // Calculate cost estimates
+    const double totalMoney = fbbApp->Settings()->leauge.budget * fbbApp->Settings()->owners.size();
+    const double totalHittingMoney = fbbApp->Settings()->projections.hittingPitchingSplit * totalMoney;
+    const double costPerZ = totalHittingMoney / sumZ;
+    for (FBBPlayer* pHitter : vecHitters) {
+        pHitter->calculations.estimate = pHitter->calculations.zScore * costPerZ;
+    }
+}
+
+void FBBDraftBoardModel::CalculatePitchingZScores()
+{
+    std::vector<FBBPlayer*> vecPitchers = GetValidPitchers();
+
+    struct PerPitching
+    {
+        double W = 0;
+        double L = 0;
+        double GS = 0;
+        double G = 0;
+        double SV = 0;
+        double IP = 0;
+        double H = 0;
+        double ER = 0;
+        double HR = 0;
+        double SO = 0;
+        double BB = 0;
+        double ERA = 0;
+        double WHIP = 0;
+    };
+
+    PerPitching sumPitching;
+    for (FBBPlayer* pPitcher : vecPitchers) {
+        sumPitching.W += pPitcher->projection.pitching.W;
+        sumPitching.L += pPitcher->projection.pitching.L;
+        sumPitching.GS += pPitcher->projection.pitching.GS;
+        sumPitching.G += pPitcher->projection.pitching.G;
+        sumPitching.SV += pPitcher->projection.pitching.SV;
+        sumPitching.IP += pPitcher->projection.pitching.IP;
+        sumPitching.H += pPitcher->projection.pitching.H;
+        sumPitching.ER += pPitcher->projection.pitching.ER;
+        sumPitching.HR += pPitcher->projection.pitching.HR;
+        sumPitching.SO += pPitcher->projection.pitching.SO;
+        sumPitching.BB += pPitcher->projection.pitching.BB;
+    }
+
+    PerPitching avgPitching;
+    avgPitching.W = sumPitching.W / vecPitchers.size();
+    avgPitching.L = sumPitching.L / vecPitchers.size();
+    avgPitching.GS = sumPitching.GS / vecPitchers.size();
+    avgPitching.G = sumPitching.G / vecPitchers.size();
+    avgPitching.SV = sumPitching.SV / vecPitchers.size();
+    avgPitching.IP = sumPitching.IP / vecPitchers.size();
+    avgPitching.H = sumPitching.H / vecPitchers.size();
+    avgPitching.ER = sumPitching.ER / vecPitchers.size();
+    avgPitching.HR = sumPitching.HR / vecPitchers.size();
+    avgPitching.SO = sumPitching.SO / vecPitchers.size();
+    avgPitching.BB = sumPitching.BB / vecPitchers.size();
+    avgPitching.ERA = (9 * sumPitching.ER) / (sumPitching.IP);
+    avgPitching.WHIP = (sumPitching.BB + sumPitching.H) / sumPitching.IP;
+
+    PerPitching stddevPitching;
+    for (FBBPlayer* pPitcher : vecPitchers) {
+        stddevPitching.W += std::pow(pPitcher->projection.pitching.W - avgPitching.W, 2.0);
+        stddevPitching.L += std::pow(pPitcher->projection.pitching.L - avgPitching.L, 2.0);
+        stddevPitching.GS += std::pow(pPitcher->projection.pitching.GS - avgPitching.GS, 2.0);
+        stddevPitching.G += std::pow(pPitcher->projection.pitching.G - avgPitching.G, 2.0);
+        stddevPitching.SV += std::pow(pPitcher->projection.pitching.SV - avgPitching.SV, 2.0);
+        stddevPitching.IP += std::pow(pPitcher->projection.pitching.IP - avgPitching.IP, 2.0);
+        stddevPitching.H += std::pow(pPitcher->projection.pitching.H - avgPitching.H, 2.0);
+        stddevPitching.ER += std::pow(pPitcher->projection.pitching.ER - avgPitching.ER, 2.0);
+        stddevPitching.HR += std::pow(pPitcher->projection.pitching.HR - avgPitching.HR, 2.0);
+        stddevPitching.SO += std::pow(pPitcher->projection.pitching.SO - avgPitching.SO, 2.0);
+        stddevPitching.BB += std::pow(pPitcher->projection.pitching.BB - avgPitching.BB, 2.0);
+        stddevPitching.ERA += std::pow(pPitcher->projection.pitching.ERA() - avgPitching.ERA, 2.0);
+        stddevPitching.WHIP += std::pow(pPitcher->projection.pitching.WHIP() - avgPitching.WHIP, 2.0);
+    }
+
+    stddevPitching.W = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.W);
+    stddevPitching.L = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.L);
+    stddevPitching.GS = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.GS);
+    stddevPitching.G = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.G);
+    stddevPitching.SV = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.SV);
+    stddevPitching.IP = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.IP);
+    stddevPitching.H = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.H);
+    stddevPitching.ER = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.ER);
+    stddevPitching.HR = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.HR);
+    stddevPitching.SO = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.SO);
+    stddevPitching.BB = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.BB);
+    stddevPitching.ERA = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.ERA);
+    stddevPitching.WHIP = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.WHIP);
+
+    for (FBBPlayer* pPitcher : vecPitchers) {
+        pPitcher->calculations.zPitching.W = (pPitcher->projection.pitching.W - avgPitching.W) / stddevPitching.W;
+        pPitcher->calculations.zPitching.SV = (pPitcher->projection.pitching.SV - avgPitching.SV) / stddevPitching.SV;
+        pPitcher->calculations.zPitching.SO = (pPitcher->projection.pitching.SO - avgPitching.SO) / stddevPitching.SO;
+        pPitcher->calculations.zPitching.ERA = (pPitcher->projection.pitching.ERA() - avgPitching.ERA) / stddevPitching.ERA;
+        pPitcher->calculations.zPitching.WHIP = (pPitcher->projection.pitching.WHIP() - avgPitching.WHIP) / stddevPitching.WHIP;
+    }
+
+    sumPitching.ERA = 0;
+    sumPitching.WHIP = 0;
+    for (FBBPlayer* pPitcher : vecPitchers) {
+        pPitcher->calculations.zPitching.ERA *= pPitcher->projection.pitching.IP;
+        pPitcher->calculations.zPitching.WHIP *= pPitcher->projection.pitching.IP;
+        sumPitching.ERA += pPitcher->calculations.zPitching.ERA;
+        sumPitching.WHIP += pPitcher->calculations.zPitching.WHIP;
+    }
+
+    stddevPitching.ERA = 0;
+    stddevPitching.WHIP = 0;
+    for (FBBPlayer* pPitcher : vecPitchers) {
+        stddevPitching.ERA += std::pow(pPitcher->calculations.zPitching.ERA - avgPitching.ERA, 2.0);
+        stddevPitching.WHIP += std::pow(pPitcher->calculations.zPitching.WHIP - avgPitching.WHIP, 2.0);
+    }
+    stddevPitching.ERA = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.ERA);
+    stddevPitching.WHIP = std::sqrt(1. / double(vecPitchers.size()) * stddevPitching.WHIP);
+
+    for (FBBPlayer* pPitcher : vecPitchers) {
+        pPitcher->calculations.zPitching.ERA = -1. * (pPitcher->calculations.zPitching.ERA - avgPitching.ERA) / stddevPitching.ERA;
+        pPitcher->calculations.zPitching.WHIP = -1. * (pPitcher->calculations.zPitching.WHIP - avgPitching.WHIP) / stddevPitching.WHIP;
+    }
+
+    for (FBBPlayer* pPitcher : vecPitchers) {
+        pPitcher->calculations.zScore = 0;
+        if (fbbApp->Settings()->categories.pitching.ERA) {
+            pPitcher->calculations.zScore += pPitcher->calculations.zPitching.ERA;
+        }
+        if (fbbApp->Settings()->categories.pitching.SO) {
+            pPitcher->calculations.zScore += pPitcher->calculations.zPitching.SO;
+        }
+        if (fbbApp->Settings()->categories.pitching.SV) {
+            pPitcher->calculations.zScore += pPitcher->calculations.zPitching.SV;
+        }
+        if (fbbApp->Settings()->categories.pitching.W) {
+            pPitcher->calculations.zScore += pPitcher->calculations.zPitching.W;
+        }
+        if (fbbApp->Settings()->categories.pitching.WHIP) {
+            pPitcher->calculations.zScore += pPitcher->calculations.zPitching.WHIP;
+        }
+    }
+
+    // Sort by zScore
+    std::sort(vecPitchers.begin(), vecPitchers.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS) {
+        return pLHS->calculations.zScore > pRHS->calculations.zScore;
+    });
+
+    // Get replacement player
+    const size_t numDraftedPitchers = fbbApp->Settings()->SumPitchers() * fbbApp->Settings()->owners.size();
+    if (numDraftedPitchers >= vecPitchers.size()) {
+        return;
+    }
+    double replacementZ = vecPitchers[numDraftedPitchers]->calculations.zScore;
+
+    // Normalize zScores
+    double sumZ = 0;
+    for (FBBPlayer* pPitcher : vecPitchers) {
+        pPitcher->calculations.zScore -= replacementZ;
+        if (pPitcher->calculations.zScore > 0.0) {
+            sumZ += pPitcher->calculations.zScore;
+        }
+    }
+
+    // Calculate cost estimates
+    const double totalMoney = fbbApp->Settings()->leauge.budget * fbbApp->Settings()->owners.size();
+    const double totalPitchingMoney = (1.0 - fbbApp->Settings()->projections.hittingPitchingSplit) * totalMoney;
+    const double costPerZ = totalPitchingMoney / sumZ;
+    for (FBBPlayer* pPitcher : vecPitchers) {
+        pPitcher->calculations.estimate = pPitcher->calculations.zScore * costPerZ;
+    }
 }

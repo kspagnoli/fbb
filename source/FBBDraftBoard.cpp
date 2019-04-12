@@ -1,7 +1,6 @@
 #include "FBB/FBBDraftBoard.h"
 #include "FBB/FBBDraftBoardModel.h"
 #include "FBB/FBBDraftBoardSortFilterProxyModel.h"
-#include "FBB/FBBPlayerDataService.h"
 #include "FBB/FBBDraftDialog.h"
 #include "FBB/FBBApplication.h"
 
@@ -274,7 +273,7 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     // Draft button interactions
     connect(pDraftButton, &QPushButton::released, this, [=]() {
         const QModelIndex srcIdx = pProxyModel->mapToSource(pTableView->selectionModel()->currentIndex());
-        FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(srcIdx.row());
+        FBBPlayer* pPlayer = fbbApp->DraftBoardModel()->GetPlayer(srcIdx.row());
         FBBDraftDialog dialog(pPlayer);
         dialog.exec();
     });

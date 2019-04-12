@@ -1,13 +1,12 @@
 #include "FBB/FBBDraftBoardSortFilterProxyModel.h"
 #include "FBB/FBBDraftBoardModel.h"
-#include "FBB/FBBPlayerDataService.h"
 #include "FBB/FBBPlayer.h"
 #include "FBB/FBBLeaugeSettings.h"
 
 FBBDraftBoardSortFilterProxyModel::FBBDraftBoardSortFilterProxyModel(QObject* parent)
     : QSortFilterProxyModel(parent)
 {
-    connect(&FBBLeaugeSettings::Instance(), &FBBLeaugeSettings::SettingsChanged, this, [=]() {
+    connect(fbbApp->Settings(), &FBBLeaugeSettings::SettingsChanged, this, [=]() {
         invalidateFilter();
     });
 }
@@ -32,9 +31,9 @@ bool FBBDraftBoardSortFilterProxyModel::filterAcceptsColumn(int sourceColumn, co
 
 bool FBBDraftBoardSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
 {
-    const FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(sourceRow);
+    const FBBPlayer* pPlayer = static_cast<FBBDraftBoardModel*>(sourceModel())->GetPlayer(sourceRow);
 
-    if (!FBBPlayerDataService::IsValidUnderCurrentSettings(pPlayer)) {
+    if (!pPlayer->IsValidUnderCurrentSettings()) {
         return false;
     }
 

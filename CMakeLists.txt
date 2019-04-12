@@ -27,13 +27,43 @@ qt5_add_resources(RESOURCES
     Resources.qrc)
 
 # All headers
-file(GLOB HEADERS include/FBB/*.h)
+set(MOC_HEADERS
+	include/FBB/FBBApplication.h
+	include/FBB/FBBDraftBoard.h
+	include/FBB/FBBDraftBoardModel.h
+	include/FBB/FBBDraftBoardSortFilterProxyModel.h
+	include/FBB/FBBDraftDialog.h
+	include/FBB/FBBDraftLog.h
+	include/FBB/FBBDraftLogModel.h
+	include/FBB/FBBLeaugeSettings.h
+	include/FBB/FBBLeaugeSettingsDialog.h
+	include/FBB/FBBMainMenuBar.h
+	include/FBB/FBBMainWindow.h
+	include/FBB/FBBPlayer.h
+	include/FBB/FBBPosition.h
+	include/FBB/FBBProjectionService.h
+	include/FBB/FBBTeam.h)
 
 # All source
-file(GLOB SOURCE source/*.cpp)
+set(SOURCE 
+	source/FBBApplication.cpp
+	source/FBBDraftBoard.cpp
+	source/FBBDraftBoardModel.cpp
+	source/FBBDraftBoardSortFilterProxyModel.cpp
+	source/FBBDraftDialog.cpp
+	source/FBBDraftLog.cpp
+	source/FBBDraftLogModel.cpp
+	source/FBBLeaugeSettings.cpp
+	source/FBBLeaugeSettingsDialog.cpp
+	source/FBBMainMenuBar.cpp
+	source/FBBMainWindow.cpp
+	source/FBBPosition.cpp
+	source/FBBPlayer.cpp
+	source/FBBProjectionService.cpp
+	source/FBBTeam.cpp)
 
 # Tell CMake to create the helloworld executable
-add_executable(fbb WIN32 main.cpp ${SOURCE} ${HEADERS} ${RESOURCES})
+add_executable(fbb WIN32 main.cpp ${SOURCE} ${MOC_HEADERS} ${RESOURCES})
 
 # Use the Widgets module from Qt 5.
 target_link_libraries(fbb Qt5::Widgets)

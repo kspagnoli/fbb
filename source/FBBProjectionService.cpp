@@ -1,7 +1,8 @@
 #include "FBB/FBBProjectionService.h"
 #include "FBB/FBBPlayer.h"
 #include "FBB/FBBLeaugeSettings.h"
-#include "FBB/FBBPlayerDataService.h"
+#include "FBB/FBBApplication.h"
+#include "FBB/FBBDraftBoardModel.h"
 
 #include <QApplication>
 #include <QFile>
@@ -58,11 +59,8 @@ static FBBTeam ToFBBTeam(const QString& teamName)
     return itr.value();
 }
 
-void FBBProjectionService::LoadHittingProjections(const QString& file)
+void FBBProjectionService::LoadHittingProjections(std::vector<FBBPlayer*>& vecPlayers, const QString& file)
 {
-    // Log
-    // GlobalLogger::AppendMessage("Loading hitting projections...");
-
     // Open file
     QFile inputFile(file);
     inputFile.open(QIODevice::ReadOnly);
@@ -134,15 +132,12 @@ void FBBProjectionService::LoadHittingProjections(const QString& file)
         pPlayer->projection.hitting.CS =  parsed[FAN_HITTER_CS].toUInt();
 
         // Add player
-        FBBPlayerDataService::AddPlayer(pPlayer);
+        vecPlayers.push_back(pPlayer);
     }
 }
 
-void FBBProjectionService::LoadPitchingProjections(const QString& file)
+void FBBProjectionService::LoadPitchingProjections(std::vector<FBBPlayer*>& vecPlayers, const QString& file)
 {
-    // Log
-    // GlobalLogger::AppendMessage("Loading hitting projections...");
-
     // Open file
     QFile inputFile(file);
     inputFile.open(QIODevice::ReadOnly);
@@ -202,12 +197,27 @@ void FBBProjectionService::LoadPitchingProjections(const QString& file)
         pPlayer->projection.pitching.SO = parsed[FAN_PITCHER_SO].toUInt();
         pPlayer->projection.pitching.BB = parsed[FAN_PITCHER_BB].toUInt();
 
-        // Add to list
-        FBBPlayerDataService::AddPlayer(pPlayer);
+        // Add player
+        vecPlayers.push_back(pPlayer);
     }
 }
 
-static void LoadFielding(const QString& file)
+static FBBPlayer* GetPlayer(const std::vector<FBBPlayer*>& vecPlayers, const FBBPlayerId& playerId)
+{
+    // Lookup player
+    auto itr = std::find_if(vecPlayers.begin(), vecPlayers.end(), [&](const FBBPlayer* pPlayer) {
+        return pPlayer->id == playerId;
+    });
+
+    // TODO: binary search
+    if (itr == vecPlayers.end()) {
+        return nullptr;
+    } else {
+        return *itr;
+    }
+}
+
+static void LoadFielding(std::vector<FBBPlayer*> vecPlayers, const QString& file)
 {
     // Open file
     QFile inputFile(":/data/2019-appearances.csv");
@@ -217,6 +227,10 @@ static void LoadFielding(const QString& file)
     // Tokenize header data
     QStringList parsed = textStream.readLine().split(",");
     parsed.replaceInStrings("\"", "", Qt::CaseInsensitive);
+
+    std::sort(vecPlayers.begin(), vecPlayers.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS){
+        return pLHS->id > pRHS->id;
+    });
 
     enum
     {
@@ -258,7 +272,7 @@ static void LoadFielding(const QString& file)
 
         QString id = parsed[APPEARANCE_PLAYERID];
 
-        FBBPlayer* pPlayer = FBBPlayerDataService::GetPlayer(id);
+        FBBPlayer* pPlayer = GetPlayer(vecPlayers, id);
         if (!pPlayer) {
             continue;
         }
@@ -317,7 +331,7 @@ static void LoadFielding(const QString& file)
 
 static void CalculateHittingZScores()
 {
-    std::vector<FBBPlayer*> vecHitters = FBBPlayerDataService::GetValidHitters();
+    std::vector<FBBPlayer*> vecHitters = fbbApp->DraftBoardModel()->GetValidHitters();
 
     struct PerHitting
     {
@@ -429,19 +443,19 @@ static void CalculateHittingZScores()
 
     for (FBBPlayer* pHitter : vecHitters) {
         pHitter->calculations.zScore = 0;
-        if (FBBLeaugeSettings::Instance().categories.hitting.HR) {
+        if (fbbApp->Settings()->categories.hitting.HR) {
             pHitter->calculations.zScore += pHitter->calculations.zHitting.HR;
         }
-        if (FBBLeaugeSettings::Instance().categories.hitting.R) {
+        if (fbbApp->Settings()->categories.hitting.R) {
             pHitter->calculations.zScore += pHitter->calculations.zHitting.R;
         }
-        if (FBBLeaugeSettings::Instance().categories.hitting.RBI) {
+        if (fbbApp->Settings()->categories.hitting.RBI) {
             pHitter->calculations.zScore += pHitter->calculations.zHitting.RBI;
         }
-        if (FBBLeaugeSettings::Instance().categories.hitting.SB) {
+        if (fbbApp->Settings()->categories.hitting.SB) {
             pHitter->calculations.zScore += pHitter->calculations.zHitting.SB;
         }
-        if (FBBLeaugeSettings::Instance().categories.hitting.AVG) {
+        if (fbbApp->Settings()->categories.hitting.AVG) {
             pHitter->calculations.zScore += pHitter->calculations.zHitting.AVG;
         }
     }
@@ -452,7 +466,7 @@ static void CalculateHittingZScores()
     });
 
     // Get replacement player
-    const size_t numDraftedHitters = FBBLeaugeSettings::Instance().SumHitters() * FBBLeaugeSettings::Instance().owners.size();
+    const size_t numDraftedHitters = fbbApp->Settings()->SumHitters() * fbbApp->Settings()->owners.size();
     if (numDraftedHitters >= vecHitters.size()) {
         return;
     }
@@ -468,8 +482,8 @@ static void CalculateHittingZScores()
     }
 
     // Calculate cost estimates
-    const double totalMoney = FBBLeaugeSettings::Instance().leauge.budget * FBBLeaugeSettings::Instance().owners.size();
-    const double totalHittingMoney = FBBLeaugeSettings::Instance().projections.hittingPitchingSplit * totalMoney;
+    const double totalMoney = fbbApp->Settings()->leauge.budget * fbbApp->Settings()->owners.size();
+    const double totalHittingMoney = fbbApp->Settings()->projections.hittingPitchingSplit * totalMoney;
     const double costPerZ = totalHittingMoney / sumZ;
     for (FBBPlayer* pHitter : vecHitters) {
         pHitter->calculations.estimate = pHitter->calculations.zScore * costPerZ;
@@ -478,7 +492,7 @@ static void CalculateHittingZScores()
 
 static void CalculatePitchingZScores()
 {
-    std::vector<FBBPlayer*> vecPitchers = FBBPlayerDataService::GetValidPitchers();
+    std::vector<FBBPlayer*> vecPitchers = fbbApp->DraftBoardModel()->GetValidPitchers();
 
     struct PerPitching
     {
@@ -591,19 +605,19 @@ static void CalculatePitchingZScores()
 
     for (FBBPlayer* pPitcher : vecPitchers) {
         pPitcher->calculations.zScore = 0;
-        if (FBBLeaugeSettings::Instance().categories.pitching.ERA) {
+        if (fbbApp->Settings()->categories.pitching.ERA) {
             pPitcher->calculations.zScore += pPitcher->calculations.zPitching.ERA;
         }
-        if (FBBLeaugeSettings::Instance().categories.pitching.SO) {
+        if (fbbApp->Settings()->categories.pitching.SO) {
             pPitcher->calculations.zScore += pPitcher->calculations.zPitching.SO;
         }
-        if (FBBLeaugeSettings::Instance().categories.pitching.SV) {
+        if (fbbApp->Settings()->categories.pitching.SV) {
             pPitcher->calculations.zScore += pPitcher->calculations.zPitching.SV;
         }
-        if (FBBLeaugeSettings::Instance().categories.pitching.W) {
+        if (fbbApp->Settings()->categories.pitching.W) {
             pPitcher->calculations.zScore += pPitcher->calculations.zPitching.W;
         }
-        if (FBBLeaugeSettings::Instance().categories.pitching.WHIP) {
+        if (fbbApp->Settings()->categories.pitching.WHIP) {
             pPitcher->calculations.zScore += pPitcher->calculations.zPitching.WHIP;
         }
     }
@@ -614,7 +628,7 @@ static void CalculatePitchingZScores()
     });
 
     // Get replacement player
-    const size_t numDraftedPitchers = FBBLeaugeSettings::Instance().SumPitchers() * FBBLeaugeSettings::Instance().owners.size();
+    const size_t numDraftedPitchers = fbbApp->Settings()->SumPitchers() * fbbApp->Settings()->owners.size();
     if (numDraftedPitchers >= vecPitchers.size()) {
         return;
     }
@@ -630,8 +644,8 @@ static void CalculatePitchingZScores()
     }
 
     // Calculate cost estimates
-    const double totalMoney = FBBLeaugeSettings::Instance().leauge.budget * FBBLeaugeSettings::Instance().owners.size();
-    const double totalPitchingMoney = (1.0 - FBBLeaugeSettings::Instance().projections.hittingPitchingSplit) * totalMoney;
+    const double totalMoney = fbbApp->Settings()->leauge.budget * fbbApp->Settings()->owners.size();
+    const double totalPitchingMoney = (1.0 - fbbApp->Settings()->projections.hittingPitchingSplit) * totalMoney;
     const double costPerZ = totalPitchingMoney / sumZ;
     for (FBBPlayer* pPitcher : vecPitchers) {
         pPitcher->calculations.estimate = pPitcher->calculations.zScore * costPerZ;
@@ -642,12 +656,12 @@ FBBProjectionService::FBBProjectionService(QObject* parent)
     : QObject(parent)
 {
     // Listen for settings changes
-    connect(&FBBLeaugeSettings::Instance(), &FBBLeaugeSettings::SettingsChanged, this, [=](const FBBLeaugeSettings& settings) {
-        UpdateCalculations();
-    });
+    /// connect(fbbApp->Settings(), &FBBLeaugeSettings::SettingsChanged, this, [=](const FBBLeaugeSettings& settings) {
+    ///     UpdateCalculations();
+    /// });
 
     // Load initial projections
-    LoadProjections(FBBLeaugeSettings::Instance().projections.source);
+    LoadProjections();
 }
 
 FBBProjectionService& FBBProjectionService::Instance()
@@ -656,26 +670,16 @@ FBBProjectionService& FBBProjectionService::Instance()
     return *s_service;
 }
 
-void FBBProjectionService::LoadProjections(const FBBLeaugeSettings::Projections::Source& source)
+void FBBProjectionService::LoadProjections()
 {
     const QString hittingFile = ":/data/2019-hitters-fan.csv";
     const QString pitchingFile = ":/data/2019-pitchers-fan.csv";
     const QString appearanceFile = ":/data/2019-appearances.csv";
 
-    FBBProjectionService::LoadHittingProjections(hittingFile);
-    FBBProjectionService::LoadPitchingProjections(pitchingFile);
-    LoadFielding(pitchingFile);
+    std::vector<FBBPlayer*> vecPlayers;
+    FBBProjectionService::LoadHittingProjections(vecPlayers, hittingFile);
+    FBBProjectionService::LoadPitchingProjections(vecPlayers, pitchingFile);
+    LoadFielding(vecPlayers, pitchingFile);
 
-    UpdateCalculations();
-}
-
-void FBBProjectionService::UpdateCalculations()
-{
-    emit BeginProjectionsUpdated();
-
-    CalculateHittingZScores();
-    CalculatePitchingZScores();
-    FBBPlayerDataService::Finalize();
-
-    emit EndProjectionsUpdated();
+    fbbApp->DraftBoardModel()->Reset(vecPlayers);
 }
