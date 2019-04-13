@@ -272,6 +272,15 @@ public:
         FBBPositionBits position = FBB_POSITION_UNKNOWN;
     } draftInfo;
 
+    bool operator<(const FBBPlayer& rhs) const
+    {
+        return id < rhs.id;
+    }
+
+    bool operator==(const FBBPlayer& rhs) const
+    {
+        return id == rhs.id;
+    }
 
     bool IsValidUnderCurrentSettings() const;
 };

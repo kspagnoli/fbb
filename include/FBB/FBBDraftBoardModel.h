@@ -75,7 +75,6 @@ public:
     uint32_t PlayerCount() const;
     void AddPlayer(FBBPlayer* pPlayer);
     FBBPlayer* GetPlayer(uint32_t index);
-    FBBPlayer* GetPlayer(const FBBPlayerId& playerId);
     std::vector<FBBPlayer*> GetValidHitters();
     std::vector<FBBPlayer*> GetValidPitchers();
     
@@ -102,6 +101,7 @@ signals:
 
 private:
 
+    void CalculateZScores();
     void CalculateHittingZScores();
     void CalculatePitchingZScores();
 

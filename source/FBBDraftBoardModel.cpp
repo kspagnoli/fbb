@@ -48,8 +48,9 @@ uint32_t FBBDraftBoardModel::PlayerCount() const
 
 void FBBDraftBoardModel::AddPlayer(FBBPlayer* pPlayer)
 {
-    // XXX: Signals!
+    emit beginInsertRows(QModelIndex(), PlayerCount(), PlayerCount() + 1);
     return m_vecPlayers.push_back(pPlayer);
+    emit endInsertRows();
 }
 
 FBBPlayer* FBBDraftBoardModel::GetPlayer(uint32_t index)
@@ -59,21 +60,6 @@ FBBPlayer* FBBDraftBoardModel::GetPlayer(uint32_t index)
     }
 
     return m_vecPlayers[index];
-}
-
-FBBPlayer* FBBDraftBoardModel::GetPlayer(const FBBPlayerId& playerId)
-{
-    // Lookup player
-    auto itr = std::find_if(m_vecPlayers.begin(), m_vecPlayers.end(), [&](const FBBPlayer* pPlayer) {
-        return pPlayer->id == playerId;
-    });
-
-    // TODO: binary search
-    if (itr == m_vecPlayers.end()) {
-        return nullptr;
-    } else {
-        return *itr;
-    }
 }
 
 std::vector<FBBPlayer*> FBBDraftBoardModel::GetValidHitters()
@@ -101,23 +87,6 @@ std::vector<FBBPlayer*> FBBDraftBoardModel::GetValidPitchers()
     }
     return ret;
 }
-
-/*
-void FBBDraftBoardModel::Finalize()
-{
-    std::sort(m_vecPlayers.begin(), m_vecPlayers.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS){
-        return pLHS->calculations.zScore > pRHS->calculations.zScore;
-    });
-
-    for (size_t i = 0; i < m_vecPlayers.size(); i++) {
-        m_vecPlayers[i]->calculations.rank = uint32_t(i)+1;
-    }
-
-    std::sort(m_vecPlayers.begin(), m_vecPlayers.end(), [](const FBBPlayer* pLHS, const FBBPlayer* pRHS){
-        return pLHS->id < pRHS->id;
-    });
-}
-*/
 
 QJsonObject FBBDraftBoardModel::ToJson() const
 {
@@ -457,6 +426,12 @@ void FBBDraftBoardModel::SetMode(Mode mode)
     m_mode = mode;
     QVector<int> roles = { Qt::DisplayRole };
     emit dataChanged(index(0, COLUMN_FIRST_HITTING), index(PlayerCount() - 1, COLUMN_LAST_PITCHING), roles);
+}
+
+void FBBDraftBoardModel::CalculateZScores()
+{
+    CalculateHittingZScores();
+    CalculatePitchingZScores();
 }
 
 void FBBDraftBoardModel::CalculateHittingZScores()
