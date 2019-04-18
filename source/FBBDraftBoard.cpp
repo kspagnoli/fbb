@@ -20,6 +20,12 @@
 #include <QCheckBox>
 #include <QComboBox>
 
+enum
+{
+    FBB_POSITION_ALL_HITTERS  = -1,
+    FBB_POSITION_ALL_PITCHERS = -2,
+};
+
 class VDivider : public QFrame
 {
 public:
@@ -80,8 +86,8 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
         
         pFilter->addItem("All", mask);
         pFilter->insertSeparator(INT_MAX);
-        pFilter->addItem("Hitters", mask);      // xxx
-        pFilter->addItem("Pitchers", mask);     // xxx
+        pFilter->addItem("Hitters", FBB_POSITION_ALL_HITTERS);
+        pFilter->addItem("Pitchers", FBB_POSITION_ALL_PITCHERS);
         pFilter->insertSeparator(INT_MAX);
 
         for (int i = 0; i <= FBBPositionBitCount; i++)
@@ -225,9 +231,9 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
             const int row = pProxyModel->mapToSource(current).row();
             QModelIndex idx = fbbApp->DraftBoardModel()->index(row, FBBDraftBoardModel::COLUMN_NAME);
             QString name = fbbApp->DraftBoardModel()->data(idx, Qt::DisplayRole).toString();
-            pDraftButton->setText(QString("Draft\n%1").arg(name));
+            pDraftButton->setText(QString("Draft %1").arg(name));
         } else {
-            pDraftButton->setText("Draft...");
+            pDraftButton->setText("Draft");
         }
     });
 
@@ -279,7 +285,9 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     //
     auto OnFilterChanged = [=]()
     {
-        FBBPositionMask mask = static_cast<FBBPositionMask>(pFilter->currentData().toInt());
+        const int mask = pFilter->currentData().toInt();
+        pProxyModel->SetOnlyPitchers(mask == FBB_POSITION_ALL_PITCHERS);
+        pProxyModel->SetOnlyHitters(mask == FBB_POSITION_ALL_HITTERS);
         pProxyModel->SetPositionFilter(mask);
         pProxyModel->SetShowDrafted(pFilter_Drafted->isChecked());
     };

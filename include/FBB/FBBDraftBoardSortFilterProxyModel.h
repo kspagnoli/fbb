@@ -10,6 +10,8 @@ public:
 
     FBBDraftBoardSortFilterProxyModel(QObject* parent = nullptr);
 
+    void SetOnlyHitters(bool enable);
+    void SetOnlyPitchers(bool enable);
     void SetShowDrafted(bool enable);
     void SetPositionFilter(FBBPositionMask mask);
 
@@ -19,6 +21,8 @@ public:
 
 private:
 
+    bool m_onlyHitters = false;
+    bool m_onlyPitchers = false;
     bool m_showDrafted = false;
     FBBPositionMask m_positionFilter = 0;
 };

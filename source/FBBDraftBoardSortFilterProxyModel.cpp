@@ -10,6 +10,19 @@ FBBDraftBoardSortFilterProxyModel::FBBDraftBoardSortFilterProxyModel(QObject* pa
         invalidateFilter();
     });
 }
+
+void FBBDraftBoardSortFilterProxyModel::SetOnlyHitters(bool enable)
+{
+    m_onlyHitters = enable;
+    emit invalidateFilter();
+}
+
+void FBBDraftBoardSortFilterProxyModel::SetOnlyPitchers(bool enable)
+{
+    m_onlyPitchers = enable;
+    emit invalidateFilter();
+}
+
 void FBBDraftBoardSortFilterProxyModel::SetShowDrafted(bool enable)
 {
     m_showDrafted = enable;
@@ -39,6 +52,16 @@ bool FBBDraftBoardSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QM
     const FBBPlayer* pPlayer = static_cast<FBBDraftBoardModel*>(sourceModel())->GetPlayer(sourceRow);
 
     if (!pPlayer->IsValidUnderCurrentSettings()) {
+        return false;
+    }
+
+    if (m_onlyHitters && pPlayer->type != FBBPlayer::PLAYER_TYPE_HITTER)
+    {
+        return false;
+    }
+
+    if (m_onlyPitchers && pPlayer->type != FBBPlayer::PLAYER_TYPE_PITCHER)
+    {
         return false;
     }
 
