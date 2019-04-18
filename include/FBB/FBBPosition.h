@@ -2,6 +2,8 @@
 
 #include <QString>
 
+#include <bitset>
+
 enum FBBPositionBits
 {
     // Default
@@ -23,15 +25,22 @@ enum FBBPositionBits
     FBB_POSITION_RP = 1 << 11,
 
     // Aggregate positions
-    FBB_POSITION_CI = FBB_POSITION_1B | FBB_POSITION_3B,
-    FBB_POSITION_MI = FBB_POSITION_2B | FBB_POSITION_SS,
-    FBB_POSITION_IF = FBB_POSITION_CI | FBB_POSITION_MI,
-    FBB_POSITION_OF = FBB_POSITION_CF | FBB_POSITION_LF | FBB_POSITION_RF,
-    FBB_POSITION_U = FBB_POSITION_C | FBB_POSITION_IF | FBB_POSITION_OF | FBB_POSITION_DH,
-    FBB_POSITION_P = FBB_POSITION_SP | FBB_POSITION_RP,
+    FBB_POSITION_CI = 1 << 12,
+    FBB_POSITION_MI = 1 << 13,
+    FBB_POSITION_IF = 1 << 14,
+    FBB_POSITION_OF = 1 << 15,
+    FBB_POSITION_U  = 1 << 16,
+    FBB_POSITION_P  = 1 << 17,
+};
+
+enum 
+{
+    FBBPositionBitCount = 17,
 };
 
 using FBBPositionMask = uint32_t;
 
-QString FBBPositionMaskToString(FBBPositionMask mask, bool exclude = false);
-QStringList FBBPositionMaskToStringList(FBBPositionMask mask, bool exclude = false);
+QString FBBPositionToString(FBBPositionBits bit);
+QString FBBPositionMaskToString(FBBPositionMask mask, bool includeAggregates);
+QStringList FBBPositionMaskToStringList(FBBPositionMask mask, bool includeAggregates);
+bool IsAgregatePosition(FBBPositionBits position);

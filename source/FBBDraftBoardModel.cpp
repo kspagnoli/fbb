@@ -163,7 +163,7 @@ QVariant FBBDraftBoardModel::data(const QModelIndex& index, int role) const
             return pPlayer->experience;
         case COLUMN_POSITION:
         {
-            return FBBPositionMaskToString(pPlayer->EligablePositions(), true);
+            return FBBPositionMaskToString(pPlayer->EligablePositions(), false);
         }
         case COLUMN_AB:
             if (isHitter) {

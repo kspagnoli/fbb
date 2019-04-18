@@ -8,6 +8,8 @@
 #include <memory>
 #include <map>
 
+#include "FBB/FBBPosition.h"
+
 using FBBOwnerId = uint64_t;
 
 class FBBLeaugeSettings : public QObject
@@ -140,6 +142,65 @@ public:
         std::shared_ptr<Owner> spOwner = std::make_shared<Owner>(owner);
         owners.insert(std::make_pair(ownerId, spOwner));
         return spOwner;
+    }
+
+    FBBPositionMask EnabledPositions() const
+    {
+        FBBPositionMask mask = 0;
+
+        if (positions.hitting.numC   != 0) {
+            mask |= FBB_POSITION_C;
+        }
+        if (positions.hitting.num1B != 0) {
+            mask |= FBB_POSITION_1B;
+        }
+        if (positions.hitting.num2B != 0) {
+            mask |= FBB_POSITION_2B;
+        }
+        if (positions.hitting.numSS != 0) {
+            mask |= FBB_POSITION_SS;
+        }
+        if (positions.hitting.num3B != 0) {
+            mask |= FBB_POSITION_3B;
+        }
+        if (positions.hitting.numRF != 0) {
+            mask |= FBB_POSITION_RF;
+        }
+        if (positions.hitting.numCF != 0) {
+            mask |= FBB_POSITION_CF;
+        }
+        if (positions.hitting.numLF  != 0) {
+            mask |= FBB_POSITION_LF;
+        }
+        if (positions.hitting.numDH  != 0) {
+            mask |= FBB_POSITION_DH;
+        }
+        if (positions.hitting.numCI != 0) {
+            mask |= FBB_POSITION_CI;
+        }
+        if (positions.hitting.numMI != 0) {
+            mask |= FBB_POSITION_MI;
+        }
+        if (positions.hitting.numIF != 0) {
+            mask |= FBB_POSITION_IF;
+        }
+        if (positions.hitting.numOF != 0) {
+            mask |= FBB_POSITION_OF;
+        }
+        if (positions.hitting.numU != 0) {
+            mask |= FBB_POSITION_U;
+        }
+        if (positions.pitching.numP != 0) {
+            mask |= FBB_POSITION_P;
+        }
+        if (positions.pitching.numSP != 0) {
+            mask |= FBB_POSITION_SP;
+        }
+        if (positions.pitching.numRP != 0) {
+            mask |= FBB_POSITION_RP;
+        }
+
+        return mask;
     }
 
     size_t SumHitters() const

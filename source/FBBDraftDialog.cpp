@@ -68,7 +68,7 @@ FBBDraftDialog::FBBDraftDialog(FBBPlayer* pPlayer)
 
     // Position combo box
     QComboBox* pPositionComboBox = new QComboBox;
-    QStringList positionStrings = FBBPositionMaskToStringList(pPlayer->EligablePositions());
+    QStringList positionStrings = FBBPositionMaskToStringList(pPlayer->EligablePositions(), true);
     pPositionComboBox->addItems(positionStrings);
     pInfoGridLayout->addWidget(new QLabel("Position:"), PositionRow, LabelColumn);
     pInfoGridLayout->addWidget(pPositionComboBox, PositionRow, ItemColumn);

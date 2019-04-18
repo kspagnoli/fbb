@@ -10,10 +10,15 @@ FBBDraftBoardSortFilterProxyModel::FBBDraftBoardSortFilterProxyModel(QObject* pa
         invalidateFilter();
     });
 }
-
-void FBBDraftBoardSortFilterProxyModel::SetFilter(FilterIn filter)
+void FBBDraftBoardSortFilterProxyModel::SetShowDrafted(bool enable)
 {
-    m_filter = filter;
+    m_showDrafted = enable;
+    emit invalidateFilter();
+}
+
+void FBBDraftBoardSortFilterProxyModel::SetPositionFilter(FBBPositionMask mask)
+{
+    m_positionFilter = mask;
     emit invalidateFilter();
 }
 
@@ -37,41 +42,13 @@ bool FBBDraftBoardSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QM
         return false;
     }
 
-    if (pPlayer->type == FBBPlayer::PLAYER_TYPE_HITTER && !(m_filter & FilterIn_Hitters)) {
+    if (!m_showDrafted && pPlayer->draftInfo.owner)
+    {
         return false;
     }
 
-    if (pPlayer->type == FBBPlayer::PLAYER_TYPE_PITCHER) {
-        if (m_filter & FilterIn_Pitchers) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    if (m_filter & FilterIn_Drafted && pPlayer->draftInfo.owner != 0) {
-        return false;
-    }
-
-    const FBBPositionMask posMask = pPlayer->EligablePositions();
-
-    if (posMask & FBB_POSITION_C && (m_filter & FilterIn_C)) {
-        return true;
-    }
-
-    if (posMask & FBB_POSITION_1B && (m_filter & FilterIn_1B)) {
-        return true;
-    }
-    if (posMask & FBB_POSITION_2B && (m_filter & FilterIn_2B)) {
-        return true;
-    }
-    if (posMask & FBB_POSITION_SS && (m_filter & FilterIn_SS)) {
-        return true;
-    }
-    if (posMask & FBB_POSITION_3B && (m_filter & FilterIn_3B)) {
-        return true;
-    }
-    if (posMask & FBB_POSITION_OF && (m_filter & FilterIn_OF)) {
+    if (m_positionFilter & pPlayer->EligablePositions())
+    {
         return true;
     }
 

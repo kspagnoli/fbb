@@ -186,60 +186,6 @@ public:
 
     } projection;
 
-    FBBPositionMask EligablePositions() const
-    {
-        // XXX
-        if (type == PLAYER_TYPE_PITCHER)
-        {
-            return FBB_POSITION_P;
-        }
-
-        const float inningEligibitlity = (fbbApp->Settings()->leauge.positionEligibility * 6.f);
-
-        FBBPositionMask mask = FBB_POSITION_UNKNOWN;
-
-        if (appearances.fielding.C >= inningEligibitlity)
-        {
-            mask |= FBB_POSITION_C;
-        }
-
-        if (appearances.fielding._1B >= inningEligibitlity)
-        {
-            mask |= FBB_POSITION_1B;
-        }
-
-        if (appearances.fielding._2B >= inningEligibitlity)
-        {
-            mask |= FBB_POSITION_2B;
-        }
-
-        if (appearances.fielding.SS >= inningEligibitlity)
-        {
-            mask |= FBB_POSITION_SS;
-        }
-
-        if (appearances.fielding._3B >= inningEligibitlity)
-        {
-            mask |= FBB_POSITION_3B;
-        }
-
-        if (appearances.fielding.LF >= inningEligibitlity)
-        {
-            mask |= FBB_POSITION_LF;
-        }
-
-        if (appearances.fielding.CF >= inningEligibitlity)
-        {
-            mask |= FBB_POSITION_CF;
-        }
-
-        if (appearances.fielding.RF >= inningEligibitlity)
-        {
-            mask |= FBB_POSITION_RF;
-        }
-
-        return mask;
-    }
 
     struct Calculations
     {
@@ -282,5 +228,6 @@ public:
         return id == rhs.id;
     }
 
+    FBBPositionMask EligablePositions() const;
     bool IsValidUnderCurrentSettings() const;
 };

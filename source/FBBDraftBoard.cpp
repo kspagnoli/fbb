@@ -18,6 +18,7 @@
 #include <QFontMetrics>
 #include <QFrame>
 #include <QCheckBox>
+#include <QComboBox>
 
 class VDivider : public QFrame
 {
@@ -70,98 +71,52 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     // Divider
     pHeaderLayout->addWidget(new VDivider(this));
 
-    // Stack layout
-    QVBoxLayout* pFilterStackLayout = new QVBoxLayout();
-    pFilterStackLayout->setContentsMargins(0, 0, 0, 0);
-    pHeaderLayout->addLayout(pFilterStackLayout);
+    // Positions
+    QComboBox* pFilter = new QComboBox(this);
+    pHeaderLayout->addWidget(pFilter);
+    auto BuildPositionList = [=]()
+    {
+        const FBBPositionMask mask = fbbApp->Settings()->EnabledPositions();
+        
+        pFilter->addItem("All", mask);
+        pFilter->insertSeparator(INT_MAX);
+        pFilter->addItem("Hitters", mask);      // xxx
+        pFilter->addItem("Pitchers", mask);     // xxx
+        pFilter->insertSeparator(INT_MAX);
 
-    // Bulk filter layout
-    QHBoxLayout* pBulkFilterLayout = new QHBoxLayout();
-    pBulkFilterLayout->setContentsMargins(0, 0, 0, 0);
-    pFilterStackLayout->addLayout(pBulkFilterLayout);
-
-    // Filter hitters button
-    QCheckBox* pFilter_Hitters = new QCheckBox("Hitters", this);
-    pFilter_Hitters->setCheckable(true);
-    pFilter_Hitters->setChecked(true);
-    pBulkFilterLayout->addWidget(pFilter_Hitters);
-
-    // Filter pitchers button
-    QCheckBox* pFilter_Pitchers = new QCheckBox("Pitchers", this);
-    pFilter_Pitchers->setCheckable(true);
-    pFilter_Pitchers->setChecked(true);
-    pBulkFilterLayout->addWidget(pFilter_Pitchers);
-
-    // Filter drafter button
-    QCheckBox* pFilter_Drafted = new QCheckBox("Drafted", this);
-    pFilter_Drafted->setCheckable(true);
-    pFilter_Drafted->setChecked(true);
-    pBulkFilterLayout->addWidget(pFilter_Drafted);
-
-    // Position filter layout
-    QHBoxLayout* pPositionFilterLayout = new QHBoxLayout();
-    pPositionFilterLayout->setContentsMargins(0, 0, 0, 0);
-    pFilterStackLayout->addLayout(pPositionFilterLayout);
-
-    // Filter C button
-    QCheckBox* pFilter_C  = new QCheckBox("C", this);
-    pFilter_C->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
-    pFilter_C->setCheckable(true);
-    pFilter_C->setChecked(true);
-    pPositionFilterLayout->addWidget(pFilter_C);
-
-    // Filter 1B button
-    QCheckBox* pFilter_1B  = new QCheckBox("1B", this);
-    pFilter_1B->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
-    pFilter_1B->setCheckable(true);
-    pFilter_1B->setChecked(true);
-    pPositionFilterLayout->addWidget(pFilter_1B);
-
-    // Filter 2B button
-    QCheckBox* pFilter_2B  = new QCheckBox("2B", this);
-    pFilter_2B->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
-    pFilter_2B->setCheckable(true);
-    pFilter_2B->setChecked(true);
-    pPositionFilterLayout->addWidget(pFilter_2B);
-
-    // Filter SS button
-    QCheckBox* pFilter_SS  = new QCheckBox("SS", this);
-    pFilter_SS->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
-    pFilter_SS->setCheckable(true);
-    pFilter_SS->setChecked(true);
-    pPositionFilterLayout->addWidget(pFilter_SS);
-
-    // Filter 3B button
-    QCheckBox* pFilter_3B  = new QCheckBox("3B", this);
-    pFilter_3B->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
-    pFilter_3B->setCheckable(true);
-    pFilter_3B->setChecked(true);
-    pPositionFilterLayout->addWidget(pFilter_3B);
-
-    // Filter OF button
-    QCheckBox* pFilter_OF  = new QCheckBox("OF", this);
-    pFilter_OF->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
-    pFilter_OF->setCheckable(true);
-    pFilter_OF->setChecked(true);
-    pPositionFilterLayout->addWidget(pFilter_OF);
+        for (int i = 0; i <= FBBPositionBitCount; i++)
+        {
+            int bit = 1 << i;
+            if (bit & mask)
+            {
+                FBBPositionBits pos = static_cast<FBBPositionBits>(bit);
+                QString strPos = FBBPositionToString(pos);
+                pFilter->addItem(strPos, bit);
+            }
+        }
+    };
+    BuildPositionList();
 
     // Divider
     pHeaderLayout->addWidget(new VDivider(this));
 
-    QGridLayout* pGridlayout = new QGridLayout();
-    pGridlayout->setContentsMargins(0, 0, 0, 0);
-    pHeaderLayout->addLayout(pGridlayout);
+
+    // Filter drafter button
+    QPushButton* pFilter_Drafted = new QPushButton("Drafted", this);
+    pFilter_Drafted->setCheckable(true);
+    pFilter_Drafted->setChecked(true);
+    pHeaderLayout->addWidget(pFilter_Drafted);
+
+    // Divider
+    pHeaderLayout->addWidget(new VDivider(this));
 
     // Z/$ button
     QPushButton* pZscoreToggle = new QPushButton("#/z");
     pZscoreToggle->setCheckable(true);
-    pGridlayout->addWidget(pZscoreToggle, 0, 0);
+    pHeaderLayout->addWidget(pZscoreToggle, 0, 0);
 
     // Place holders
     pHeaderLayout->addStretch();
-
-    // Divider
-    pLayout->addWidget(new HDivider(this));
 
     // Completer
     QCompleter* pSearchCompleter = new QCompleter(this);
@@ -222,6 +177,9 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z,          QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_ESTIMATE,   QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_COMMENT,    QHeaderView::Stretch);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_SPACER_A,   QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_SPACER_B,   QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_SPACER_C,   QHeaderView::Fixed);
 
     const int charWidth = fm.averageCharWidth();
     const int padding = pTableView->style()->pixelMetric(QStyle::PM_HeaderMargin);
@@ -252,6 +210,9 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_SV,         charWidth * 7 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z,          charWidth * 10 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_ESTIMATE,   charWidth * 10 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_SPACER_A,   1);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_SPACER_B,   1);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_SPACER_C,   1);
 
     pTableView->hideColumn(FBBDraftBoardModel::COLUMN_ID);
 
@@ -318,75 +279,16 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     //
     auto OnFilterChanged = [=]()
     {
-        bool showHitters = pFilter_Hitters->isChecked();
-        for (int i = FBBDraftBoardModel::COLUMN_FIRST_HITTING; i <= FBBDraftBoardModel::COLUMN_LAST_HITTING; i++) {
-            pTableView->setColumnHidden(i, !showHitters);
-        }
-
-        bool showPitchers = pFilter_Pitchers->isChecked();
-        for (int i = FBBDraftBoardModel::COLUMN_FIRST_PITCHING; i <= FBBDraftBoardModel::COLUMN_LAST_PITCHING; i++) {
-            pTableView->setColumnHidden(i, !showPitchers);
-        }
-
-        FBBDraftBoardSortFilterProxyModel::FilterIn filter = 0;
-        if (pFilter_Drafted->isChecked()) {
-            filter |= FBBDraftBoardSortFilterProxyModel::FilterIn_Drafted;
-        }
-        if (pFilter_Hitters->isChecked()) {
-            filter |= FBBDraftBoardSortFilterProxyModel::FilterIn_Hitters;
-        }
-        if (pFilter_Pitchers->isChecked()) {
-            filter |= FBBDraftBoardSortFilterProxyModel::FilterIn_Pitchers;
-        }
-        if (pFilter_Drafted->isChecked()) {
-            filter |= FBBDraftBoardSortFilterProxyModel::FilterIn_Drafted;
-        }
-        if (pFilter_C->isChecked()) {
-            filter |= FBBDraftBoardSortFilterProxyModel::FilterIn_C;
-        }
-        if (pFilter_1B->isChecked()) {
-            filter |= FBBDraftBoardSortFilterProxyModel::FilterIn_1B;
-        }
-        if (pFilter_2B->isChecked()) {
-            filter |= FBBDraftBoardSortFilterProxyModel::FilterIn_2B;
-        }
-        if (pFilter_SS->isChecked()) {
-            filter |= FBBDraftBoardSortFilterProxyModel::FilterIn_SS;
-        }
-        if (pFilter_3B->isChecked()) {
-            filter |= FBBDraftBoardSortFilterProxyModel::FilterIn_3B;
-        }
-        if (pFilter_OF->isChecked()) {
-            filter |= FBBDraftBoardSortFilterProxyModel::FilterIn_OF;
-        }
-        pProxyModel->SetFilter(filter);
+        FBBPositionMask mask = static_cast<FBBPositionMask>(pFilter->currentData().toInt());
+        pProxyModel->SetPositionFilter(mask);
+        pProxyModel->SetShowDrafted(pFilter_Drafted->isChecked());
     };
 
-    connect(pFilter_Hitters, &QPushButton::released, this, [=]() {
+    connect(pFilter, &QComboBox::currentTextChanged, this, [=](const QString& text) {
         OnFilterChanged();
     });
-    connect(pFilter_Pitchers, &QPushButton::released, this, [=]() {
-        OnFilterChanged();
-    });
+
     connect(pFilter_Drafted, &QPushButton::released, this, [=]() {
-        OnFilterChanged();
-    });
-    connect(pFilter_C, &QPushButton::released, this, [=]() {
-        OnFilterChanged();
-    });
-    connect(pFilter_1B, &QPushButton::released, this, [=]() {
-        OnFilterChanged();
-    });
-    connect(pFilter_2B, &QPushButton::released, this, [=]() {
-        OnFilterChanged();
-    });
-    connect(pFilter_SS, &QPushButton::released, this, [=]() {
-        OnFilterChanged();
-    });
-    connect(pFilter_3B, &QPushButton::released, this, [=]() {
-        OnFilterChanged();
-    });
-    connect(pFilter_OF, &QPushButton::released, this, [=]() {
         OnFilterChanged();
     });
 

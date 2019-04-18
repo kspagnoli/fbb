@@ -28,6 +28,9 @@ public:
         COLUMN_EXPERIENCE,
         COLUMN_POSITION,
 
+        // Spacer
+        COLUMN_SPACER_A,
+
         // Hitting
         COLUMN_FIRST_HITTING,
         COLUMN_AB = COLUMN_FIRST_HITTING,
@@ -38,6 +41,9 @@ public:
         COLUMN_RBI,
         COLUMN_SB,
         COLUMN_LAST_HITTING = COLUMN_SB,
+
+        // Spacer
+        COLUMN_SPACER_B,
 
         // Pitching
         COLUMN_FIRST_PITCHING,
@@ -51,6 +57,9 @@ public:
         COLUMN_W,
         COLUMN_SV,
         COLUMN_LAST_PITCHING = COLUMN_SV,
+
+        // Spacer
+        COLUMN_SPACER_C,
 
         // Fantasy
         COLUMN_Z,
