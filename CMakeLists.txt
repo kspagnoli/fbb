@@ -69,6 +69,8 @@ add_executable(fbb WIN32 main.cpp ${SOURCE} ${MOC_HEADERS} ${RESOURCES})
 target_link_libraries(fbb Qt5::Widgets)
 target_link_libraries(fbb Qt5::Charts)
 
+# warning levels
+target_compile_options(fbb PRIVATE /W3 /WX)
 
 # JSON TOOL
 add_executable(fbb_json WIN32 fbb_json.cpp ${RESOURCES})

@@ -28,38 +28,55 @@ public:
         COLUMN_EXPERIENCE,
         COLUMN_POSITION,
 
-        // Spacer
-        COLUMN_SPACER_A,
-
         // Hitting
-        COLUMN_FIRST_HITTING,
-        COLUMN_AB = COLUMN_FIRST_HITTING,
+        COLUMN_FIRST_HITTING_BASE,
+        COLUMN_AB = COLUMN_FIRST_HITTING_BASE,
         COLUMN_H,
-        COLUMN_AVG,
+        COLUMN_LAST_HITTING_BASE = COLUMN_H,
+        
+        // Hitting stat
+        COLUMN_FIRST_HITTING,
+        COLUMN_AVG = COLUMN_FIRST_HITTING,
         COLUMN_HR,
         COLUMN_R,
         COLUMN_RBI,
         COLUMN_SB,
         COLUMN_LAST_HITTING = COLUMN_SB,
 
-        // Spacer
-        COLUMN_SPACER_B,
+        // Hitting z-state
+        COLUMN_FIRST_Z_HITTING,
+        COLUMN_Z_AVG = COLUMN_FIRST_Z_HITTING,
+        COLUMN_Z_HR,
+        COLUMN_Z_R,
+        COLUMN_Z_RBI,
+        COLUMN_Z_SB,
+        COLUMN_LAST_Z_HITTING = COLUMN_Z_SB,
 
         // Pitching
-        COLUMN_FIRST_PITCHING,
-        COLUMN_IP = COLUMN_FIRST_PITCHING,
+        COLUMN_FIRST_PITCHING_BASE,
+        COLUMN_IP = COLUMN_FIRST_PITCHING_BASE,
         COLUMN_HA,
         COLUMN_BB,
         COLUMN_ER,
-        COLUMN_SO,
+        COLUMN_LAST_PITCHING_BASE = COLUMN_ER,
+
+        // Pitching stats
+        COLUMN_FIRST_PITCHING,
+        COLUMN_SO = COLUMN_FIRST_PITCHING,
         COLUMN_ERA,
         COLUMN_WHIP,
         COLUMN_W,
         COLUMN_SV,
         COLUMN_LAST_PITCHING = COLUMN_SV,
 
-        // Spacer
-        COLUMN_SPACER_C,
+        // Pitching z-stats
+        COLUMN_FIRST_Z_PITCHING,
+        COLUMN_Z_SO = COLUMN_FIRST_Z_PITCHING,
+        COLUMN_Z_ERA,
+        COLUMN_Z_WHIP,
+        COLUMN_Z_W,
+        COLUMN_Z_SV,
+        COLUMN_LAST_Z_PITCHING = COLUMN_Z_SV,
 
         // Fantasy
         COLUMN_Z,
@@ -97,14 +114,6 @@ public:
     virtual QVariant data(const QModelIndex& index, int role) const override;
     virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
     
-    // TODO: remove this...
-    enum class Mode
-    {
-        STAT,
-        Z_SCORE,
-    };
-    void SetMode(Mode mode);
-
 signals:
     void PlayerDrafted(FBBPlayer* player);
 
@@ -116,7 +125,6 @@ private:
 
     std::vector<FBBPlayer*> m_vecPlayers;
 
-    Mode m_mode = Mode::STAT;
     QFont m_font;
     QFont m_draftedFont;
 };

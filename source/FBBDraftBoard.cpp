@@ -171,6 +171,11 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_R,          QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_RBI,        QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_SB,         QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z_AVG,      QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z_HR,       QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z_R,        QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z_RBI,      QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z_SB,       QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_IP,         QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_HA,         QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_BB,         QHeaderView::Fixed);
@@ -180,12 +185,14 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_WHIP,       QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_W,          QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_SV,         QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z_SO,       QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z_ERA,      QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z_WHIP,     QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z_W,        QHeaderView::Fixed);
+    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z_SV,       QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_Z,          QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_ESTIMATE,   QHeaderView::Fixed);
     pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_COMMENT,    QHeaderView::Stretch);
-    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_SPACER_A,   QHeaderView::Fixed);
-    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_SPACER_B,   QHeaderView::Fixed);
-    pTableView->horizontalHeader()->setSectionResizeMode(FBBDraftBoardModel::COLUMN_SPACER_C,   QHeaderView::Fixed);
 
     const int charWidth = fm.averageCharWidth();
     const int padding = pTableView->style()->pixelMetric(QStyle::PM_HeaderMargin);
@@ -205,6 +212,11 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_R,          charWidth * 7 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_RBI,        charWidth * 7 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_SB,         charWidth * 7 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z_AVG,      charWidth * 7 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z_HR,       charWidth * 7 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z_R,        charWidth * 7 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z_RBI,      charWidth * 7 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z_SB,       charWidth * 7 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_IP,         charWidth * 7 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_HA,         charWidth * 7 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_BB,         charWidth * 7 + padding);
@@ -214,11 +226,13 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_WHIP,       charWidth * 7 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_W,          charWidth * 7 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_SV,         charWidth * 7 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z_SO,       charWidth * 7 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z_ERA,      charWidth * 7 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z_WHIP,     charWidth * 7 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z_W,        charWidth * 7 + padding);
+    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z_SV,       charWidth * 7 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_Z,          charWidth * 10 + padding);
     pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_ESTIMATE,   charWidth * 10 + padding);
-    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_SPACER_A,   1);
-    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_SPACER_B,   1);
-    pTableView->setColumnWidth(FBBDraftBoardModel::COLUMN_SPACER_C,   1);
 
     pTableView->hideColumn(FBBDraftBoardModel::COLUMN_ID);
 
@@ -245,9 +259,31 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
         dialog.exec();
     });
 
+    // Handle zScores
+    auto UpdateZScoreToggle = [=]()
+    {
+        const bool showZ = pZscoreToggle->isChecked();
+
+        for (int i = FBBDraftBoardModel::COLUMN_FIRST_HITTING; i <= FBBDraftBoardModel::COLUMN_LAST_HITTING; i++) {
+            pTableView->setColumnHidden(i, showZ);
+        }
+
+        for (int i = FBBDraftBoardModel::COLUMN_FIRST_Z_HITTING; i <= FBBDraftBoardModel::COLUMN_LAST_Z_HITTING; i++) {
+            pTableView->setColumnHidden(i, !showZ);
+        }
+
+        for (int i = FBBDraftBoardModel::COLUMN_FIRST_PITCHING; i <= FBBDraftBoardModel::COLUMN_LAST_PITCHING; i++) {
+            pTableView->setColumnHidden(i, showZ);
+        }
+
+        for (int i = FBBDraftBoardModel::COLUMN_FIRST_Z_PITCHING; i <= FBBDraftBoardModel::COLUMN_LAST_Z_PITCHING; i++) {
+            pTableView->setColumnHidden(i, !showZ);
+        }
+    };
     connect(pZscoreToggle, &QPushButton::toggled, this, [=](bool checked) {
-        fbbApp->DraftBoardModel()->SetMode(checked ? FBBDraftBoardModel::Mode::Z_SCORE : FBBDraftBoardModel::Mode::STAT);
+        UpdateZScoreToggle();
     });
+    UpdateZScoreToggle();
 
     // Search activation
     connect(pSearchCompleter, static_cast<void(QCompleter::*)(const QModelIndex&)>(&QCompleter::activated), this, [=](const QModelIndex& index) {
@@ -255,31 +291,6 @@ FBBDraftBoard::FBBDraftBoard(QWidget* parent)
         const QModelIndex proxyIndex = pCompletionModel->mapToSource(index);
         pTableView->selectRow(proxyIndex.row());
         pTableView->setFocus();
-    });
-
-    // Table header context menu
-    connect(pTableView->horizontalHeader(), &QWidget::customContextMenuRequested, this, [=](const QPoint &pos) {
-
-        QPoint globalPos = pTableView->horizontalHeader()->mapToGlobal(pos);
-
-        QMenu menu;
-
-        for (int i = 0; i < fbbApp->DraftBoardModel()->columnCount(fbbApp->DraftBoardModel()->index(0, 0)); i++) {
-            QString columnName = fbbApp->DraftBoardModel()->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
-            menu.addAction(columnName);
-        }
-        // ...
-
-        QAction* selectedItem = menu.exec(globalPos);
-        if (selectedItem)
-        {
-            // something was chosen, do stuff
-        }
-        else
-        {
-            // nothing was chosen
-        }
-
     });
 
     //
